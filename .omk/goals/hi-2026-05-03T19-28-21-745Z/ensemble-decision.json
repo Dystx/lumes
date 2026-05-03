@@ -1,0 +1,32 @@
+{
+  "action": "block",
+  "confidence": 0.44117647058823534,
+  "rationale": "# Ensemble Decision\nConsensus: continue (confidence=0.44, quorum=1.70)\n\n| Candidate | Action | Weight | Reason |\n|---|---|---:|---|\n|   progress-analyst | handoff | 1 | run completed but 1 criteria remain |\n|   risk-evaluator | replan | 0.9 | 1 failures suggest replanning |\n| ✓ resource-optimizer | continue | 0.7 | progress=0.80, elapsed=50s |\n| ✓ quality-assessor | continue | 0.8 | quality score=fail, gateRate=0.80 |",
+  "candidateVotes": [
+    {
+      "id": "progress-analyst",
+      "action": "handoff",
+      "weight": 1,
+      "reason": "run completed but 1 criteria remain"
+    },
+    {
+      "id": "risk-evaluator",
+      "action": "replan",
+      "weight": 0.9,
+      "reason": "1 failures suggest replanning"
+    },
+    {
+      "id": "resource-optimizer",
+      "action": "continue",
+      "weight": 0.7,
+      "reason": "progress=0.80, elapsed=50s"
+    },
+    {
+      "id": "quality-assessor",
+      "action": "continue",
+      "weight": 0.8,
+      "reason": "quality score=fail, gateRate=0.80"
+    }
+  ],
+  "timestamp": "2026-05-03T19:29:11.546Z"
+}

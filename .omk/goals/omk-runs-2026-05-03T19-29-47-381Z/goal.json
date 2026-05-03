@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "goalId": "omk-runs-2026-05-03T19-29-47-381Z",
+  "title": "omk runs",
+  "rawPrompt": "omk runs",
+  "objective": "omk runs",
+  "successCriteria": [
+    {
+      "id": "criterion-1",
+      "description": "The objective is completed and the result is demonstrable",
+      "requirement": "required",
+      "weight": 1,
+      "inferred": true
+    }
+  ],
+  "constraints": [],
+  "nonGoals": [],
+  "risks": [],
+  "expectedArtifacts": [],
+  "status": "draft",
+  "riskLevel": "medium",
+  "planRevision": 0,
+  "createdAt": "2026-05-03T19:29:47.381Z",
+  "updatedAt": "2026-05-03T19:29:47.381Z",
+  "runIds": []
+}
