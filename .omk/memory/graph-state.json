@@ -51,7 +51,7 @@
     "name": "my-project",
     "root": "/Users/cheng"
   },
-  "updatedAt": "2026-05-03T19:37:10.396Z",
+  "updatedAt": "2026-05-03T19:46:01.041Z",
   "nodes": [
     {
       "id": "Project:2a50778400545246d04b88d8",
@@ -70,7 +70,7 @@
         "root": "/Users/cheng"
       },
       "createdAt": "2026-05-03T19:37:10.201Z",
-      "updatedAt": "2026-05-03T19:37:10.396Z"
+      "updatedAt": "2026-05-03T19:46:01.041Z"
     },
     {
       "id": "Session:0152d77e67f802430b2ea060",
@@ -238,7 +238,7 @@
       ],
       "label": "decisions.md",
       "path": "decisions.md",
-      "content": "# Decisions\n\n",
+      "content": "# Decisions\n\n## 2026-05-03 — Kimi Chan Health Check\n- **Decision:** oh-my-kimichan (kimi chan) is confirmed working on this system.\n- **Evidence:** `omk doctor` run; all critical checks passed.\n- **Action needed:** Run `omk sync` to resolve the single warning about missing `~/.kimi/omk.memory.toml`.\n",
       "summary": "Decisions",
       "tags": [
         "memory",
@@ -249,11 +249,11 @@
         "key": "cheng:50c3faac79c8:80a4cf760a0fa2bff988c75b611448073519d9f9b9cbbde4410f8846097c7a7a",
         "path": "decisions.md",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-37931-2026-05-03T19-36-52-746Z",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z",
         "source": "omk-project-mcp"
       },
       "createdAt": "2026-05-03T19:37:10.396Z",
-      "updatedAt": "2026-05-03T19:37:10.396Z"
+      "updatedAt": "2026-05-03T19:46:01.041Z"
     },
     {
       "id": "MemoryVersion:465b53395c9c93cb1eae5397",
@@ -282,6 +282,129 @@
       "updatedAt": "2026-05-03T19:37:10.396Z"
     },
     {
+      "id": "Session:bc2205f6fb3b5548df9edc30",
+      "type": "Session",
+      "labels": [
+        "OmkSession",
+        "Session"
+      ],
+      "label": "process-39818-2026-05-03T19-44-25-890Z",
+      "summary": "Session for my-project",
+      "tags": [
+        "session"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-39818-2026-05-03T19-44-25-890Z",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z",
+        "projectKey": "cheng:50c3faac79c8"
+      },
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "type": "Memory",
+      "labels": [
+        "OmkMemory",
+        "Memory"
+      ],
+      "label": "project",
+      "path": "project",
+      "content": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "summary": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "tags": [
+        "memory",
+        "project"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:244210e48437b6556980a70249a99369934a352429034cef9d7bd253b3bf2c01",
+        "path": "project",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.037Z"
+    },
+    {
+      "id": "MemoryVersion:1ae36002ced0114de2c54392",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "project@2026-05-03T19:46:01.037Z",
+      "path": "project",
+      "content": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "summary": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "tags": [
+        "memory-version",
+        "project"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-39818-2026-05-03T19-44-25-890Z:973d4cb1e0124d876b49c30217e34ae8a123dc52c10850ae2aa0f292514a3c5d",
+        "path": "project",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.037Z"
+    },
+    {
+      "id": "Topic:a0da467ba870d644c828df99",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "summary": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "tags": [
+        "key",
+        "cheng",
+        "50c3faac79c8",
+        "name",
+        "my-project"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4",
+        "line": 1,
+        "level": null,
+        "path": "project",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+      },
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.037Z"
+    },
+    {
+      "id": "MemoryVersion:31f5126f53f608f46bb3faa0",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "decisions.md@2026-05-03T19:46:01.041Z",
+      "path": "decisions.md",
+      "content": "# Decisions\n\n## 2026-05-03 — Kimi Chan Health Check\n- **Decision:** oh-my-kimichan (kimi chan) is confirmed working on this system.\n- **Evidence:** `omk doctor` run; all critical checks passed.\n- **Action needed:** Run `omk sync` to resolve the single warning about missing `~/.kimi/omk.memory.toml`.\n",
+      "summary": "Decisions",
+      "tags": [
+        "memory-version",
+        "decisions",
+        "md"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-39818-2026-05-03T19-44-25-890Z:6f05e5f2a9fa71be33ea723eb24f1e2b867abafb92c35618b30a1aa5a323eacb",
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
       "id": "Topic:12aa192b6d9d314e91757873",
       "type": "Topic",
       "labels": [
@@ -299,10 +422,157 @@
         "level": 1,
         "path": "decisions.md",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-37931-2026-05-03T19-36-52-746Z"
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
       },
-      "createdAt": "2026-05-03T19:37:10.396Z",
-      "updatedAt": "2026-05-03T19:37:10.396Z"
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "Topic:bc0f5495d48cb4fc40d2640b",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "2026-05-03 — Kimi Chan Health Check",
+      "summary": "2026-05-03 — Kimi Chan Health Check",
+      "tags": [
+        "2026-05-03",
+        "kimi",
+        "chan",
+        "health",
+        "check"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "line": 3,
+        "level": 2,
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "Decision:13da4671ac5da9ad7cbe1dca",
+      "type": "Decision",
+      "labels": [
+        "OmkDecision",
+        "Decision"
+      ],
+      "label": "Decision: oh-my-kimichan (kimi chan) is confirmed working on this system.",
+      "summary": "Decision: oh-my-kimichan (kimi chan) is confirmed working on this system.",
+      "tags": [
+        "decision",
+        "oh-my-kimichan",
+        "kimi",
+        "chan",
+        "confirmed",
+        "working",
+        "this",
+        "system"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "line": 4,
+        "level": null,
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "Evidence:70cc17be33454a92ed826206",
+      "type": "Evidence",
+      "labels": [
+        "OmkEvidence",
+        "Evidence"
+      ],
+      "label": "Evidence: omk doctor run; all critical checks passed.",
+      "summary": "Evidence: omk doctor run; all critical checks passed.",
+      "tags": [
+        "evidence",
+        "omk",
+        "doctor",
+        "run",
+        "all",
+        "critical",
+        "checks",
+        "passed"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "line": 5,
+        "level": null,
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "Task:97496e2e15c92e1697a134f3",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "Action needed: Run omk sync to resolve the single warning about missing /.kimi/omk.memory.toml.",
+      "summary": "Action needed: Run omk sync to resolve the single warning about missing /.kimi/omk.memory.toml.",
+      "tags": [
+        "action",
+        "needed",
+        "run",
+        "omk",
+        "sync",
+        "resolve",
+        "the",
+        "single",
+        "warning",
+        "about",
+        "missing",
+        "kimi"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "line": 6,
+        "level": null,
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "File:66da08ace7e95f088e8b9c79",
+      "type": "File",
+      "labels": [
+        "OmkFile",
+        "File"
+      ],
+      "label": ".kimi/omk.memory.toml.",
+      "path": ".kimi/omk.memory.toml.",
+      "summary": "Referenced by decisions.md",
+      "tags": [
+        "file",
+        "kimi",
+        "omk",
+        "memory",
+        "toml"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "path": ".kimi/omk.memory.toml.",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
     }
   ],
   "edges": [
@@ -426,7 +696,7 @@
       "label": "has memory",
       "properties": {},
       "createdAt": "2026-05-03T19:37:10.396Z",
-      "updatedAt": "2026-05-03T19:37:10.396Z"
+      "updatedAt": "2026-05-03T19:46:01.041Z"
     },
     {
       "id": "WROTE:cff76609e03a7771fcb21ce3",
@@ -449,6 +719,90 @@
       "updatedAt": "2026-05-03T19:37:10.396Z"
     },
     {
+      "id": "HAS_SESSION:61c6493868fc0a9ecb83f127",
+      "type": "HAS_SESSION",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Session:bc2205f6fb3b5548df9edc30",
+      "label": "has session",
+      "properties": {},
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "HAS_MEMORY:ec754e58aca691db7a0da5e7",
+      "type": "HAS_MEMORY",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "label": "has memory",
+      "properties": {},
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.037Z"
+    },
+    {
+      "id": "WROTE:6c61cad7b527cedcf34e1071",
+      "type": "WROTE",
+      "from": "Session:bc2205f6fb3b5548df9edc30",
+      "to": "MemoryVersion:1ae36002ced0114de2c54392",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.037Z"
+    },
+    {
+      "id": "UPDATES:4c432b21d21c564310c440af",
+      "type": "UPDATES",
+      "from": "MemoryVersion:1ae36002ced0114de2c54392",
+      "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.037Z"
+    },
+    {
+      "id": "HAS_TOPIC:7d7b4064b3d256803c802cb2",
+      "type": "HAS_TOPIC",
+      "from": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "to": "Topic:a0da467ba870d644c828df99",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4"
+      },
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.037Z"
+    },
+    {
+      "id": "PART_OF:866aeb785b8098fed36d3a12",
+      "type": "PART_OF",
+      "from": "Topic:a0da467ba870d644c828df99",
+      "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4"
+      },
+      "createdAt": "2026-05-03T19:46:01.037Z",
+      "updatedAt": "2026-05-03T19:46:01.037Z"
+    },
+    {
+      "id": "WROTE:298edbd4f209dda7f6917d40",
+      "type": "WROTE",
+      "from": "Session:bc2205f6fb3b5548df9edc30",
+      "to": "MemoryVersion:31f5126f53f608f46bb3faa0",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "UPDATES:bbef8c1b6bca762d86c4b32e",
+      "type": "UPDATES",
+      "from": "MemoryVersion:31f5126f53f608f46bb3faa0",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
       "id": "HAS_TOPIC:8c3f99d2d9c301f95ead9e8d",
       "type": "HAS_TOPIC",
       "from": "Memory:2c8df93eeb9ef09e0813bdbb",
@@ -457,8 +811,8 @@
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:37:10.396Z",
-      "updatedAt": "2026-05-03T19:37:10.396Z"
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
     },
     {
       "id": "PART_OF:2ee1bf122667950f03bf4faf",
@@ -469,8 +823,128 @@
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:37:10.396Z",
-      "updatedAt": "2026-05-03T19:37:10.396Z"
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "HAS_CONCEPT:e895f4810ad09e0708bb5d12",
+      "type": "HAS_CONCEPT",
+      "from": "Topic:12aa192b6d9d314e91757873",
+      "to": "Topic:bc0f5495d48cb4fc40d2640b",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "PART_OF:0a025370f05648d14120b845",
+      "type": "PART_OF",
+      "from": "Topic:bc0f5495d48cb4fc40d2640b",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "HAS_CONCEPT:ae19813522ca9fe8c81f26f7",
+      "type": "HAS_CONCEPT",
+      "from": "Topic:bc0f5495d48cb4fc40d2640b",
+      "to": "Decision:13da4671ac5da9ad7cbe1dca",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "PART_OF:da52f81b7d301ddfcf80636e",
+      "type": "PART_OF",
+      "from": "Decision:13da4671ac5da9ad7cbe1dca",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "HAS_CONCEPT:8687a4fa638b1694ac171b5d",
+      "type": "HAS_CONCEPT",
+      "from": "Topic:bc0f5495d48cb4fc40d2640b",
+      "to": "Evidence:70cc17be33454a92ed826206",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "PART_OF:a2e96a05aa1cfab4bc558d24",
+      "type": "PART_OF",
+      "from": "Evidence:70cc17be33454a92ed826206",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "HAS_CONCEPT:9ac5580d8736da5ddc1d1bca",
+      "type": "HAS_CONCEPT",
+      "from": "Topic:bc0f5495d48cb4fc40d2640b",
+      "to": "Task:97496e2e15c92e1697a134f3",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "PART_OF:607a9233a9a1dc0304fdf585",
+      "type": "PART_OF",
+      "from": "Task:97496e2e15c92e1697a134f3",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "TOUCHES_FILE:c8897fb5a8dccd57f9b9602f",
+      "type": "TOUCHES_FILE",
+      "from": "Task:97496e2e15c92e1697a134f3",
+      "to": "File:66da08ace7e95f088e8b9c79",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
+    },
+    {
+      "id": "HAS_FILE:438ebba5e20ee6cc4facf934",
+      "type": "HAS_FILE",
+      "from": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "to": "File:66da08ace7e95f088e8b9c79",
+      "label": "has file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:46:01.041Z",
+      "updatedAt": "2026-05-03T19:46:01.041Z"
     }
   ]
 }

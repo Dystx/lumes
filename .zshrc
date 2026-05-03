@@ -1,3 +1,6 @@
+# Core dev tools PATH (must be first — mise, pnpm, and others live here)
+export PATH="$HOME/.local/bin:$PATH"
+
 # pnpm
 export PNPM_HOME="/Users/cheng/Library/pnpm"
 case ":$PATH:" in
@@ -11,10 +14,10 @@ eval "$(mise activate zsh)"
 # Ensure mise env is populated immediately (fixes non-interactive shells / doctor checks)
 eval "$(mise hook-env -s zsh 2>/dev/null)"
 
-# Local dev tools fallback (in case mise is not yet available)
+# Local dev tools fallback (shims, gems)
 case ":$PATH:" in
   *":$HOME/.local/share/mise/shims:"*) ;;
-  *) export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.gem/ruby/3.4.0/bin:$PATH" ;;
+  *) export PATH="$HOME/.local/share/mise/shims:$HOME/.gem/ruby/3.4.0/bin:$PATH" ;;
 esac
 
 # Android SDK
