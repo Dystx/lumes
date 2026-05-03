@@ -1,0 +1,36 @@
+{
+  "goalId": "continue-2026-05-03T19-52-58-818Z",
+  "runId": "chat-2026-05-03T19-52-22-859Z-42554",
+  "timestamp": "2026-05-03T20:07:30.034Z",
+  "action": "continue",
+  "confidence": 0.7058823529411767,
+  "shouldContinue": true,
+  "candidateVotes": [
+    {
+      "id": "progress-analyst",
+      "action": "handoff",
+      "weight": 1,
+      "reason": "run completed but 1 criteria remain"
+    },
+    {
+      "id": "risk-evaluator",
+      "action": "continue",
+      "weight": 0.9,
+      "reason": "risk acceptable (0 failures, 0 critical)"
+    },
+    {
+      "id": "resource-optimizer",
+      "action": "continue",
+      "weight": 0.7,
+      "reason": "progress=0.80, elapsed=871s"
+    },
+    {
+      "id": "quality-assessor",
+      "action": "continue",
+      "weight": 0.8,
+      "reason": "quality score=fail, gateRate=0.80"
+    }
+  ],
+  "rationale": "# Ensemble Decision\nConsensus: continue (confidence=0.71, quorum=1.70)\n\n| Candidate | Action | Weight | Reason |\n|---|---|---:|---|\n|   progress-analyst | handoff | 1 | run completed but 1 criteria remain |\n| ✓ risk-evaluator | continue | 0.9 | risk acceptable (0 failures, 0 critical) |\n| ✓ resource-optimizer | continue | 0.7 | progress=0.80, elapsed=871s |\n| ✓ quality-assessor | continue | 0.8 | quality score=fail, gateRate=0.80 |",
+  "nextPrompt": "# Auto-Generated Next Prompt\n\n## Goal\ncontinue\n\n## Ensemble Decision\n- Action: continue\n- Completed nodes: 4/5\n- Failed nodes: 0\n- Missing criteria: 1\n\n## Missing Criteria\n- [ ] The objective is completed and the result is demonstrable (required)\n\n## Continue Instructions\nContinue working toward the objective. Focus on:\n1. Highest-priority missing criteria\n2. Failed nodes (retry with adjusted scope)\n3. Memory recall for related context\n\n## Memory Recall\nCall omk_memory_mindmap or omk_search_memory before planning.\n"
+}

@@ -51,7 +51,7 @@
     "name": "my-project",
     "root": "/Users/cheng"
   },
-  "updatedAt": "2026-05-03T19:46:01.041Z",
+  "updatedAt": "2026-05-03T20:07:30.042Z",
   "nodes": [
     {
       "id": "Project:2a50778400545246d04b88d8",
@@ -70,7 +70,7 @@
         "root": "/Users/cheng"
       },
       "createdAt": "2026-05-03T19:37:10.201Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "updatedAt": "2026-05-03T20:07:30.042Z"
     },
     {
       "id": "Session:0152d77e67f802430b2ea060",
@@ -238,7 +238,7 @@
       ],
       "label": "decisions.md",
       "path": "decisions.md",
-      "content": "# Decisions\n\n## 2026-05-03 — Kimi Chan Health Check\n- **Decision:** oh-my-kimichan (kimi chan) is confirmed working on this system.\n- **Evidence:** `omk doctor` run; all critical checks passed.\n- **Action needed:** Run `omk sync` to resolve the single warning about missing `~/.kimi/omk.memory.toml`.\n",
+      "content": "# Decisions\n\n## 2025-05-03 — omk sync completed, memory warning resolved\n- Decision: Ran `omk sync` to resolve the previously reported warning about missing `omk.memory.toml`.\n- Outcome: Sync completed successfully. Global hooks, MCP, skills, and local graph memory are all configured.\n- Additional fix: Created symlink `~/.kimi/omk.memory.toml -> /Users/cheng/.kimi/omk.memory.toml` because the shell environment uses a temporary `HOME` directory (`/var/folders/.../omk-home-...`), causing `omk doc…",
       "summary": "Decisions",
       "tags": [
         "memory",
@@ -249,11 +249,11 @@
         "key": "cheng:50c3faac79c8:80a4cf760a0fa2bff988c75b611448073519d9f9b9cbbde4410f8846097c7a7a",
         "path": "decisions.md",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z",
         "source": "omk-project-mcp"
       },
       "createdAt": "2026-05-03T19:37:10.396Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
       "id": "MemoryVersion:465b53395c9c93cb1eae5397",
@@ -320,11 +320,11 @@
         "key": "cheng:50c3faac79c8:244210e48437b6556980a70249a99369934a352429034cef9d7bd253b3bf2c01",
         "path": "project",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z",
-        "source": "omk-project-mcp"
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z",
+        "source": "ensemble-goal"
       },
       "createdAt": "2026-05-03T19:46:01.037Z",
-      "updatedAt": "2026-05-03T19:46:01.037Z"
+      "updatedAt": "2026-05-03T20:07:30.036Z"
     },
     {
       "id": "MemoryVersion:1ae36002ced0114de2c54392",
@@ -347,33 +347,6 @@
         "projectKey": "cheng:50c3faac79c8",
         "sessionId": "process-39818-2026-05-03T19-44-25-890Z",
         "source": "omk-project-mcp"
-      },
-      "createdAt": "2026-05-03T19:46:01.037Z",
-      "updatedAt": "2026-05-03T19:46:01.037Z"
-    },
-    {
-      "id": "Topic:a0da467ba870d644c828df99",
-      "type": "Topic",
-      "labels": [
-        "OmkTopic",
-        "Topic"
-      ],
-      "label": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
-      "summary": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
-      "tags": [
-        "key",
-        "cheng",
-        "50c3faac79c8",
-        "name",
-        "my-project"
-      ],
-      "properties": {
-        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4",
-        "line": 1,
-        "level": null,
-        "path": "project",
-        "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
       },
       "createdAt": "2026-05-03T19:46:01.037Z",
       "updatedAt": "2026-05-03T19:46:01.037Z"
@@ -405,6 +378,103 @@
       "updatedAt": "2026-05-03T19:46:01.041Z"
     },
     {
+      "id": "Session:dc5804b3f89381c25160ddde",
+      "type": "Session",
+      "labels": [
+        "OmkSession",
+        "Session"
+      ],
+      "label": "process-42660-2026-05-03T19-53-00-510Z",
+      "summary": "Session for my-project",
+      "tags": [
+        "session"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-42660-2026-05-03T19-53-00-510Z",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z",
+        "projectKey": "cheng:50c3faac79c8"
+      },
+      "createdAt": "2026-05-03T19:53:35.343Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "MemoryVersion:f87efb86105135792c423760",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "project@2026-05-03T19:53:35.343Z",
+      "path": "project",
+      "content": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "summary": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "tags": [
+        "memory-version",
+        "project"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-42660-2026-05-03T19-53-00-510Z:d1487ee5439c7309b40edfa77557b80057057562747ccac41008a341d5afc722",
+        "path": "project",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:53:35.343Z",
+      "updatedAt": "2026-05-03T19:53:35.343Z"
+    },
+    {
+      "id": "MemoryVersion:592bd5ed9a19e10f99d19a20",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "decisions.md@2026-05-03T19:53:35.347Z",
+      "path": "decisions.md",
+      "content": "# Decisions\n\n## 2025-05-03 — omk sync completed\n- Decision: Ran `omk sync` to resolve the previously reported warning about missing `/.kimi/omk.memory.toml`.\n- Outcome: Sync completed successfully. Global hooks, MCP, skills, and local graph memory are all configured.\n- `.kimi/omk.memory.toml` is present and configures `local_graph` backend with project-session scope.\n- Memory backend is healthy (local_graph, 1 Project node).\n",
+      "summary": "Decisions",
+      "tags": [
+        "memory-version",
+        "decisions",
+        "md"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-42660-2026-05-03T19-53-00-510Z:222d2bafdfe058986bc839c72dcbab1ed9fab49b944e9f017331b16546800259",
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:53:35.347Z",
+      "updatedAt": "2026-05-03T19:53:35.347Z"
+    },
+    {
+      "id": "MemoryVersion:a767a2448b87ca2245cb4e23",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "decisions.md@2026-05-03T19:54:44.017Z",
+      "path": "decisions.md",
+      "content": "# Decisions\n\n## 2025-05-03 — omk sync completed, memory warning resolved\n- Decision: Ran `omk sync` to resolve the previously reported warning about missing `omk.memory.toml`.\n- Outcome: Sync completed successfully. Global hooks, MCP, skills, and local graph memory are all configured.\n- Additional fix: Created symlink `~/.kimi/omk.memory.toml -> /Users/cheng/.kimi/omk.memory.toml` because the shell environment uses a temporary `HOME` directory (`/var/folders/.../omk-home-...`), causing `omk doctor` to check a separate `~/.kimi` path from the project-local `.kimi/`.\n- Verification: `omk doctor` now shows `✅ Global Memory ~/.kimi/omk.memory.toml synced`.\n- Remaining: 1 unrelated warning (`Git Clean` — 4 uncommitted changes on main).\n",
+      "summary": "Decisions",
+      "tags": [
+        "memory-version",
+        "decisions",
+        "md"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-42660-2026-05-03T19-53-00-510Z:bb7a725f29e3e6ab3b7b9e45247f6daf179d252455a151b9ce9d3e2bdff4ef67",
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
       "id": "Topic:12aa192b6d9d314e91757873",
       "type": "Topic",
       "labels": [
@@ -422,26 +492,28 @@
         "level": 1,
         "path": "decisions.md",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "Topic:bc0f5495d48cb4fc40d2640b",
-      "type": "Topic",
+      "id": "Risk:5015c7aab06eef54b1d4c278",
+      "type": "Risk",
       "labels": [
-        "OmkTopic",
-        "Topic"
+        "OmkRisk",
+        "Risk"
       ],
-      "label": "2026-05-03 — Kimi Chan Health Check",
-      "summary": "2026-05-03 — Kimi Chan Health Check",
+      "label": "2025-05-03 — omk sync completed, memory warning resolved",
+      "summary": "2025-05-03 — omk sync completed, memory warning resolved",
       "tags": [
-        "2026-05-03",
-        "kimi",
-        "chan",
-        "health",
-        "check"
+        "2025-05-03",
+        "omk",
+        "sync",
+        "completed",
+        "memory",
+        "warning",
+        "resolved"
       ],
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
@@ -449,29 +521,33 @@
         "level": 2,
         "path": "decisions.md",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "Decision:13da4671ac5da9ad7cbe1dca",
+      "id": "Decision:99d9fe460f8e062baa61dd6e",
       "type": "Decision",
       "labels": [
         "OmkDecision",
         "Decision"
       ],
-      "label": "Decision: oh-my-kimichan (kimi chan) is confirmed working on this system.",
-      "summary": "Decision: oh-my-kimichan (kimi chan) is confirmed working on this system.",
+      "label": "Decision: Ran omk sync to resolve the previously reported warning about missing omk.memory.toml.",
+      "summary": "Decision: Ran omk sync to resolve the previously reported warning about missing omk.memory.toml.",
       "tags": [
         "decision",
-        "oh-my-kimichan",
-        "kimi",
-        "chan",
-        "confirmed",
-        "working",
-        "this",
-        "system"
+        "ran",
+        "omk",
+        "sync",
+        "resolve",
+        "the",
+        "previously",
+        "reported",
+        "warning",
+        "about",
+        "missing",
+        "memory"
       ],
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
@@ -479,29 +555,58 @@
         "level": null,
         "path": "decisions.md",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "Evidence:70cc17be33454a92ed826206",
-      "type": "Evidence",
+      "id": "File:3c4e73545cb56e7d238a10d9",
+      "type": "File",
       "labels": [
-        "OmkEvidence",
-        "Evidence"
+        "OmkFile",
+        "File"
       ],
-      "label": "Evidence: omk doctor run; all critical checks passed.",
-      "summary": "Evidence: omk doctor run; all critical checks passed.",
+      "label": "omk.memory.toml",
+      "path": "omk.memory.toml",
+      "summary": "Referenced by decisions.md",
       "tags": [
-        "evidence",
+        "file",
         "omk",
-        "doctor",
-        "run",
-        "all",
-        "critical",
-        "checks",
-        "passed"
+        "memory",
+        "toml"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "path": "omk.memory.toml",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "Topic:5986e4a788df97db56a711c9",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "Outcome: Sync completed successfully. Global hooks, MCP, skills, and local graph memory are all configured.",
+      "summary": "Outcome: Sync completed successfully. Global hooks, MCP, skills, and local graph memory are all configured.",
+      "tags": [
+        "outcome",
+        "sync",
+        "completed",
+        "successfully",
+        "global",
+        "hooks",
+        "mcp",
+        "skills",
+        "and",
+        "local",
+        "graph",
+        "memory"
       ],
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
@@ -509,33 +614,33 @@
         "level": null,
         "path": "decisions.md",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "Task:97496e2e15c92e1697a134f3",
-      "type": "Task",
+      "id": "Topic:1a567768915d23411346f060",
+      "type": "Topic",
       "labels": [
-        "OmkTask",
-        "Task"
+        "OmkTopic",
+        "Topic"
       ],
-      "label": "Action needed: Run omk sync to resolve the single warning about missing /.kimi/omk.memory.toml.",
-      "summary": "Action needed: Run omk sync to resolve the single warning about missing /.kimi/omk.memory.toml.",
+      "label": "Additional fix: Created symlink /.kimi/omk.memory.toml -> /Users/cheng/.kimi/omk.memory.toml because the shell environment uses a temporary…",
+      "summary": "Additional fix: Created symlink /.kimi/omk.memory.toml -> /Users/cheng/.kimi/omk.memory.toml because the shell environment uses a temporary HOME directory (/var/folders/.../omk-home-...), causing omk doctor to check a separate /.kimi path from the project-local .kimi/.",
       "tags": [
-        "action",
-        "needed",
-        "run",
+        "additional",
+        "fix",
+        "created",
+        "symlink",
+        "kimi",
         "omk",
-        "sync",
-        "resolve",
-        "the",
-        "single",
-        "warning",
-        "about",
-        "missing",
-        "kimi"
+        "memory",
+        "toml",
+        "users",
+        "cheng",
+        "because",
+        "the"
       ],
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
@@ -543,20 +648,20 @@
         "level": null,
         "path": "decisions.md",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "File:66da08ace7e95f088e8b9c79",
+      "id": "File:2c9fbe40ba3ce74cceed6bea",
       "type": "File",
       "labels": [
         "OmkFile",
         "File"
       ],
-      "label": ".kimi/omk.memory.toml.",
-      "path": ".kimi/omk.memory.toml.",
+      "label": ".kimi/omk.memory.toml",
+      "path": ".kimi/omk.memory.toml",
       "summary": "Referenced by decisions.md",
       "tags": [
         "file",
@@ -567,12 +672,1688 @@
       ],
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
-        "path": ".kimi/omk.memory.toml.",
+        "path": ".kimi/omk.memory.toml",
         "projectKey": "cheng:50c3faac79c8",
-        "sessionId": "process-39818-2026-05-03T19-44-25-890Z"
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "File:69170d683a0a8d0f742c9e04",
+      "type": "File",
+      "labels": [
+        "OmkFile",
+        "File"
+      ],
+      "label": "Users/cheng/.kimi/omk.memory.toml",
+      "path": "Users/cheng/.kimi/omk.memory.toml",
+      "summary": "Referenced by decisions.md",
+      "tags": [
+        "file",
+        "users",
+        "cheng",
+        "kimi",
+        "omk",
+        "memory",
+        "toml"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "path": "Users/cheng/.kimi/omk.memory.toml",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "File:cd4280be5b061f43e27a4834",
+      "type": "File",
+      "labels": [
+        "OmkFile",
+        "File"
+      ],
+      "label": "var/folders/.../omk-home-...",
+      "path": "var/folders/.../omk-home-...",
+      "summary": "Referenced by decisions.md",
+      "tags": [
+        "file",
+        "var",
+        "folders",
+        "omk",
+        "home"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "path": "var/folders/.../omk-home-...",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "File:b3c9eb6235a12a51db1bf0e6",
+      "type": "File",
+      "labels": [
+        "OmkFile",
+        "File"
+      ],
+      "label": ".kimi/.",
+      "path": ".kimi/.",
+      "summary": "Referenced by decisions.md",
+      "tags": [
+        "file",
+        "kimi"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "path": ".kimi/.",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "Topic:baa796f5ae24925bd70e53d8",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "Verification: omk doctor now shows ✅ Global Memory /.kimi/omk.memory.toml synced.",
+      "summary": "Verification: omk doctor now shows ✅ Global Memory /.kimi/omk.memory.toml synced.",
+      "tags": [
+        "verification",
+        "omk",
+        "doctor",
+        "now",
+        "shows",
+        "global",
+        "memory",
+        "kimi",
+        "toml",
+        "synced"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "line": 7,
+        "level": null,
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "Risk:b35f387acf34ef922288074f",
+      "type": "Risk",
+      "labels": [
+        "OmkRisk",
+        "Risk"
+      ],
+      "label": "Remaining: 1 unrelated warning (Git Clean — 4 uncommitted changes on main).",
+      "summary": "Remaining: 1 unrelated warning (Git Clean — 4 uncommitted changes on main).",
+      "tags": [
+        "remaining",
+        "unrelated",
+        "warning",
+        "git",
+        "clean",
+        "uncommitted",
+        "changes",
+        "main"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "line": 8,
+        "level": null,
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42660-2026-05-03T19-53-00-510Z"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "Session:7a0736e0e798dc63cb14cade",
+      "type": "Session",
+      "labels": [
+        "OmkSession",
+        "Session"
+      ],
+      "label": "process-44057-2026-05-03T19-58-15-753Z",
+      "summary": "Session for my-project",
+      "tags": [
+        "session"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-44057-2026-05-03T19-58-15-753Z",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z",
+        "projectKey": "cheng:50c3faac79c8"
+      },
+      "createdAt": "2026-05-03T19:58:48.044Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "MemoryVersion:f62dcfcd89404e5f53b9d149",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "project@2026-05-03T19:58:48.044Z",
+      "path": "project",
+      "content": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "summary": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "tags": [
+        "memory-version",
+        "project"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-44057-2026-05-03T19-58-15-753Z:d728c81823426e441d16601a2b260cabf5721836eac50d155034516d492a8fc3",
+        "path": "project",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z",
+        "source": "ensemble-goal"
+      },
+      "createdAt": "2026-05-03T19:58:48.044Z",
+      "updatedAt": "2026-05-03T19:58:48.044Z"
+    },
+    {
+      "id": "Memory:2ec4de08e19c370f17ac0b48",
+      "type": "Memory",
+      "labels": [
+        "OmkMemory",
+        "Memory"
+      ],
+      "label": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+      "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+      "content": "{\n  \"goalId\": \"hi-2026-05-03T19-58-22-111Z\",\n  \"runId\": \"2026-05-03T19-58-22-195Z\",\n  \"timestamp\": \"2026-05-03T19:58:48.043Z\",\n  \"action\": \"continue\",\n  \"confidence\": 0.7058823529411767,\n  \"shouldContinue\": true,\n  \"candidateVotes\": [\n    {\n      \"id\": \"progress-analyst\",\n      \"action\": \"handoff\",\n      \"weight\": 1,\n      \"reason\": \"run completed but 1 criteria remain\"\n    },\n    {\n      \"id\": \"risk-evaluator\",\n      \"action\": \"continue\",\n      \"weight\": 0.9,\n      \"reason\": \"risk acceptable (…",
+      "summary": "{",
+      "tags": [
+        "memory",
+        "ensemble",
+        "hi",
+        "2026",
+        "05",
+        "03t19",
+        "58",
+        "22",
+        "111z"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:0e639def157ee94571a48969a5b0ed9611c1e054b5c0f9435d804f828a9b8376",
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z",
+        "source": "ensemble-goal"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "MemoryVersion:3fed0b51ab0d6df33e0c87a5",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json@2026-05-03T19:58:48.048Z",
+      "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+      "content": "{\n  \"goalId\": \"hi-2026-05-03T19-58-22-111Z\",\n  \"runId\": \"2026-05-03T19-58-22-195Z\",\n  \"timestamp\": \"2026-05-03T19:58:48.043Z\",\n  \"action\": \"continue\",\n  \"confidence\": 0.7058823529411767,\n  \"shouldContinue\": true,\n  \"candidateVotes\": [\n    {\n      \"id\": \"progress-analyst\",\n      \"action\": \"handoff\",\n      \"weight\": 1,\n      \"reason\": \"run completed but 1 criteria remain\"\n    },\n    {\n      \"id\": \"risk-evaluator\",\n      \"action\": \"continue\",\n      \"weight\": 0.9,\n      \"reason\": \"risk acceptable (0 failures, 0 critical)\"\n    },\n    {\n      \"id\": \"resource-optimizer\",\n      \"action\": \"continue\",\n      \"weight\": 0.7,\n      \"reason\": \"progress=0.80, elapsed=26s\"\n    },\n    {\n      \"id\": \"quality-assessor\",\n      \"action\": \"continue\",\n      \"weight\": 0.8,\n      \"reason\": \"quality score=fail, gateRate=0.80\"\n    }\n  ],\n  \"rationale\": \"# Ensemble Decision\\nConsensus: continue (confidence=0.71, quorum=1.70)\\n\\n| Candidate | Action | Weight | Reason |\\n|---|---|---:|---|\\n|   progress-analyst | handoff | 1 | run completed but 1 criteria remain |\\n| ✓ risk-evaluator | continue | 0.9 | risk acceptable (0 failures, 0 critical) |\\n| ✓ resource-optimizer | continue | 0.7 | progress=0.80, elapsed=26s |\\n| ✓ quality-assessor | continue | 0.8 | quality score=fail, gateRate=0.80 |\",\n  \"nextPrompt\": \"# Auto-Generated Next Prompt\\n\\n## Goal\\nhi\\n\\n## Ensemble Decision\\n- Action: continue\\n- Completed nodes: 4/5\\n- Failed nodes: 0\\n- Missing criteria: 1\\n\\n## Missing Criteria\\n- [ ] The objective is completed and the result is demonstrable (required)\\n\\n## Continue Instructions\\nContinue working toward the objective. Focus on:\\n1. Highest-priority missing criteria\\n2. Failed nodes (retry with adjusted scope)\\n3. Memory recall for related context\\n\\n## Memory Recall\\nCall omk_memory_mindmap or omk_search_memory before planning.\\n\"\n}",
+      "summary": "{",
+      "tags": [
+        "memory-version",
+        "ensemble",
+        "hi",
+        "2026",
+        "05",
+        "03t19",
+        "58",
+        "22",
+        "111z"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-44057-2026-05-03T19-58-15-753Z:1c546579bef96ca9ea356247ff9b8955363b35fa2cfcf5a41851a4b92591dc6e",
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z",
+        "source": "ensemble-goal"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:b010ef88ba1c2218d49c7dc2",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"goalId\": \"hi-2026-05-03T19-58-22-111Z\",",
+      "summary": "\"goalId\": \"hi-2026-05-03T19-58-22-111Z\",",
+      "tags": [
+        "goalid",
+        "hi-2026-05-03t19-58-22-111z"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 2,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:dcee6f2d2bd1930b1396eb52",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"runId\": \"2026-05-03T19-58-22-195Z\",",
+      "summary": "\"runId\": \"2026-05-03T19-58-22-195Z\",",
+      "tags": [
+        "runid",
+        "2026-05-03t19-58-22-195z"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 3,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:4434260a5fa929f6ea1c2f2a",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"timestamp\": \"2026-05-03T19:58:48.043Z\",",
+      "summary": "\"timestamp\": \"2026-05-03T19:58:48.043Z\",",
+      "tags": [
+        "timestamp",
+        "2026-05-03t19",
+        "043z"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 4,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Task:19e9b6a5fc80afb1506e65e0",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"continue\",",
+      "summary": "\"action\": \"continue\",",
+      "tags": [
+        "action",
+        "continue"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 5,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:6e5dabc125a38f750fed8a06",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"confidence\": 0.7058823529411767,",
+      "summary": "\"confidence\": 0.7058823529411767,",
+      "tags": [
+        "confidence",
+        "7058823529411767"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 6,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:9d2683d82e70e0a6ec116f59",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"shouldContinue\": true,",
+      "summary": "\"shouldContinue\": true,",
+      "tags": [
+        "shouldcontinue",
+        "true"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 7,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:22f677364d317e346429d247",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"candidateVotes\": [",
+      "summary": "\"candidateVotes\": [",
+      "tags": [
+        "candidatevotes"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 8,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:96503021535ccbe569d6eb86",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"id\": \"progress-analyst\",",
+      "summary": "\"id\": \"progress-analyst\",",
+      "tags": [
+        "progress-analyst"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 10,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Task:24f4e12219cd16b36cbb26f5",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"handoff\",",
+      "summary": "\"action\": \"handoff\",",
+      "tags": [
+        "action",
+        "handoff"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 11,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:f2426414e407204ba28c4e5a",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"weight\": 1,",
+      "summary": "\"weight\": 1,",
+      "tags": [
+        "weight"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 12,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:c0b38d12b521889f5a067f96",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"reason\": \"run completed but 1 criteria remain\"",
+      "summary": "\"reason\": \"run completed but 1 criteria remain\"",
+      "tags": [
+        "reason",
+        "run",
+        "completed",
+        "but",
+        "criteria",
+        "remain"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 13,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Risk:1352aa89bf93e15589265d08",
+      "type": "Risk",
+      "labels": [
+        "OmkRisk",
+        "Risk"
+      ],
+      "label": "\"id\": \"risk-evaluator\",",
+      "summary": "\"id\": \"risk-evaluator\",",
+      "tags": [
+        "risk-evaluator"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 16,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Task:c157702e770c846c0d41a7dc",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"continue\",",
+      "summary": "\"action\": \"continue\",",
+      "tags": [
+        "action",
+        "continue"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 17,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:257e6f4d40dae514a0742e89",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"weight\": 0.9,",
+      "summary": "\"weight\": 0.9,",
+      "tags": [
+        "weight"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 18,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Risk:57b8c1c0e53b360951264b33",
+      "type": "Risk",
+      "labels": [
+        "OmkRisk",
+        "Risk"
+      ],
+      "label": "\"reason\": \"risk acceptable (0 failures, 0 critical)\"",
+      "summary": "\"reason\": \"risk acceptable (0 failures, 0 critical)\"",
+      "tags": [
+        "reason",
+        "risk",
+        "acceptable",
+        "failures",
+        "critical"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 19,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:37dcc5b96abf0922964a07dd",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"id\": \"resource-optimizer\",",
+      "summary": "\"id\": \"resource-optimizer\",",
+      "tags": [
+        "resource-optimizer"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 22,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Task:838c4fab7ec67595b2a14ae7",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"continue\",",
+      "summary": "\"action\": \"continue\",",
+      "tags": [
+        "action",
+        "continue"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 23,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:cc9769e51f98652e641fd025",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"weight\": 0.7,",
+      "summary": "\"weight\": 0.7,",
+      "tags": [
+        "weight"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 24,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:b1b47ef4b725c15730f0a18d",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"reason\": \"progress=0.80, elapsed=26s\"",
+      "summary": "\"reason\": \"progress=0.80, elapsed=26s\"",
+      "tags": [
+        "reason",
+        "progress",
+        "elapsed",
+        "26s"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 25,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:68064d4bf9fa81ccaf0210ab",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"id\": \"quality-assessor\",",
+      "summary": "\"id\": \"quality-assessor\",",
+      "tags": [
+        "quality-assessor"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 28,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Task:5e2cf893c2e416e6daae6d1b",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"continue\",",
+      "summary": "\"action\": \"continue\",",
+      "tags": [
+        "action",
+        "continue"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 29,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Topic:56aa5196fbc368660c3e25ae",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"weight\": 0.8,",
+      "summary": "\"weight\": 0.8,",
+      "tags": [
+        "weight"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 30,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Risk:2ca311e0a969372840e0c859",
+      "type": "Risk",
+      "labels": [
+        "OmkRisk",
+        "Risk"
+      ],
+      "label": "\"reason\": \"quality score=fail, gateRate=0.80\"",
+      "summary": "\"reason\": \"quality score=fail, gateRate=0.80\"",
+      "tags": [
+        "reason",
+        "quality",
+        "score",
+        "fail",
+        "gaterate"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 31,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Decision:d3677c59357834d92044cca9",
+      "type": "Decision",
+      "labels": [
+        "OmkDecision",
+        "Decision"
+      ],
+      "label": "\"rationale\": \"# Ensemble Decision\\nConsensus: continue (confidence=0.71, quorum=1.70)\\n\\n| Candidate | Action | Weight | Reason |\\n|---|---…",
+      "summary": "\"rationale\": \"# Ensemble Decision\\nConsensus: continue (confidence=0.71, quorum=1.70)\\n\\n| Candidate | Action | Weight | Reason |\\n|---|---|---:|---|\\n| progress-analyst | handoff | 1 | run completed but 1 criteria remain |\\n| ✓ risk-evaluator | continue | 0.9 | risk acceptable (0 failures, 0 critical) |\\n| ✓ resource-optimizer | continue | 0.7 | progress=0.80, elapsed=26s |\\n| ✓ quality-assessor | continue | 0.8 | quality score=fail, gateRate=0.80 |\",",
+      "tags": [
+        "rationale",
+        "ensemble",
+        "decision",
+        "nconsensus",
+        "continue",
+        "confidence",
+        "quorum",
+        "candidate",
+        "action",
+        "weight",
+        "reason",
+        "---"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 34,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Goal:24eecfdfed3695bfbf3b7695",
+      "type": "Goal",
+      "labels": [
+        "OmkGoal",
+        "Goal"
+      ],
+      "label": "\"nextPrompt\": \"# Auto-Generated Next Prompt\\n\\n## Goal\\nhi\\n\\n## Ensemble Decision\\n- Action: continue\\n- Completed nodes: 4/5\\n- Failed no…",
+      "summary": "\"nextPrompt\": \"# Auto-Generated Next Prompt\\n\\n## Goal\\nhi\\n\\n## Ensemble Decision\\n- Action: continue\\n- Completed nodes: 4/5\\n- Failed nodes: 0\\n- Missing criteria: 1\\n\\n## Missing Criteria\\n- [ ] The objective is completed and the result is demonstrable (required)\\n\\n## Continue Instructions\\nContinue working toward the objective. Focus on:\\n1. Highest-priority missing criteria\\n2. Failed nodes (retry with adjusted scope)\\n3. Memory recall for related context\\n\\n## Memory Recall\\nCall omkmemorymindmap or omksearchmemory before planning.\\n\"",
+      "tags": [
+        "nextprompt",
+        "auto-generated",
+        "next",
+        "prompt",
+        "goal",
+        "nhi",
+        "ensemble",
+        "decision",
+        "action",
+        "continue",
+        "completed",
+        "nodes"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "line": 35,
+        "level": null,
+        "path": "ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "File:31cc9c945bb73cfcac90a072",
+      "type": "File",
+      "labels": [
+        "OmkFile",
+        "File"
+      ],
+      "label": "4/5",
+      "path": "4/5",
+      "summary": "Referenced by ensemble/hi-2026-05-03T19-58-22-111Z/2026-05-03T19-58-22-195Z/2026-05-03T19:58:48.043Z.json",
+      "tags": [
+        "file"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48",
+        "path": "4/5",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-44057-2026-05-03T19-58-15-753Z"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "Session:2b955b8f4009c5048ff70151",
+      "type": "Session",
+      "labels": [
+        "OmkSession",
+        "Session"
+      ],
+      "label": "process-42554-2026-05-03T19-52-22-755Z",
+      "summary": "Session for my-project",
+      "tags": [
+        "session"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-42554-2026-05-03T19-52-22-755Z",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z",
+        "projectKey": "cheng:50c3faac79c8"
+      },
+      "createdAt": "2026-05-03T20:07:30.036Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "MemoryVersion:4ab217f9fe23bb830072924c",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "project@2026-05-03T20:07:30.036Z",
+      "path": "project",
+      "content": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "summary": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "tags": [
+        "memory-version",
+        "project"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-42554-2026-05-03T19-52-22-755Z:cf24d1f2d5846955b6301577547ba0c858251e472639dfbcb9408666b095b6f5",
+        "path": "project",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z",
+        "source": "ensemble-goal"
+      },
+      "createdAt": "2026-05-03T20:07:30.036Z",
+      "updatedAt": "2026-05-03T20:07:30.036Z"
+    },
+    {
+      "id": "Topic:a0da467ba870d644c828df99",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "summary": "{\"key\":\"cheng:50c3faac79c8\",\"name\":\"my-project\"}",
+      "tags": [
+        "key",
+        "cheng",
+        "50c3faac79c8",
+        "name",
+        "my-project"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4",
+        "line": 1,
+        "level": null,
+        "path": "project",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.036Z",
+      "updatedAt": "2026-05-03T20:07:30.036Z"
+    },
+    {
+      "id": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "type": "Memory",
+      "labels": [
+        "OmkMemory",
+        "Memory"
+      ],
+      "label": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+      "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+      "content": "{\n  \"goalId\": \"continue-2026-05-03T19-52-58-818Z\",\n  \"runId\": \"chat-2026-05-03T19-52-22-859Z-42554\",\n  \"timestamp\": \"2026-05-03T20:07:30.034Z\",\n  \"action\": \"continue\",\n  \"confidence\": 0.7058823529411767,\n  \"shouldContinue\": true,\n  \"candidateVotes\": [\n    {\n      \"id\": \"progress-analyst\",\n      \"action\": \"handoff\",\n      \"weight\": 1,\n      \"reason\": \"run completed but 1 criteria remain\"\n    },\n    {\n      \"id\": \"risk-evaluator\",\n      \"action\": \"continue\",\n      \"weight\": 0.9,\n      \"reason\": \"…",
+      "summary": "{",
+      "tags": [
+        "memory",
+        "ensemble",
+        "continue",
+        "2026",
+        "05",
+        "03t19",
+        "52",
+        "58",
+        "818z"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:93c35c9956aa1b89bce5f64e45a111ff9de924897c4b3fb71c4f2ce0920d01a7",
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z",
+        "source": "ensemble-goal"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "MemoryVersion:f0916e4912e51cba522339b5",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json@2026-05-03T20:07:30.042Z",
+      "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+      "content": "{\n  \"goalId\": \"continue-2026-05-03T19-52-58-818Z\",\n  \"runId\": \"chat-2026-05-03T19-52-22-859Z-42554\",\n  \"timestamp\": \"2026-05-03T20:07:30.034Z\",\n  \"action\": \"continue\",\n  \"confidence\": 0.7058823529411767,\n  \"shouldContinue\": true,\n  \"candidateVotes\": [\n    {\n      \"id\": \"progress-analyst\",\n      \"action\": \"handoff\",\n      \"weight\": 1,\n      \"reason\": \"run completed but 1 criteria remain\"\n    },\n    {\n      \"id\": \"risk-evaluator\",\n      \"action\": \"continue\",\n      \"weight\": 0.9,\n      \"reason\": \"risk acceptable (0 failures, 0 critical)\"\n    },\n    {\n      \"id\": \"resource-optimizer\",\n      \"action\": \"continue\",\n      \"weight\": 0.7,\n      \"reason\": \"progress=0.80, elapsed=871s\"\n    },\n    {\n      \"id\": \"quality-assessor\",\n      \"action\": \"continue\",\n      \"weight\": 0.8,\n      \"reason\": \"quality score=fail, gateRate=0.80\"\n    }\n  ],\n  \"rationale\": \"# Ensemble Decision\\nConsensus: continue (confidence=0.71, quorum=1.70)\\n\\n| Candidate | Action | Weight | Reason |\\n|---|---|---:|---|\\n|   progress-analyst | handoff | 1 | run completed but 1 criteria remain |\\n| ✓ risk-evaluator | continue | 0.9 | risk acceptable (0 failures, 0 critical) |\\n| ✓ resource-optimizer | continue | 0.7 | progress=0.80, elapsed=871s |\\n| ✓ quality-assessor | continue | 0.8 | quality score=fail, gateRate=0.80 |\",\n  \"nextPrompt\": \"# Auto-Generated Next Prompt\\n\\n## Goal\\ncontinue\\n\\n## Ensemble Decision\\n- Action: continue\\n- Completed nodes: 4/5\\n- Failed nodes: 0\\n- Missing criteria: 1\\n\\n## Missing Criteria\\n- [ ] The objective is completed and the result is demonstrable (required)\\n\\n## Continue Instructions\\nContinue working toward the objective. Focus on:\\n1. Highest-priority missing criteria\\n2. Failed nodes (retry with adjusted scope)\\n3. Memory recall for related context\\n\\n## Memory Recall\\nCall omk_memory_mindmap or omk_search_memory before planning.\\n\"\n}",
+      "summary": "{",
+      "tags": [
+        "memory-version",
+        "ensemble",
+        "continue",
+        "2026",
+        "05",
+        "03t19",
+        "52",
+        "58",
+        "818z"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-42554-2026-05-03T19-52-22-755Z:fc6d6c887f8c9bbfcd2581a8ed0953ff2d4984590401bce50391de1b46542818",
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z",
+        "source": "ensemble-goal"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:32f043731a1e86a0324279ee",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"goalId\": \"continue-2026-05-03T19-52-58-818Z\",",
+      "summary": "\"goalId\": \"continue-2026-05-03T19-52-58-818Z\",",
+      "tags": [
+        "goalid",
+        "continue-2026-05-03t19-52-58-818z"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 2,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:edb651167f9df28f1a372443",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"runId\": \"chat-2026-05-03T19-52-22-859Z-42554\",",
+      "summary": "\"runId\": \"chat-2026-05-03T19-52-22-859Z-42554\",",
+      "tags": [
+        "runid",
+        "chat-2026-05-03t19-52-22-859z-42554"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 3,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:1821f5c3bf88cf28d8bf6d7f",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"timestamp\": \"2026-05-03T20:07:30.034Z\",",
+      "summary": "\"timestamp\": \"2026-05-03T20:07:30.034Z\",",
+      "tags": [
+        "timestamp",
+        "2026-05-03t20",
+        "034z"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 4,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Task:08b776742c29ee5bb6cf2857",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"continue\",",
+      "summary": "\"action\": \"continue\",",
+      "tags": [
+        "action",
+        "continue"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 5,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:2fbda8ae263f5d36d61811e5",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"confidence\": 0.7058823529411767,",
+      "summary": "\"confidence\": 0.7058823529411767,",
+      "tags": [
+        "confidence",
+        "7058823529411767"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 6,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:69e5954df5be8dc801186999",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"shouldContinue\": true,",
+      "summary": "\"shouldContinue\": true,",
+      "tags": [
+        "shouldcontinue",
+        "true"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 7,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:8777295ffaec52f86f91160a",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"candidateVotes\": [",
+      "summary": "\"candidateVotes\": [",
+      "tags": [
+        "candidatevotes"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 8,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:131b4612e647200d8d7d295d",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"id\": \"progress-analyst\",",
+      "summary": "\"id\": \"progress-analyst\",",
+      "tags": [
+        "progress-analyst"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 10,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Task:9cb746a4bf3e281fb0e59b8d",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"handoff\",",
+      "summary": "\"action\": \"handoff\",",
+      "tags": [
+        "action",
+        "handoff"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 11,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:a5022d33f1d6e3d4c2f81552",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"weight\": 1,",
+      "summary": "\"weight\": 1,",
+      "tags": [
+        "weight"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 12,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:9693141dfb782790b0b8be3f",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"reason\": \"run completed but 1 criteria remain\"",
+      "summary": "\"reason\": \"run completed but 1 criteria remain\"",
+      "tags": [
+        "reason",
+        "run",
+        "completed",
+        "but",
+        "criteria",
+        "remain"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 13,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Risk:c5a139b508dfcbfe4535ee47",
+      "type": "Risk",
+      "labels": [
+        "OmkRisk",
+        "Risk"
+      ],
+      "label": "\"id\": \"risk-evaluator\",",
+      "summary": "\"id\": \"risk-evaluator\",",
+      "tags": [
+        "risk-evaluator"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 16,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Task:0ff207ef88ac25e06b49fae8",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"continue\",",
+      "summary": "\"action\": \"continue\",",
+      "tags": [
+        "action",
+        "continue"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 17,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:c2d42100adda7d56e29cb972",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"weight\": 0.9,",
+      "summary": "\"weight\": 0.9,",
+      "tags": [
+        "weight"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 18,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Risk:f217077c9d1550a4688e6129",
+      "type": "Risk",
+      "labels": [
+        "OmkRisk",
+        "Risk"
+      ],
+      "label": "\"reason\": \"risk acceptable (0 failures, 0 critical)\"",
+      "summary": "\"reason\": \"risk acceptable (0 failures, 0 critical)\"",
+      "tags": [
+        "reason",
+        "risk",
+        "acceptable",
+        "failures",
+        "critical"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 19,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:0f436937f96823a99f769400",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"id\": \"resource-optimizer\",",
+      "summary": "\"id\": \"resource-optimizer\",",
+      "tags": [
+        "resource-optimizer"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 22,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Task:e6cc1c12954ba3a29bc219d8",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"continue\",",
+      "summary": "\"action\": \"continue\",",
+      "tags": [
+        "action",
+        "continue"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 23,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:742aa620e7a29f8b8a639888",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"weight\": 0.7,",
+      "summary": "\"weight\": 0.7,",
+      "tags": [
+        "weight"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 24,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:78dd068d5f33f9d8a3378252",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"reason\": \"progress=0.80, elapsed=871s\"",
+      "summary": "\"reason\": \"progress=0.80, elapsed=871s\"",
+      "tags": [
+        "reason",
+        "progress",
+        "elapsed",
+        "871s"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 25,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:6068402977ef7aecea6da41d",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"id\": \"quality-assessor\",",
+      "summary": "\"id\": \"quality-assessor\",",
+      "tags": [
+        "quality-assessor"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 28,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Task:ca7f34464bfa6a5df5066529",
+      "type": "Task",
+      "labels": [
+        "OmkTask",
+        "Task"
+      ],
+      "label": "\"action\": \"continue\",",
+      "summary": "\"action\": \"continue\",",
+      "tags": [
+        "action",
+        "continue"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 29,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Topic:deddd7f63d3ce823fae08f27",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "\"weight\": 0.8,",
+      "summary": "\"weight\": 0.8,",
+      "tags": [
+        "weight"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 30,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Risk:615d979f2d34170331f12c3e",
+      "type": "Risk",
+      "labels": [
+        "OmkRisk",
+        "Risk"
+      ],
+      "label": "\"reason\": \"quality score=fail, gateRate=0.80\"",
+      "summary": "\"reason\": \"quality score=fail, gateRate=0.80\"",
+      "tags": [
+        "reason",
+        "quality",
+        "score",
+        "fail",
+        "gaterate"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 31,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Decision:f3c053b4a97b90e9f4afbab8",
+      "type": "Decision",
+      "labels": [
+        "OmkDecision",
+        "Decision"
+      ],
+      "label": "\"rationale\": \"# Ensemble Decision\\nConsensus: continue (confidence=0.71, quorum=1.70)\\n\\n| Candidate | Action | Weight | Reason |\\n|---|---…",
+      "summary": "\"rationale\": \"# Ensemble Decision\\nConsensus: continue (confidence=0.71, quorum=1.70)\\n\\n| Candidate | Action | Weight | Reason |\\n|---|---|---:|---|\\n| progress-analyst | handoff | 1 | run completed but 1 criteria remain |\\n| ✓ risk-evaluator | continue | 0.9 | risk acceptable (0 failures, 0 critical) |\\n| ✓ resource-optimizer | continue | 0.7 | progress=0.80, elapsed=871s |\\n| ✓ quality-assessor | continue | 0.8 | quality score=fail, gateRate=0.80 |\",",
+      "tags": [
+        "rationale",
+        "ensemble",
+        "decision",
+        "nconsensus",
+        "continue",
+        "confidence",
+        "quorum",
+        "candidate",
+        "action",
+        "weight",
+        "reason",
+        "---"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 34,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "Goal:f2619901fe9d2d5bcbafd639",
+      "type": "Goal",
+      "labels": [
+        "OmkGoal",
+        "Goal"
+      ],
+      "label": "\"nextPrompt\": \"# Auto-Generated Next Prompt\\n\\n## Goal\\ncontinue\\n\\n## Ensemble Decision\\n- Action: continue\\n- Completed nodes: 4/5\\n- Fai…",
+      "summary": "\"nextPrompt\": \"# Auto-Generated Next Prompt\\n\\n## Goal\\ncontinue\\n\\n## Ensemble Decision\\n- Action: continue\\n- Completed nodes: 4/5\\n- Failed nodes: 0\\n- Missing criteria: 1\\n\\n## Missing Criteria\\n- [ ] The objective is completed and the result is demonstrable (required)\\n\\n## Continue Instructions\\nContinue working toward the objective. Focus on:\\n1. Highest-priority missing criteria\\n2. Failed nodes (retry with adjusted scope)\\n3. Memory recall for related context\\n\\n## Memory Recall\\nCall omkmemorymindmap or omksearchmemory before planning.\\n\"",
+      "tags": [
+        "nextprompt",
+        "auto-generated",
+        "next",
+        "prompt",
+        "goal",
+        "ncontinue",
+        "ensemble",
+        "decision",
+        "action",
+        "continue",
+        "completed",
+        "nodes"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "line": 35,
+        "level": null,
+        "path": "ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "File:e183995981ae322213dd2de4",
+      "type": "File",
+      "labels": [
+        "OmkFile",
+        "File"
+      ],
+      "label": "4/5",
+      "path": "4/5",
+      "summary": "Referenced by ensemble/continue-2026-05-03T19-52-58-818Z/chat-2026-05-03T19-52-22-859Z-42554/2026-05-03T20:07:30.034Z.json",
+      "tags": [
+        "file"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+        "path": "4/5",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-42554-2026-05-03T19-52-22-755Z"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
     }
   ],
   "edges": [
@@ -696,7 +2477,7 @@
       "label": "has memory",
       "properties": {},
       "createdAt": "2026-05-03T19:37:10.396Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
       "id": "WROTE:cff76609e03a7771fcb21ce3",
@@ -736,7 +2517,7 @@
       "label": "has memory",
       "properties": {},
       "createdAt": "2026-05-03T19:46:01.037Z",
-      "updatedAt": "2026-05-03T19:46:01.037Z"
+      "updatedAt": "2026-05-03T20:07:30.036Z"
     },
     {
       "id": "WROTE:6c61cad7b527cedcf34e1071",
@@ -755,30 +2536,6 @@
       "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
       "label": "updates",
       "properties": {},
-      "createdAt": "2026-05-03T19:46:01.037Z",
-      "updatedAt": "2026-05-03T19:46:01.037Z"
-    },
-    {
-      "id": "HAS_TOPIC:7d7b4064b3d256803c802cb2",
-      "type": "HAS_TOPIC",
-      "from": "Memory:6fb499c1d9fd5e0ed40a64e4",
-      "to": "Topic:a0da467ba870d644c828df99",
-      "label": "has topic",
-      "properties": {
-        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4"
-      },
-      "createdAt": "2026-05-03T19:46:01.037Z",
-      "updatedAt": "2026-05-03T19:46:01.037Z"
-    },
-    {
-      "id": "PART_OF:866aeb785b8098fed36d3a12",
-      "type": "PART_OF",
-      "from": "Topic:a0da467ba870d644c828df99",
-      "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
-      "label": "part of",
-      "properties": {
-        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4"
-      },
       "createdAt": "2026-05-03T19:46:01.037Z",
       "updatedAt": "2026-05-03T19:46:01.037Z"
     },
@@ -803,6 +2560,76 @@
       "updatedAt": "2026-05-03T19:46:01.041Z"
     },
     {
+      "id": "HAS_SESSION:0d632ff5e53dfaa740b70b1d",
+      "type": "HAS_SESSION",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Session:dc5804b3f89381c25160ddde",
+      "label": "has session",
+      "properties": {},
+      "createdAt": "2026-05-03T19:53:35.343Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "WROTE:8efc8d78f988de0686a42dd7",
+      "type": "WROTE",
+      "from": "Session:dc5804b3f89381c25160ddde",
+      "to": "MemoryVersion:f87efb86105135792c423760",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:53:35.343Z",
+      "updatedAt": "2026-05-03T19:53:35.343Z"
+    },
+    {
+      "id": "UPDATES:e7c686c7e541b9bd6bcb07d2",
+      "type": "UPDATES",
+      "from": "MemoryVersion:f87efb86105135792c423760",
+      "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:53:35.343Z",
+      "updatedAt": "2026-05-03T19:53:35.343Z"
+    },
+    {
+      "id": "WROTE:e5ebab81e882e451cac0095e",
+      "type": "WROTE",
+      "from": "Session:dc5804b3f89381c25160ddde",
+      "to": "MemoryVersion:592bd5ed9a19e10f99d19a20",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:53:35.347Z",
+      "updatedAt": "2026-05-03T19:53:35.347Z"
+    },
+    {
+      "id": "UPDATES:13416ac73df78d3903a01243",
+      "type": "UPDATES",
+      "from": "MemoryVersion:592bd5ed9a19e10f99d19a20",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:53:35.347Z",
+      "updatedAt": "2026-05-03T19:53:35.347Z"
+    },
+    {
+      "id": "WROTE:c6f2dcee1afd1520a9dcf3f9",
+      "type": "WROTE",
+      "from": "Session:dc5804b3f89381c25160ddde",
+      "to": "MemoryVersion:a767a2448b87ca2245cb4e23",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "UPDATES:99c5fc0e716a3394050d0db9",
+      "type": "UPDATES",
+      "from": "MemoryVersion:a767a2448b87ca2245cb4e23",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
       "id": "HAS_TOPIC:8c3f99d2d9c301f95ead9e8d",
       "type": "HAS_TOPIC",
       "from": "Memory:2c8df93eeb9ef09e0813bdbb",
@@ -811,8 +2638,8 @@
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
       "id": "PART_OF:2ee1bf122667950f03bf4faf",
@@ -823,128 +2650,1676 @@
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "HAS_CONCEPT:e895f4810ad09e0708bb5d12",
+      "id": "HAS_CONCEPT:e048ed20ec1ad6dbe1af81ff",
       "type": "HAS_CONCEPT",
       "from": "Topic:12aa192b6d9d314e91757873",
-      "to": "Topic:bc0f5495d48cb4fc40d2640b",
+      "to": "Risk:5015c7aab06eef54b1d4c278",
       "label": "has concept",
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "PART_OF:0a025370f05648d14120b845",
+      "id": "PART_OF:894394b25f5b0d21a29e03ee",
       "type": "PART_OF",
-      "from": "Topic:bc0f5495d48cb4fc40d2640b",
+      "from": "Risk:5015c7aab06eef54b1d4c278",
       "to": "Memory:2c8df93eeb9ef09e0813bdbb",
       "label": "part of",
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "HAS_CONCEPT:ae19813522ca9fe8c81f26f7",
+      "id": "HAS_CONCEPT:5b5a138b38ef8c441f0c8d1d",
       "type": "HAS_CONCEPT",
-      "from": "Topic:bc0f5495d48cb4fc40d2640b",
-      "to": "Decision:13da4671ac5da9ad7cbe1dca",
+      "from": "Risk:5015c7aab06eef54b1d4c278",
+      "to": "Decision:99d9fe460f8e062baa61dd6e",
       "label": "has concept",
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "PART_OF:da52f81b7d301ddfcf80636e",
+      "id": "PART_OF:62fa156d46fe27e75c3ece8c",
       "type": "PART_OF",
-      "from": "Decision:13da4671ac5da9ad7cbe1dca",
+      "from": "Decision:99d9fe460f8e062baa61dd6e",
       "to": "Memory:2c8df93eeb9ef09e0813bdbb",
       "label": "part of",
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "HAS_CONCEPT:8687a4fa638b1694ac171b5d",
-      "type": "HAS_CONCEPT",
-      "from": "Topic:bc0f5495d48cb4fc40d2640b",
-      "to": "Evidence:70cc17be33454a92ed826206",
-      "label": "has concept",
-      "properties": {
-        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
-      },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
-    },
-    {
-      "id": "PART_OF:a2e96a05aa1cfab4bc558d24",
-      "type": "PART_OF",
-      "from": "Evidence:70cc17be33454a92ed826206",
-      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
-      "label": "part of",
-      "properties": {
-        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
-      },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
-    },
-    {
-      "id": "HAS_CONCEPT:9ac5580d8736da5ddc1d1bca",
-      "type": "HAS_CONCEPT",
-      "from": "Topic:bc0f5495d48cb4fc40d2640b",
-      "to": "Task:97496e2e15c92e1697a134f3",
-      "label": "has concept",
-      "properties": {
-        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
-      },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
-    },
-    {
-      "id": "PART_OF:607a9233a9a1dc0304fdf585",
-      "type": "PART_OF",
-      "from": "Task:97496e2e15c92e1697a134f3",
-      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
-      "label": "part of",
-      "properties": {
-        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
-      },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
-    },
-    {
-      "id": "TOUCHES_FILE:c8897fb5a8dccd57f9b9602f",
+      "id": "TOUCHES_FILE:9d95c8baf8a7786a2baef1e1",
       "type": "TOUCHES_FILE",
-      "from": "Task:97496e2e15c92e1697a134f3",
-      "to": "File:66da08ace7e95f088e8b9c79",
+      "from": "Decision:99d9fe460f8e062baa61dd6e",
+      "to": "File:3c4e73545cb56e7d238a10d9",
       "label": "touches file",
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
     },
     {
-      "id": "HAS_FILE:438ebba5e20ee6cc4facf934",
+      "id": "HAS_FILE:9e5126096d625f2f5abe1024",
       "type": "HAS_FILE",
       "from": "Memory:2c8df93eeb9ef09e0813bdbb",
-      "to": "File:66da08ace7e95f088e8b9c79",
+      "to": "File:3c4e73545cb56e7d238a10d9",
       "label": "has file",
       "properties": {
         "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
       },
-      "createdAt": "2026-05-03T19:46:01.041Z",
-      "updatedAt": "2026-05-03T19:46:01.041Z"
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_CONCEPT:2e1bc1dfaea5ed035bf7cc51",
+      "type": "HAS_CONCEPT",
+      "from": "Risk:5015c7aab06eef54b1d4c278",
+      "to": "Topic:5986e4a788df97db56a711c9",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "PART_OF:31038735078fbb4b0cbaa295",
+      "type": "PART_OF",
+      "from": "Topic:5986e4a788df97db56a711c9",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_CONCEPT:b97fc95e9d531657d5f226af",
+      "type": "HAS_CONCEPT",
+      "from": "Risk:5015c7aab06eef54b1d4c278",
+      "to": "Topic:1a567768915d23411346f060",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "PART_OF:c9ef2ef2086abfc393ebb271",
+      "type": "PART_OF",
+      "from": "Topic:1a567768915d23411346f060",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "TOUCHES_FILE:f94779d517f99f5c585b3741",
+      "type": "TOUCHES_FILE",
+      "from": "Topic:1a567768915d23411346f060",
+      "to": "File:2c9fbe40ba3ce74cceed6bea",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_FILE:16c60577710c8bfe0ba4ab31",
+      "type": "HAS_FILE",
+      "from": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "to": "File:2c9fbe40ba3ce74cceed6bea",
+      "label": "has file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "TOUCHES_FILE:94e2372295322ac74e302df3",
+      "type": "TOUCHES_FILE",
+      "from": "Topic:1a567768915d23411346f060",
+      "to": "File:69170d683a0a8d0f742c9e04",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_FILE:5960ece523b64f23e2f3784c",
+      "type": "HAS_FILE",
+      "from": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "to": "File:69170d683a0a8d0f742c9e04",
+      "label": "has file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "TOUCHES_FILE:41ffc740eaba93b01f0e43e4",
+      "type": "TOUCHES_FILE",
+      "from": "Topic:1a567768915d23411346f060",
+      "to": "File:cd4280be5b061f43e27a4834",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_FILE:ab9922306d8ea54ca7178360",
+      "type": "HAS_FILE",
+      "from": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "to": "File:cd4280be5b061f43e27a4834",
+      "label": "has file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "TOUCHES_FILE:f3fe56152f2c9c138f5bdb00",
+      "type": "TOUCHES_FILE",
+      "from": "Topic:1a567768915d23411346f060",
+      "to": "File:b3c9eb6235a12a51db1bf0e6",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_FILE:155f62f0531a42575c062c7a",
+      "type": "HAS_FILE",
+      "from": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "to": "File:b3c9eb6235a12a51db1bf0e6",
+      "label": "has file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_CONCEPT:2d107de3069b34a56ffd9eed",
+      "type": "HAS_CONCEPT",
+      "from": "Risk:5015c7aab06eef54b1d4c278",
+      "to": "Topic:baa796f5ae24925bd70e53d8",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "PART_OF:1686fcd4705f7e87861a2176",
+      "type": "PART_OF",
+      "from": "Topic:baa796f5ae24925bd70e53d8",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "TOUCHES_FILE:49a405eee7d9c604d9489f45",
+      "type": "TOUCHES_FILE",
+      "from": "Topic:baa796f5ae24925bd70e53d8",
+      "to": "File:2c9fbe40ba3ce74cceed6bea",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_CONCEPT:557632f77a27714125451ede",
+      "type": "HAS_CONCEPT",
+      "from": "Risk:5015c7aab06eef54b1d4c278",
+      "to": "Risk:b35f387acf34ef922288074f",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "PART_OF:ffb04041d4792988f56d76aa",
+      "type": "PART_OF",
+      "from": "Risk:b35f387acf34ef922288074f",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:54:44.017Z",
+      "updatedAt": "2026-05-03T19:54:44.017Z"
+    },
+    {
+      "id": "HAS_SESSION:0e0a1819a1c95c3782c6b7be",
+      "type": "HAS_SESSION",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Session:7a0736e0e798dc63cb14cade",
+      "label": "has session",
+      "properties": {},
+      "createdAt": "2026-05-03T19:58:48.044Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "WROTE:f135464b4762a97fdb2a1b19",
+      "type": "WROTE",
+      "from": "Session:7a0736e0e798dc63cb14cade",
+      "to": "MemoryVersion:f62dcfcd89404e5f53b9d149",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:58:48.044Z",
+      "updatedAt": "2026-05-03T19:58:48.044Z"
+    },
+    {
+      "id": "UPDATES:1b60927f509b672b648e571e",
+      "type": "UPDATES",
+      "from": "MemoryVersion:f62dcfcd89404e5f53b9d149",
+      "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:58:48.044Z",
+      "updatedAt": "2026-05-03T19:58:48.044Z"
+    },
+    {
+      "id": "HAS_MEMORY:21d7b9d9102174fd282631a9",
+      "type": "HAS_MEMORY",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "has memory",
+      "properties": {},
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "WROTE:2bcc0a533d5f372f1e24cd26",
+      "type": "WROTE",
+      "from": "Session:7a0736e0e798dc63cb14cade",
+      "to": "MemoryVersion:3fed0b51ab0d6df33e0c87a5",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "UPDATES:c86384399043cf56ddd6b3fc",
+      "type": "UPDATES",
+      "from": "MemoryVersion:3fed0b51ab0d6df33e0c87a5",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:76752ab2eff8a0dd934b6cb4",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:b010ef88ba1c2218d49c7dc2",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:6f3acefa7b103b9f046db3a0",
+      "type": "PART_OF",
+      "from": "Topic:b010ef88ba1c2218d49c7dc2",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:01a33f677c56af4251400789",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:dcee6f2d2bd1930b1396eb52",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:fa683d2b9a952525e6f426de",
+      "type": "PART_OF",
+      "from": "Topic:dcee6f2d2bd1930b1396eb52",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:07a206c1c78620f3debc9ad7",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:4434260a5fa929f6ea1c2f2a",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:2b707211cbd11ce2ce8c7762",
+      "type": "PART_OF",
+      "from": "Topic:4434260a5fa929f6ea1c2f2a",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TASK:e63e1fb72358100381ef9697",
+      "type": "HAS_TASK",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Task:19e9b6a5fc80afb1506e65e0",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:f9640014f7e261390a03b478",
+      "type": "PART_OF",
+      "from": "Task:19e9b6a5fc80afb1506e65e0",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:144a2ea503f45cd33c1b8c0e",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:6e5dabc125a38f750fed8a06",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:d56895eb3ff443286bf88b72",
+      "type": "PART_OF",
+      "from": "Topic:6e5dabc125a38f750fed8a06",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:0bd0d4bc6d35c0e07e0e80cb",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:9d2683d82e70e0a6ec116f59",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:ad905cbc47ef09a57e8e7689",
+      "type": "PART_OF",
+      "from": "Topic:9d2683d82e70e0a6ec116f59",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:d658eb7c6e26fc38cc0d2954",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:22f677364d317e346429d247",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:ae990b98a0a5f5013d9858ca",
+      "type": "PART_OF",
+      "from": "Topic:22f677364d317e346429d247",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:8d1d4947de6c80db84f7948a",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:96503021535ccbe569d6eb86",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:760b2970af4d120c8baaf98c",
+      "type": "PART_OF",
+      "from": "Topic:96503021535ccbe569d6eb86",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TASK:9df376d0eed1f827b8c350ce",
+      "type": "HAS_TASK",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Task:24f4e12219cd16b36cbb26f5",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:ded3bc3178218c8bdeff6e95",
+      "type": "PART_OF",
+      "from": "Task:24f4e12219cd16b36cbb26f5",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:d29f20dfad213046e0715375",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:f2426414e407204ba28c4e5a",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:580bd3c8b52ef26ce61f959c",
+      "type": "PART_OF",
+      "from": "Topic:f2426414e407204ba28c4e5a",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:d50042d090ab512edb56c6c3",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:c0b38d12b521889f5a067f96",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:c471960b69182f886bad9048",
+      "type": "PART_OF",
+      "from": "Topic:c0b38d12b521889f5a067f96",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_RISK:683616fe6589c237fd4a7476",
+      "type": "HAS_RISK",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Risk:1352aa89bf93e15589265d08",
+      "label": "has risk",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:762063b3f1f7ebe42f33fedc",
+      "type": "PART_OF",
+      "from": "Risk:1352aa89bf93e15589265d08",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TASK:c58a2dac176d47edde0f315a",
+      "type": "HAS_TASK",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Task:c157702e770c846c0d41a7dc",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:553bdb7271ff36aeae0d4b3a",
+      "type": "PART_OF",
+      "from": "Task:c157702e770c846c0d41a7dc",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:a6a77d74e4b081bc7fce0fa4",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:257e6f4d40dae514a0742e89",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:a0df798ca59f8862847a8e5b",
+      "type": "PART_OF",
+      "from": "Topic:257e6f4d40dae514a0742e89",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_RISK:ed5558885f57f849315ebac9",
+      "type": "HAS_RISK",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Risk:57b8c1c0e53b360951264b33",
+      "label": "has risk",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:d0aa6dfe51bb5e97d57c02b4",
+      "type": "PART_OF",
+      "from": "Risk:57b8c1c0e53b360951264b33",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:8459a637988837b904c70b72",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:37dcc5b96abf0922964a07dd",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:aa76677fe7e5853c38f26da9",
+      "type": "PART_OF",
+      "from": "Topic:37dcc5b96abf0922964a07dd",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TASK:3d76d50bcbe83f194bb025b3",
+      "type": "HAS_TASK",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Task:838c4fab7ec67595b2a14ae7",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:137bd9d4e8f45f0f0332fd56",
+      "type": "PART_OF",
+      "from": "Task:838c4fab7ec67595b2a14ae7",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:ff095b33348325e2fa3db3c2",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:cc9769e51f98652e641fd025",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:ef55c8c86f8a19b6b5030c0f",
+      "type": "PART_OF",
+      "from": "Topic:cc9769e51f98652e641fd025",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:baf9462661383d2c5a4d92d0",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:b1b47ef4b725c15730f0a18d",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:5397e523bcae311bde4c57a3",
+      "type": "PART_OF",
+      "from": "Topic:b1b47ef4b725c15730f0a18d",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:51a6b7eb516a14ebdc52c2ef",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:68064d4bf9fa81ccaf0210ab",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:a164f1d75b5866b3e3552a52",
+      "type": "PART_OF",
+      "from": "Topic:68064d4bf9fa81ccaf0210ab",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TASK:b6708215bd62607109b757ba",
+      "type": "HAS_TASK",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Task:5e2cf893c2e416e6daae6d1b",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:54bf67133b7186148540ae3a",
+      "type": "PART_OF",
+      "from": "Task:5e2cf893c2e416e6daae6d1b",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_TOPIC:4a8c146a5cd8370fabd7c34f",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Topic:56aa5196fbc368660c3e25ae",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:87361d6e9d90d3c69a1e5945",
+      "type": "PART_OF",
+      "from": "Topic:56aa5196fbc368660c3e25ae",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_RISK:ab234e1b690d0ac7e367aa37",
+      "type": "HAS_RISK",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Risk:2ca311e0a969372840e0c859",
+      "label": "has risk",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:5d1994d13016ae9e50491e77",
+      "type": "PART_OF",
+      "from": "Risk:2ca311e0a969372840e0c859",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_DECISION:67c089c9d7c0a67bb30bea28",
+      "type": "HAS_DECISION",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Decision:d3677c59357834d92044cca9",
+      "label": "has decision",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:53baf64beb147bb357257ac8",
+      "type": "PART_OF",
+      "from": "Decision:d3677c59357834d92044cca9",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_GOAL:298787e678120375684d5f8a",
+      "type": "HAS_GOAL",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "Goal:24eecfdfed3695bfbf3b7695",
+      "label": "has goal",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "PART_OF:de978662a8e90642bea17daa",
+      "type": "PART_OF",
+      "from": "Goal:24eecfdfed3695bfbf3b7695",
+      "to": "Memory:2ec4de08e19c370f17ac0b48",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "TOUCHES_FILE:70d516a87e6183148e1ab52e",
+      "type": "TOUCHES_FILE",
+      "from": "Goal:24eecfdfed3695bfbf3b7695",
+      "to": "File:31cc9c945bb73cfcac90a072",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_FILE:bf02c68d216b1a5b4ce6855b",
+      "type": "HAS_FILE",
+      "from": "Memory:2ec4de08e19c370f17ac0b48",
+      "to": "File:31cc9c945bb73cfcac90a072",
+      "label": "has file",
+      "properties": {
+        "generatedFrom": "Memory:2ec4de08e19c370f17ac0b48"
+      },
+      "createdAt": "2026-05-03T19:58:48.048Z",
+      "updatedAt": "2026-05-03T19:58:48.048Z"
+    },
+    {
+      "id": "HAS_SESSION:e275b8f2d00390430f2548ff",
+      "type": "HAS_SESSION",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Session:2b955b8f4009c5048ff70151",
+      "label": "has session",
+      "properties": {},
+      "createdAt": "2026-05-03T20:07:30.036Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "WROTE:996a14e24eda4b714d553a87",
+      "type": "WROTE",
+      "from": "Session:2b955b8f4009c5048ff70151",
+      "to": "MemoryVersion:4ab217f9fe23bb830072924c",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T20:07:30.036Z",
+      "updatedAt": "2026-05-03T20:07:30.036Z"
+    },
+    {
+      "id": "UPDATES:3a52923980d9f587aa8855d8",
+      "type": "UPDATES",
+      "from": "MemoryVersion:4ab217f9fe23bb830072924c",
+      "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T20:07:30.036Z",
+      "updatedAt": "2026-05-03T20:07:30.036Z"
+    },
+    {
+      "id": "HAS_TOPIC:7d7b4064b3d256803c802cb2",
+      "type": "HAS_TOPIC",
+      "from": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "to": "Topic:a0da467ba870d644c828df99",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4"
+      },
+      "createdAt": "2026-05-03T20:07:30.036Z",
+      "updatedAt": "2026-05-03T20:07:30.036Z"
+    },
+    {
+      "id": "PART_OF:866aeb785b8098fed36d3a12",
+      "type": "PART_OF",
+      "from": "Topic:a0da467ba870d644c828df99",
+      "to": "Memory:6fb499c1d9fd5e0ed40a64e4",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:6fb499c1d9fd5e0ed40a64e4"
+      },
+      "createdAt": "2026-05-03T20:07:30.036Z",
+      "updatedAt": "2026-05-03T20:07:30.036Z"
+    },
+    {
+      "id": "HAS_MEMORY:e0b686b96369fdceffcf09a8",
+      "type": "HAS_MEMORY",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "has memory",
+      "properties": {},
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "WROTE:e5a4475e17ce475d0619cd05",
+      "type": "WROTE",
+      "from": "Session:2b955b8f4009c5048ff70151",
+      "to": "MemoryVersion:f0916e4912e51cba522339b5",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "UPDATES:6d890743609e812ef631ba2c",
+      "type": "UPDATES",
+      "from": "MemoryVersion:f0916e4912e51cba522339b5",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:d1caf640cda1da9c7263af2a",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:32f043731a1e86a0324279ee",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:7a91192a3087126b0e02d1cb",
+      "type": "PART_OF",
+      "from": "Topic:32f043731a1e86a0324279ee",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:9bd6edd9fe6ee4455b114d10",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:edb651167f9df28f1a372443",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:1bb50eb0d8a7df9782692fd5",
+      "type": "PART_OF",
+      "from": "Topic:edb651167f9df28f1a372443",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:eb3a3fd0e7742f3a97be1957",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:1821f5c3bf88cf28d8bf6d7f",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:7acb693fbfe758bac44402f7",
+      "type": "PART_OF",
+      "from": "Topic:1821f5c3bf88cf28d8bf6d7f",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TASK:bf2607c3113f54b536538823",
+      "type": "HAS_TASK",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Task:08b776742c29ee5bb6cf2857",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:73e641d11e25a43269fd9b57",
+      "type": "PART_OF",
+      "from": "Task:08b776742c29ee5bb6cf2857",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:88a219039209c68e20eb847e",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:2fbda8ae263f5d36d61811e5",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:cba2124d3532f4b8db55b91d",
+      "type": "PART_OF",
+      "from": "Topic:2fbda8ae263f5d36d61811e5",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:b9f275389f64c6d1a98fecfd",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:69e5954df5be8dc801186999",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:993d90bd6de4ec4a9ff8a46a",
+      "type": "PART_OF",
+      "from": "Topic:69e5954df5be8dc801186999",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:4223a9761a31e22ced735d45",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:8777295ffaec52f86f91160a",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:ff4ba9789fee4cf5a4db644e",
+      "type": "PART_OF",
+      "from": "Topic:8777295ffaec52f86f91160a",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:c74bcae6e1da78eeaf9b860f",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:131b4612e647200d8d7d295d",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:4ec4bb648ce29775ee305c8c",
+      "type": "PART_OF",
+      "from": "Topic:131b4612e647200d8d7d295d",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TASK:306b757a624f6a557e702428",
+      "type": "HAS_TASK",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Task:9cb746a4bf3e281fb0e59b8d",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:9f3cd7082e90a7dc3ab44b9a",
+      "type": "PART_OF",
+      "from": "Task:9cb746a4bf3e281fb0e59b8d",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:e5c59bfa0c771dab9dfce127",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:a5022d33f1d6e3d4c2f81552",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:1933bc0a66b20248e3e9e6c0",
+      "type": "PART_OF",
+      "from": "Topic:a5022d33f1d6e3d4c2f81552",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:b715a402efda5c13427b6788",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:9693141dfb782790b0b8be3f",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:aaeb75510985201c8b7db7bf",
+      "type": "PART_OF",
+      "from": "Topic:9693141dfb782790b0b8be3f",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_RISK:a5bcdaef553639fe143f8b05",
+      "type": "HAS_RISK",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Risk:c5a139b508dfcbfe4535ee47",
+      "label": "has risk",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:4892c6342bda0e76e6d184ed",
+      "type": "PART_OF",
+      "from": "Risk:c5a139b508dfcbfe4535ee47",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TASK:39f748f97962135255790b06",
+      "type": "HAS_TASK",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Task:0ff207ef88ac25e06b49fae8",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:4158e2ed3730b684263b60e0",
+      "type": "PART_OF",
+      "from": "Task:0ff207ef88ac25e06b49fae8",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:bfe8e39b3463652b290b53f0",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:c2d42100adda7d56e29cb972",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:4dfe5eb0d5f209ad0cea14cd",
+      "type": "PART_OF",
+      "from": "Topic:c2d42100adda7d56e29cb972",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_RISK:77d35e6dc624a11850600b6b",
+      "type": "HAS_RISK",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Risk:f217077c9d1550a4688e6129",
+      "label": "has risk",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:449ecc67e08edae6df783218",
+      "type": "PART_OF",
+      "from": "Risk:f217077c9d1550a4688e6129",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:0e38e70661dab387a4085240",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:0f436937f96823a99f769400",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:b1c8c10bed327511bd3aa776",
+      "type": "PART_OF",
+      "from": "Topic:0f436937f96823a99f769400",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TASK:e0809b8ff280bfdf7b014ff0",
+      "type": "HAS_TASK",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Task:e6cc1c12954ba3a29bc219d8",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:d31502e394eae0cdc4c72ae6",
+      "type": "PART_OF",
+      "from": "Task:e6cc1c12954ba3a29bc219d8",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:f5a5ba1b3b5c49f39cb2d3dc",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:742aa620e7a29f8b8a639888",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:6a8a3508c265505e44d579b6",
+      "type": "PART_OF",
+      "from": "Topic:742aa620e7a29f8b8a639888",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:e4b4abc55722eb8ce52b0a64",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:78dd068d5f33f9d8a3378252",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:bb5ce7b7de640678e9640adc",
+      "type": "PART_OF",
+      "from": "Topic:78dd068d5f33f9d8a3378252",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:6e81a147ff77eb418b881ff5",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:6068402977ef7aecea6da41d",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:ef59d359275249894fb2c21f",
+      "type": "PART_OF",
+      "from": "Topic:6068402977ef7aecea6da41d",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TASK:27d86270f7c1f9485261beed",
+      "type": "HAS_TASK",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Task:ca7f34464bfa6a5df5066529",
+      "label": "has task",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:6b85ff9b3e3891693e6d9843",
+      "type": "PART_OF",
+      "from": "Task:ca7f34464bfa6a5df5066529",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_TOPIC:92d8f58ec3e1115d4f348db6",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Topic:deddd7f63d3ce823fae08f27",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:16a45d52d6b7142c96036af2",
+      "type": "PART_OF",
+      "from": "Topic:deddd7f63d3ce823fae08f27",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_RISK:77fe6d1eab12ffad6f17225d",
+      "type": "HAS_RISK",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Risk:615d979f2d34170331f12c3e",
+      "label": "has risk",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:2026d86ab23b807aeba0361a",
+      "type": "PART_OF",
+      "from": "Risk:615d979f2d34170331f12c3e",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_DECISION:a6249489a1e7b0bc4ea21de1",
+      "type": "HAS_DECISION",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Decision:f3c053b4a97b90e9f4afbab8",
+      "label": "has decision",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:2edd6e85958ad7a028d4c3a9",
+      "type": "PART_OF",
+      "from": "Decision:f3c053b4a97b90e9f4afbab8",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_GOAL:0636adc97d557f75dbe8665e",
+      "type": "HAS_GOAL",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "Goal:f2619901fe9d2d5bcbafd639",
+      "label": "has goal",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "PART_OF:38b00e175686e06ef4ca3aa7",
+      "type": "PART_OF",
+      "from": "Goal:f2619901fe9d2d5bcbafd639",
+      "to": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "TOUCHES_FILE:b0d5fbe816d1095c1ad07d51",
+      "type": "TOUCHES_FILE",
+      "from": "Goal:f2619901fe9d2d5bcbafd639",
+      "to": "File:e183995981ae322213dd2de4",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
+    },
+    {
+      "id": "HAS_FILE:195a744f7a811cc66fbfe94f",
+      "type": "HAS_FILE",
+      "from": "Memory:2f2c89fe6d56e8b59f3dcd9b",
+      "to": "File:e183995981ae322213dd2de4",
+      "label": "has file",
+      "properties": {
+        "generatedFrom": "Memory:2f2c89fe6d56e8b59f3dcd9b"
+      },
+      "createdAt": "2026-05-03T20:07:30.042Z",
+      "updatedAt": "2026-05-03T20:07:30.042Z"
     }
   ]
 }
