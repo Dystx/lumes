@@ -1,0 +1,132 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# Sensitive files
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+id_rsa.pub
+id_ed25519.pub
+.ssh/
+!.ssh/config
+!.ssh/*.pub
+credentials.json
+service-account*.json
+client_secret*.json
+
+# Node / package managers
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+/build/
+/dist/
+/.next/
+/out/
+/.vercel/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+tmp/
+temp/
+*.log
+logs/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OMK / Kimi runtime
+.omk/logs/
+.omk/runs/
+.omk/checkpoints/
+.omk/worktrees/
+.kimi/logs/
+.kimi/sessions/
+.kimi/telemetry/
+.kimi/plans/
+.kimi/user-history/
+.kimi/credentials/
+
+# Large media (keep screenshots if needed, but exclude most)
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Home-specific directories not for version control
+Library/
+Music/
+Movies/
+Pictures/
+Downloads/
+Documents/
+Desktop/
+Applications/
+
+# But keep project-level files
+!AGENTS.md
+!.kimi/AGENTS.md
+
+# macOS user home directories & caches
+.CFUserTextEncoding
+.Trash/
+.agents/
+.android/
+.bun/
+.cache/
+.claude/
+.codex/
+.config/
+.expo/
+.gem/
+.local/
+.npm/
+.opencode/
+.playwright-mcp/
+.rtt/
+.sisyphus/
+.supabase/
+.zcompdump
+.zsh_history
+.zsh_sessions/
+.zshrc.backup.*
+
+# User projects (keep tracked if needed)
+Public/
+lusia/
+rota/
+prisma/
+
+# Temp / test files
+test.svg
+test.svg.png
+*.png
+*.jpg
+*.jpeg
+!kimichan.png

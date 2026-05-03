@@ -1,0 +1,27 @@
+version: 1
+agent:
+  extend: default
+  name: omk-okabe-base
+  tools:
+    - "kimi_cli.tools.agent:Agent"
+    - "kimi_cli.tools.ask_user:AskUserQuestion"
+    - "kimi_cli.tools.todo:SetTodoList"
+    - "kimi_cli.tools.shell:Shell"
+    - "kimi_cli.tools.file:ReadFile"
+    - "kimi_cli.tools.file:ReadMediaFile"
+    - "kimi_cli.tools.file:Glob"
+    - "kimi_cli.tools.file:Grep"
+    - "kimi_cli.tools.file:WriteFile"
+    - "kimi_cli.tools.file:StrReplaceFile"
+    - "kimi_cli.tools.web:SearchWeb"
+    - "kimi_cli.tools.web:FetchURL"
+    - "kimi_cli.tools.plan.enter:EnterPlanMode"
+    - "kimi_cli.tools.plan:ExitPlanMode"
+    - "kimi_cli.tools.background:TaskList"
+    - "kimi_cli.tools.background:TaskOutput"
+    - "kimi_cli.tools.background:TaskStop"
+    # D-Mail checkpoints: real save/restore substance via MCP tools
+    #   omk_save_checkpoint   -> capture git diff + todos + state
+    #   omk_list_checkpoints  -> browse saved checkpoints
+    #   omk_restore_checkpoint -> apply patch and restore run files
+    - "kimi_cli.tools.dmail:SendDMail"

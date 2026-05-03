@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "goalId": "hi-2026-05-03T19-17-19-831Z",
+  "title": "hi",
+  "rawPrompt": " hi",
+  "objective": "hi",
+  "successCriteria": [
+    {
+      "id": "criterion-1",
+      "description": "The objective is completed and the result is demonstrable",
+      "requirement": "required",
+      "weight": 1,
+      "inferred": true
+    }
+  ],
+  "constraints": [],
+  "nonGoals": [],
+  "risks": [],
+  "expectedArtifacts": [],
+  "status": "blocked",
+  "riskLevel": "medium",
+  "planRevision": 0,
+  "createdAt": "2026-05-03T19:17:19.831Z",
+  "updatedAt": "2026-05-03T19:17:57.021Z",
+  "runIds": [
+    "2026-05-03T19-17-20-087Z"
+  ]
+}

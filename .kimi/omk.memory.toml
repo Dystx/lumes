@@ -1,0 +1,25 @@
+# oh-my-kimichan global memory policy
+# Default is project-local graph memory: open-source friendly, no daemon, no secrets.
+# Optional external Neo4j credentials must stay in env vars, never in this file.
+[memory]
+backend = "local_graph"    # file | local_graph | neo4j | dual
+scope = "project-session"
+strict = true               # fail memory writes if the selected graph backend is unavailable
+force = true                # global policy wins over project-local backend overrides
+mirror_files = true         # keep .omk/memory/*.md as readable mirrors
+migrate_files = true        # seed the graph from existing .omk/memory files on first read
+
+[local_graph]
+path = ".omk/memory/graph-state.json"
+ontology = "omk-ontology-mindmap-v1"
+query = "graphql-lite"
+
+[neo4j]
+uri_env = "OMK_NEO4J_URI"
+username_env = "OMK_NEO4J_USERNAME"
+password_env = "OMK_NEO4J_PASSWORD"
+database_env = "OMK_NEO4J_DATABASE"
+uri = "bolt://localhost:7687"
+username = "neo4j"
+database = "neo4j"
+auth = "basic"             # basic | none

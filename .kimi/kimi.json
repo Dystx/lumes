@@ -1,0 +1,29 @@
+{
+  "work_dirs": [
+    {
+      "path": "/Users/cheng",
+      "kaos": "local",
+      "last_session_id": "3d91c61b-0c06-4b40-a6e5-674285a73b42"
+    },
+    {
+      "path": "/Users/cheng/lusia",
+      "kaos": "local",
+      "last_session_id": null
+    },
+    {
+      "path": "/Users/cheng/rota",
+      "kaos": "local",
+      "last_session_id": null
+    },
+    {
+      "path": "/Users/cheng/Documents/attachdrive-local-first",
+      "kaos": "local",
+      "last_session_id": "5cb3b977-41ae-4588-aea0-e61ec8035895"
+    },
+    {
+      "path": "/Users/cheng/Documents",
+      "kaos": "local",
+      "last_session_id": null
+    }
+  ]
+}
