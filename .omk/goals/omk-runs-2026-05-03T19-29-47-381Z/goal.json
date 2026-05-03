@@ -17,10 +17,12 @@
   "nonGoals": [],
   "risks": [],
   "expectedArtifacts": [],
-  "status": "draft",
+  "status": "blocked",
   "riskLevel": "medium",
   "planRevision": 0,
   "createdAt": "2026-05-03T19:29:47.381Z",
-  "updatedAt": "2026-05-03T19:29:47.381Z",
-  "runIds": []
+  "updatedAt": "2026-05-03T19:36:38.832Z",
+  "runIds": [
+    "chat-2026-05-03T19-29-41-321Z-36648"
+  ]
 }

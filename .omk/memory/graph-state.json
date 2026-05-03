@@ -1,0 +1,476 @@
+{
+  "version": 1,
+  "ontology": {
+    "version": "omk-ontology-mindmap-v1",
+    "description": "Project-local ontology for Kimi/OMK memory. Memories are decomposed into mind-map nodes for goals, topics, decisions, tasks, risks, commands, files, evidence, questions, answers, constraints, and concepts.",
+    "classes": [
+      "Project",
+      "Session",
+      "Memory",
+      "MemoryVersion",
+      "Goal",
+      "Topic",
+      "Decision",
+      "Task",
+      "Risk",
+      "Command",
+      "File",
+      "Evidence",
+      "Constraint",
+      "Question",
+      "Answer",
+      "Concept"
+    ],
+    "relationTypes": [
+      "HAS_SESSION",
+      "HAS_MEMORY",
+      "WROTE",
+      "UPDATES",
+      "HAS_GOAL",
+      "HAS_TOPIC",
+      "HAS_DECISION",
+      "HAS_TASK",
+      "HAS_RISK",
+      "HAS_COMMAND",
+      "HAS_FILE",
+      "HAS_EVIDENCE",
+      "HAS_CONSTRAINT",
+      "HAS_QUESTION",
+      "HAS_ANSWER",
+      "HAS_CONCEPT",
+      "CHILD_OF",
+      "PART_OF",
+      "DEPENDS_ON",
+      "BLOCKED_BY",
+      "EVIDENCED_BY",
+      "TOUCHES_FILE"
+    ]
+  },
+  "project": {
+    "key": "cheng:50c3faac79c8",
+    "name": "my-project",
+    "root": "/Users/cheng"
+  },
+  "updatedAt": "2026-05-03T19:37:10.396Z",
+  "nodes": [
+    {
+      "id": "Project:2a50778400545246d04b88d8",
+      "type": "Project",
+      "labels": [
+        "OmkProject",
+        "Project"
+      ],
+      "label": "my-project",
+      "summary": "/Users/cheng",
+      "tags": [
+        "project"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8",
+        "root": "/Users/cheng"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "Session:0152d77e67f802430b2ea060",
+      "type": "Session",
+      "labels": [
+        "OmkSession",
+        "Session"
+      ],
+      "label": "process-37931-2026-05-03T19-36-52-746Z",
+      "summary": "Session for my-project",
+      "tags": [
+        "session"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-37931-2026-05-03T19-36-52-746Z",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z",
+        "projectKey": "cheng:50c3faac79c8"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "Memory:028196e407b05c7de3131f83",
+      "type": "Memory",
+      "labels": [
+        "OmkMemory",
+        "Memory"
+      ],
+      "label": "project.md",
+      "path": "project.md",
+      "content": "# Project Memory\n\nThe project-local ontology graph (.omk/memory/graph-state.json) is the source of truth; this file is a human-readable mirror.\n",
+      "summary": "Project Memory",
+      "tags": [
+        "memory",
+        "project",
+        "md"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:af6e2053e8c3475387f0153d2008258b3c68e38f932c911e0a90e1a9276d3238",
+        "path": "project.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "MemoryVersion:ac6dc8be7d7704a20b2ecfa8",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "project.md@2026-05-03T19:37:10.201Z",
+      "path": "project.md",
+      "content": "# Project Memory\n\nThe project-local ontology graph (.omk/memory/graph-state.json) is the source of truth; this file is a human-readable mirror.\n",
+      "summary": "Project Memory",
+      "tags": [
+        "memory-version",
+        "project",
+        "md"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-37931-2026-05-03T19-36-52-746Z:ae86b13169b0e007e1ef637d0de07a58a0c610bdb8ab47b70bf47bd49bccf2b8",
+        "path": "project.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "Topic:14e1f853eb5cc4de2bb1a1e4",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "Project Memory",
+      "summary": "Project Memory",
+      "tags": [
+        "project",
+        "memory"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83",
+        "line": 1,
+        "level": 1,
+        "path": "project.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "Topic:3e9223dc53427a50f9b4b97e",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "The project-local ontology graph (.omk/memory/graph-state.json) is the source of truth; this file is a human-readable mirror.",
+      "summary": "The project-local ontology graph (.omk/memory/graph-state.json) is the source of truth; this file is a human-readable mirror.",
+      "tags": [
+        "the",
+        "project-local",
+        "ontology",
+        "graph",
+        "omk",
+        "memory",
+        "graph-state",
+        "json",
+        "source",
+        "truth",
+        "this",
+        "file"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83",
+        "line": 3,
+        "level": null,
+        "path": "project.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "File:458734b78027eee22741241d",
+      "type": "File",
+      "labels": [
+        "OmkFile",
+        "File"
+      ],
+      "label": ".omk/memory/graph-state.json",
+      "path": ".omk/memory/graph-state.json",
+      "summary": "Referenced by project.md",
+      "tags": [
+        "file",
+        "omk",
+        "memory",
+        "graph",
+        "state",
+        "json"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83",
+        "path": ".omk/memory/graph-state.json",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "type": "Memory",
+      "labels": [
+        "OmkMemory",
+        "Memory"
+      ],
+      "label": "decisions.md",
+      "path": "decisions.md",
+      "content": "# Decisions\n\n",
+      "summary": "Decisions",
+      "tags": [
+        "memory",
+        "decisions",
+        "md"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:80a4cf760a0fa2bff988c75b611448073519d9f9b9cbbde4410f8846097c7a7a",
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:37:10.396Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "MemoryVersion:465b53395c9c93cb1eae5397",
+      "type": "MemoryVersion",
+      "labels": [
+        "OmkMemoryVersion",
+        "MemoryVersion"
+      ],
+      "label": "decisions.md@2026-05-03T19:37:10.396Z",
+      "path": "decisions.md",
+      "content": "# Decisions\n\n",
+      "summary": "Decisions",
+      "tags": [
+        "memory-version",
+        "decisions",
+        "md"
+      ],
+      "properties": {
+        "key": "cheng:50c3faac79c8:process-37931-2026-05-03T19-36-52-746Z:9ca55fedbee4eda1430d6cb1d10559c5e3f47f5f3bdb6b68f87017d7450985d6",
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z",
+        "source": "omk-project-mcp"
+      },
+      "createdAt": "2026-05-03T19:37:10.396Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "Topic:12aa192b6d9d314e91757873",
+      "type": "Topic",
+      "labels": [
+        "OmkTopic",
+        "Topic"
+      ],
+      "label": "Decisions",
+      "summary": "Decisions",
+      "tags": [
+        "decisions"
+      ],
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb",
+        "line": 1,
+        "level": 1,
+        "path": "decisions.md",
+        "projectKey": "cheng:50c3faac79c8",
+        "sessionId": "process-37931-2026-05-03T19-36-52-746Z"
+      },
+      "createdAt": "2026-05-03T19:37:10.396Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    }
+  ],
+  "edges": [
+    {
+      "id": "HAS_SESSION:24acb144b059a3f7e237742b",
+      "type": "HAS_SESSION",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Session:0152d77e67f802430b2ea060",
+      "label": "has session",
+      "properties": {},
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "HAS_MEMORY:2239a0259796e4384287b17a",
+      "type": "HAS_MEMORY",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Memory:028196e407b05c7de3131f83",
+      "label": "has memory",
+      "properties": {},
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "WROTE:7271131b7b84b16a00106a7a",
+      "type": "WROTE",
+      "from": "Session:0152d77e67f802430b2ea060",
+      "to": "MemoryVersion:ac6dc8be7d7704a20b2ecfa8",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "UPDATES:2d0d6dd61c5cb9e94368f324",
+      "type": "UPDATES",
+      "from": "MemoryVersion:ac6dc8be7d7704a20b2ecfa8",
+      "to": "Memory:028196e407b05c7de3131f83",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "HAS_TOPIC:c79a1acb0b41501cbf69d128",
+      "type": "HAS_TOPIC",
+      "from": "Memory:028196e407b05c7de3131f83",
+      "to": "Topic:14e1f853eb5cc4de2bb1a1e4",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "PART_OF:f529da0f5834d132cb947844",
+      "type": "PART_OF",
+      "from": "Topic:14e1f853eb5cc4de2bb1a1e4",
+      "to": "Memory:028196e407b05c7de3131f83",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "HAS_CONCEPT:752ed601310b68b1c4b22b87",
+      "type": "HAS_CONCEPT",
+      "from": "Topic:14e1f853eb5cc4de2bb1a1e4",
+      "to": "Topic:3e9223dc53427a50f9b4b97e",
+      "label": "has concept",
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "PART_OF:95f45b4e2a83047e3e144b6a",
+      "type": "PART_OF",
+      "from": "Topic:3e9223dc53427a50f9b4b97e",
+      "to": "Memory:028196e407b05c7de3131f83",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "TOUCHES_FILE:f242029d1bb2e17cdee95611",
+      "type": "TOUCHES_FILE",
+      "from": "Topic:3e9223dc53427a50f9b4b97e",
+      "to": "File:458734b78027eee22741241d",
+      "label": "touches file",
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "HAS_FILE:f705a67059162ce10bf54f1e",
+      "type": "HAS_FILE",
+      "from": "Memory:028196e407b05c7de3131f83",
+      "to": "File:458734b78027eee22741241d",
+      "label": "has file",
+      "properties": {
+        "generatedFrom": "Memory:028196e407b05c7de3131f83"
+      },
+      "createdAt": "2026-05-03T19:37:10.201Z",
+      "updatedAt": "2026-05-03T19:37:10.201Z"
+    },
+    {
+      "id": "HAS_MEMORY:7828bde8f6641236533b8123",
+      "type": "HAS_MEMORY",
+      "from": "Project:2a50778400545246d04b88d8",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "has memory",
+      "properties": {},
+      "createdAt": "2026-05-03T19:37:10.396Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "WROTE:cff76609e03a7771fcb21ce3",
+      "type": "WROTE",
+      "from": "Session:0152d77e67f802430b2ea060",
+      "to": "MemoryVersion:465b53395c9c93cb1eae5397",
+      "label": "wrote",
+      "properties": {},
+      "createdAt": "2026-05-03T19:37:10.396Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "UPDATES:79eb4a96df588675126e9297",
+      "type": "UPDATES",
+      "from": "MemoryVersion:465b53395c9c93cb1eae5397",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "updates",
+      "properties": {},
+      "createdAt": "2026-05-03T19:37:10.396Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "HAS_TOPIC:8c3f99d2d9c301f95ead9e8d",
+      "type": "HAS_TOPIC",
+      "from": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "to": "Topic:12aa192b6d9d314e91757873",
+      "label": "has topic",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:37:10.396Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    },
+    {
+      "id": "PART_OF:2ee1bf122667950f03bf4faf",
+      "type": "PART_OF",
+      "from": "Topic:12aa192b6d9d314e91757873",
+      "to": "Memory:2c8df93eeb9ef09e0813bdbb",
+      "label": "part of",
+      "properties": {
+        "generatedFrom": "Memory:2c8df93eeb9ef09e0813bdbb"
+      },
+      "createdAt": "2026-05-03T19:37:10.396Z",
+      "updatedAt": "2026-05-03T19:37:10.396Z"
+    }
+  ]
+}
