@@ -1,0 +1,35 @@
+diff --git a/src/commands/doctor.ts b/src/commands/doctor.ts
+index 2f620d0..61a5857 100644
+--- a/src/commands/doctor.ts
++++ b/src/commands/doctor.ts
+@@ -1,6 +1,7 @@
+ import { join } from "path";
+ import { homedir } from "os";
+ import { execSync } from "child_process";
++import { realpathSync } from "fs";
+ import { checkCommand, getKimiVersion, runShell } from "../util/shell.js";
+ import { getKimiCapabilities } from "../kimi/capability.js";
+ import { pathExists, getKimiConfigPath, readTextFile, getProjectRoot } from "../util/fs.js";
+@@ -246,7 +247,12 @@ async function runtimeChecks(resources: Awaited<ReturnType<typeof getOmkResource
+     const npmBin = join(prefix, process.platform === "win32" ? "" : "bin");
+     if (npmBin) {
+       const pathDelimiter = process.platform === "win32" ? ";" : ":";
+-      const inPath = process.env.PATH?.split(pathDelimiter).some((p) => p === npmBin || npmBin.startsWith(p));
++      const resolvedNpmBin = (() => { try { return realpathSync(npmBin); } catch { return npmBin; } })();
++      const inPath = process.env.PATH?.split(pathDelimiter).some((p) => {
++        if (!p) return false;
++        const resolvedP = (() => { try { return realpathSync(p); } catch { return p; } })();
++        return resolvedP === resolvedNpmBin || resolvedNpmBin.startsWith(resolvedP);
++      });
+       results.push({
+         name: "npm global bin",
+         status: inPath ? "ok" : "warn",
+@@ -796,7 +802,7 @@ async function memoryChecks(): Promise<CheckResult[]> {
+     try {
+       const fs = await import("fs/promises");
+       const entries = await fs.readdir(globalKimiDir, { withFileTypes: true });
+-      const unexpected = entries.filter((e) => e.isFile() && !e.name.match(/^(config\.toml|mcp\.json|omk\.memory\.toml)$/)).map((e) => e.name);
++      const unexpected = entries.filter((e) => e.isFile() && !e.name.match(/^(config\.toml|mcp\.json|omk\.memory\.toml|AGENTS\.md|device_id|kimi\.json|latest_version\.txt|\.gitignore|\.skill-lock\.json|\.DS_Store)$/)).map((e) => e.name);
+       if (unexpected.length > 0) globalPollution = true;
+     } catch { /* ignore */ }
+   }
