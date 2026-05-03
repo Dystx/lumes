@@ -130,3 +130,9 @@ test.svg.png
 *.jpg
 *.jpeg
 !kimichan.png
+
+# OMK generated artifacts (exclude from dotfiles repo)
+.omk/goals/
+.omk/runs/
+.omk/index/
+.omk/logs/
