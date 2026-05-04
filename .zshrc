@@ -1,6 +1,11 @@
 # Core dev tools PATH (must be first — mise, pnpm, and others live here)
 export PATH="$HOME/.local/bin:$PATH"
 
+# Homebrew (Apple Silicon)
+if [ -x /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
+
 # pnpm
 export PNPM_HOME="/Users/cheng/Library/pnpm"
 case ":$PATH:" in
@@ -40,6 +45,9 @@ export PATH=/Users/cheng/.opencode/bin:$PATH
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+# npm global bin (for omk doctor and global packages)
+export PATH="/Users/cheng/.local/share/mise/installs/node/24.15.0/bin:$PATH"
 
 # >>> omk shell integration
 export OMK_STAR_PROMPT=1

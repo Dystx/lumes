@@ -136,3 +136,16 @@ test.svg.png
 .omk/runs/
 .omk/index/
 .omk/logs/
+
+# Additional OMK / Kimi runtime generated files
+.kimi-webbridge/
+.kimi/agents/
+.kimi/prompts/
+.kimi/skills/
+.omk/backups/
+.omk/hud-config.json
+.omk/memory/ensemble/
+.omk/metrics.json
+.omk/setup-scope.json
+.omk/state/
+.omk/update-cache.json

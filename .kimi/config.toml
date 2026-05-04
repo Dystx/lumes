@@ -1,3 +1,11 @@
+# oh-my-kimi top-level settings (must be before any [table])
+notify = ["node", "/Users/cheng/.local/share/mise/installs/node/24.15.0/lib/node_modules/oh-my-kimi/dist/scripts/notify-hook.js"]
+model_reasoning_effort = "high"
+developer_instructions = "You have oh-my-kimi installed. AGENTS.md is your orchestration brain and the main orchestration surface. Use skill/keyword routing like $name plus spawned role-specialized subagents for specialized work. Kimi custom agents are available via .kimi/agents and may be used for independent parallel subtasks within a single session or team pane. Skills are loaded from installed SKILL.md files under .kimi/skills. Treat explicit workflow tokens like $ralplan, $deep-interview, $team, and $ralph as command shims that must execute the matching installed workflow skill rather than being described as unsupported syntax. Treat installed prompts as narrower internal execution surfaces under AGENTS.md authority, even when user-facing docs prefer $name keywords."
+model = "gpt-5.4"
+model_context_window = 1000000
+model_auto_compact_token_limit = 900000
+
 default_model = "kimi-code/kimi-for-coding"
 default_thinking = true
 default_yolo = false
@@ -92,3 +100,60 @@ event = "Stop"
 command = "/Users/cheng/Documents/attachdrive-local-first/.omk/hooks/stop-verify.sh"
 timeout = 30
 # >>> end omk managed hooks
+[features]
+multi_agent = true
+child_agents_md = true
+
+[env]
+USE_OMK_EXPLORE_CMD = "1"
+
+[agents]
+max_threads = 6
+max_depth = 2
+
+# ============================================================
+# oh-my-kimi (OMK) Configuration
+# Managed by omx setup - manual edits preserved on next setup
+# ============================================================
+
+# OMX State Management MCP Server
+[mcp_servers.omk_state]
+command = "node"
+args = ["/Users/cheng/.local/share/mise/installs/node/24.15.0/lib/node_modules/oh-my-kimi/dist/mcp/state-server.js"]
+enabled = true
+startup_timeout_sec = 5
+
+# OMX Project Memory MCP Server
+[mcp_servers.omk_memory]
+command = "node"
+args = ["/Users/cheng/.local/share/mise/installs/node/24.15.0/lib/node_modules/oh-my-kimi/dist/mcp/memory-server.js"]
+enabled = true
+startup_timeout_sec = 5
+
+# OMX Code Intelligence MCP Server (LSP diagnostics, AST search)
+[mcp_servers.omk_code_intel]
+command = "node"
+args = ["/Users/cheng/.local/share/mise/installs/node/24.15.0/lib/node_modules/oh-my-kimi/dist/mcp/code-intel-server.js"]
+enabled = true
+startup_timeout_sec = 10
+
+# OMX Trace MCP Server (agent flow timeline & statistics)
+[mcp_servers.omk_trace]
+command = "node"
+args = ["/Users/cheng/.local/share/mise/installs/node/24.15.0/lib/node_modules/oh-my-kimi/dist/mcp/trace-server.js"]
+enabled = true
+startup_timeout_sec = 5
+
+# OMX Team MCP Server (team job lifecycle: start, status, wait, cleanup)
+[mcp_servers.omk_team_run]
+command = "node"
+args = ["/Users/cheng/.local/share/mise/installs/node/24.15.0/lib/node_modules/oh-my-kimi/dist/mcp/team-server.js"]
+enabled = true
+startup_timeout_sec = 5
+
+# OMK TUI StatusLine (Kimi Code CLI)
+[tui]
+status_line = ["model-with-reasoning", "git-branch", "context-remaining", "total-input-tokens", "total-output-tokens", "five-hour-limit", "weekly-limit"]
+
+# ============================================================
+# End oh-my-kimi

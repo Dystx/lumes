@@ -26,10 +26,10 @@ max_parallel = 1
 quorum_ratio = 0.5
 
 [quality]
-lint = "off"       # auto | command | off
-test = "off"
-typecheck = "off"
-build = "off"
+lint = "auto"      # auto | command
+test = "auto"
+typecheck = "auto"
+build = "auto"
 
 [memory]
 # Project-local ontology graph is the default source of truth for project/session memory.
