@@ -3,7 +3,7 @@
     "omk-project": {
       "command": "node",
       "args": [
-        "/Users/cheng/.local/share/mise/installs/node/24.15.0/lib/node_modules/oh-my-kimichan/dist/mcp/omk-project-server.js"
+        "/Users/cheng/.local/share/mise/installs/node/24.15.0/lib/node_modules/@oh-my-kimi/cli/dist/mcp/omk-project-server.js"
       ]
     }
   }

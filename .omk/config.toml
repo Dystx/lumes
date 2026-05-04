@@ -1,4 +1,4 @@
-# oh-my-kimichan project settings
+# oh-my-kimi project settings
 [project]
 name = "my-project"
 description = ""
@@ -62,9 +62,9 @@ language = "en"
 [theme]
 # Custom logo image path for terminal welcome banner
 # Relative paths are resolved from project root; absolute paths also work
-# Example: logo_image = "kimichan.png"  or  logo_image = "M:\oh-my-kimichan\kimichan.png"
+# Example: logo_image = "kimicat.png"  or  logo_image = "M:\oh-my-kimi\kimicat.png"
 # Supported formats: PNG, JPEG, GIF (high-res on iTerm/Konsole, else ANSI block)
-logo_image = "kimichan.png"
+logo_image = "kimicat.png"
 
 [router]
 default_model = "kimi-k2.6"
