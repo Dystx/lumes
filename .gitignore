@@ -66,6 +66,7 @@ logs/
 .omk/runs/
 .omk/checkpoints/
 .omk/worktrees/
+.kimi-worktrees/
 .kimi/logs/
 .kimi/sessions/
 .kimi/telemetry/
@@ -119,7 +120,6 @@ Applications/
 
 # User projects (keep tracked if needed)
 Public/
-lusia/
 rota/
 prisma/
 
