@@ -1,0 +1,9 @@
+{
+  "framework": "react",
+  "styling": "tailwind",
+  "baseSpacing": 8,
+  "include": ["app/**/*"],
+  "rules": {
+    "maxComponentLines": 300
+  }
+}
