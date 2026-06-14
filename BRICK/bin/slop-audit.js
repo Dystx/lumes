@@ -1,2 +1,5 @@
 #!/usr/bin/env node
-import("../dist/cli.cjs");
+(async () => {
+  const { hello } = await import('../dist/index.js');
+  console.log(hello());
+})();
