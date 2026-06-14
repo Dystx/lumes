@@ -1,5 +1,5 @@
-import { existsSync } from 'fs';
-import { extname, join, resolve } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, extname, join, resolve } from 'path';
 import { createRequire } from 'module';
 import type { ResolvedConfig } from './types';
 
@@ -69,21 +69,46 @@ function deepMerge<T extends object>(target: T, source: Partial<T>): T {
 }
 
 function resolveConfigPath(dir: string): string | undefined {
-  const candidates = [
-    'slop-audit.config.mjs',
-    'slop-audit.config.cjs',
-    'slop-audit.config.js',
-  ];
-  for (const name of candidates) {
-    const full = join(dir, name);
-    if (existsSync(full)) return full;
+  const candidates = ['slop-audit.config.mjs', 'slop-audit.config.cjs', 'slop-audit.config.js'];
+  let current = resolve(dir);
+  while (true) {
+    for (const name of candidates) {
+      const full = join(current, name);
+      if (existsSync(full)) return full;
+    }
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
   }
   return undefined;
 }
 
+function detectJsLoader(configPath: string): 'import' | 'require' {
+  const ext = extname(configPath);
+  if (ext === '.mjs') return 'import';
+  if (ext === '.cjs') return 'require';
+  // For .js, inspect nearest package.json type field.
+  let current = dirname(resolve(configPath));
+  while (true) {
+    const pkgPath = join(current, 'package.json');
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+        return pkg.type === 'module' ? 'import' : 'require';
+      } catch {
+        return 'require';
+      }
+    }
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return 'require';
+}
+
 async function loadConfigFile(path: string): Promise<Partial<ResolvedConfig>> {
-  const ext = extname(path).slice(1);
-  if (ext === 'cjs') {
+  const loader = detectJsLoader(path);
+  if (loader === 'require') {
     const req = createRequire(import.meta.url);
     const mod = req(path);
     return mod.default ?? mod;
@@ -97,6 +122,6 @@ export async function loadConfig(cwd: string): Promise<ResolvedConfig> {
   if (!configPath) {
     return DEFAULT_CONFIG;
   }
-  const user = await loadConfigFile(resolve(configPath));
+  const user = await loadConfigFile(configPath);
   return deepMerge(DEFAULT_CONFIG, user as Partial<ResolvedConfig>);
 }
