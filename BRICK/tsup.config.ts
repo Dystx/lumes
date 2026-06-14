@@ -1,7 +1,10 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: { index: 'src/index.ts' },
+  entry: {
+    index: 'src/index.ts',
+    'engine/worker': 'src/engine/worker.ts',
+  },
   format: ['cjs', 'esm'],
   target: 'node18',
   platform: 'node',
