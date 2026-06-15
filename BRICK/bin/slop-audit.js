@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 (async () => {
-  const { hello } = await import('../dist/index.js');
-  console.log(hello());
+  const start = performance.now();
+  const { runCli } = await import('../dist/index.js');
+  await runCli({ start });
 })();

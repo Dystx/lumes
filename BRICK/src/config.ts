@@ -1,6 +1,6 @@
-import { existsSync, readFileSync } from 'fs';
-import { dirname, extname, join, resolve } from 'path';
-import { createRequire } from 'module';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, extname, join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import type { ResolvedConfig } from './types';
 
 export const DEFAULT_SPACING_SCALE = [

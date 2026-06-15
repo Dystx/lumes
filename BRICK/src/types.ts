@@ -24,6 +24,7 @@ export interface Issue {
   category: Category;
   severity: Severity;
   aiSpecific: boolean;
+  filePath?: string;
   message: string;
   line: number;
   column: number;
@@ -51,12 +52,22 @@ export interface HookFact {
   column: number;
 }
 
+export interface StateBinding {
+  valueName?: string;
+  setterName?: string;
+  line: number;
+  column: number;
+  valueReferenced: boolean;
+  setterReferenced: boolean;
+}
+
 export interface ComponentFacts {
   name?: string;
   line: number;
   column: number;
   isServerComponent: boolean;
   hookCalls: HookFact[];
+  stateBindings: StateBinding[];
 }
 
 export interface LogicalExpressionFact {

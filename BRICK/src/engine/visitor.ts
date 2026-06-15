@@ -7,16 +7,18 @@ import type {
   ElementFact,
   HookFact,
   LogicalExpressionFact,
+  StateBinding,
 } from '../types';
 
 type AnyNode = unknown;
 
-interface ComponentFrame extends ComponentFacts {
+interface FunctionFrame extends ComponentFacts {
   isComponent: boolean;
+  bindings: Set<string>;
 }
 
 interface WalkContext {
-  stack: ComponentFrame[];
+  stack: FunctionFrame[];
   useClient: boolean;
 }
 
@@ -172,26 +174,79 @@ function getFunctionName(node: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
-function binaryAndDepth(node: AnyNode): number {
-  if (!isObject(node) || node.type !== 'BinaryExpression' || node.operator !== '&&') {
-    return 0;
+function spanEnd(node: AnyNode): number | undefined {
+  if (isObject(node) && isObject(node.span) && typeof node.span.end === 'number') {
+    return node.span.end as number;
   }
-  const left = node.left as AnyNode;
-  const right = node.right as AnyNode;
-  return 1 + Math.max(binaryAndDepth(left), binaryAndDepth(right));
+  return undefined;
 }
 
-function collectChainText(node: AnyNode): string {
+function sourceText(node: AnyNode, source: string): string {
+  const start = spanStart(node);
+  const end = spanEnd(node);
+  if (start === undefined || end === undefined) return 'expr';
+  return source.slice(Math.max(0, start - 1), Math.max(0, end - 1));
+}
+
+function binaryAndChainLength(node: AnyNode): number {
   if (!isObject(node) || node.type !== 'BinaryExpression' || node.operator !== '&&') {
-    if (isObject(node) && typeof node.value === 'string') return node.value as string;
-    if (isObject(node) && typeof node.name === 'string') return node.name as string;
-    return 'expr';
+    return 1;
   }
   const left = node.left as AnyNode;
   const right = node.right as AnyNode;
-  const leftText = collectChainText(left);
-  const rightText = collectChainText(right);
-  return `${leftText} && ${rightText}`;
+  return binaryAndChainLength(left) + binaryAndChainLength(right);
+}
+
+function collectChainText(node: AnyNode, source: string): string {
+  return sourceText(node, source);
+}
+
+function isUseStateDeclarator(node: Record<string, unknown>): boolean {
+  const init = node.init as AnyNode;
+  if (!isObject(init) || init.type !== 'CallExpression') return false;
+  const callee = init.callee as AnyNode;
+  return (
+    isObject(callee) &&
+    callee.type === 'Identifier' &&
+    typeof callee.value === 'string' &&
+    callee.value === 'useState'
+  );
+}
+
+function extractStateBinding(node: Record<string, unknown>, lineOffsets: number[]): StateBinding | undefined {
+  const id = node.id as AnyNode;
+  if (!isObject(id) || id.type !== 'ArrayPattern') return undefined;
+  const elements = id.elements as AnyNode[];
+  if (!Array.isArray(elements) || elements.length === 0) return undefined;
+
+  const valueNode = elements[0];
+  const setterNode = elements[1];
+  let valueName: string | undefined;
+  let setterName: string | undefined;
+
+  if (isObject(valueNode) && valueNode.type === 'Identifier' && typeof valueNode.value === 'string') {
+    valueName = valueNode.value as string;
+  }
+  if (
+    elements.length >= 2 &&
+    isObject(setterNode) &&
+    setterNode.type === 'Identifier' &&
+    typeof setterNode.value === 'string'
+  ) {
+    setterName = setterNode.value as string;
+  }
+
+  if (valueName === undefined && setterName === undefined) return undefined;
+
+  const { line, column } = positionFrom(node, lineOffsets);
+  return {
+    valueName,
+    setterName,
+    line,
+    column,
+    valueReferenced: false,
+    setterReferenced: false,
+  };
 }
 
 export function extractFacts(filePath: string, ast: Module, nodeCount: number): ScanFacts {
@@ -213,13 +268,17 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
     useClient: false,
   };
 
-  function nearestComponent(): ComponentFrame | null {
+  function nearestComponent(): FunctionFrame | null {
     for (let i = ctx.stack.length - 1; i >= 0; i--) {
       if (ctx.stack[i].isComponent) {
         return ctx.stack[i];
       }
     }
     return null;
+  }
+
+  function nearestFrame(): FunctionFrame | null {
+    return ctx.stack[ctx.stack.length - 1] ?? null;
   }
 
   function attachHook(hook: HookFact): void {
@@ -230,23 +289,63 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
     }
   }
 
+  function collectBindingNames(node: AnyNode): string[] {
+    if (!isObject(node)) return [];
+    if (node.type === 'Identifier' && typeof node.value === 'string') {
+      return [node.value as string];
+    }
+    if (node.type === 'Parameter') {
+      return collectBindingNames(node.pat);
+    }
+    if (node.type === 'ArrayPattern') {
+      const names: string[] = [];
+      const elements = node.elements as AnyNode[];
+      if (Array.isArray(elements)) {
+        for (const element of elements) {
+          if (element != null) {
+            names.push(...collectBindingNames(element));
+          }
+        }
+      }
+      return names;
+    }
+    if (node.type === 'AssignmentPattern') {
+      return collectBindingNames(node.left);
+    }
+    return [];
+  }
+
   function pushFrame(node: Record<string, unknown>): void {
     const name = getFunctionName(node);
     const { line, column } = positionFrom(node, lineOffsets);
+    const bindings = new Set<string>();
+    if (name) {
+      bindings.add(name);
+    }
+    const params = node.params as AnyNode[];
+    if (Array.isArray(params)) {
+      for (const param of params) {
+        for (const bindingName of collectBindingNames(param)) {
+          bindings.add(bindingName);
+        }
+      }
+    }
     ctx.stack.push({
       name,
       line,
       column,
       isServerComponent: !ctx.useClient,
       hookCalls: [],
+      stateBindings: [],
       isComponent: containsJsx(node),
+      bindings,
     });
   }
 
   function popFrame(): void {
     const frame = ctx.stack.pop();
     if (frame && frame.isComponent) {
-      const { isComponent, ...component } = frame;
+      const { isComponent, bindings, ...component } = frame;
       facts.components.push(component);
     }
   }
@@ -255,8 +354,91 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
     return isObject(parent) && parent.type === 'BinaryExpression' && parent.operator === '&&';
   }
 
-  function processNode(node: AnyNode, parent: AnyNode): void {
-    if (!isObject(node)) return;
+  function containsNode(container: AnyNode, target: AnyNode): boolean {
+    if (container === target) return true;
+    if (!isObject(container)) return false;
+    for (const value of Object.values(container)) {
+      if (Array.isArray(value)) {
+        if (value.some((item) => containsNode(item, target))) return true;
+      } else if (isObject(value)) {
+        if (containsNode(value, target)) return true;
+      }
+    }
+    return false;
+  }
+
+  function isBindingSite(node: AnyNode, parent: AnyNode): boolean {
+    if (!isObject(parent)) return false;
+    if (parent.type === 'VariableDeclarator' && parent.id === node) return true;
+    if (parent.type === 'AssignmentPattern' && parent.left === node) return true;
+    if (parent.type === 'JSXAttribute' && parent.name === node) return true;
+    if ((parent.type === 'ObjectProperty' || parent.type === 'Property') && parent.key === node) return true;
+    if (parent.type === 'ArrayPattern') {
+      const elements = parent.elements as AnyNode[];
+      if (Array.isArray(elements) && elements.includes(node as object)) return true;
+    }
+    if (parent.type === 'Parameter') {
+      const pat = parent.pat as AnyNode;
+      if (pat === node) return true;
+      if (containsNode(pat, node)) return true;
+    }
+    if (
+      parent.type === 'FunctionDeclaration' ||
+      parent.type === 'FunctionExpression' ||
+      parent.type === 'ArrowFunctionExpression'
+    ) {
+      const params = parent.params as AnyNode[];
+      if (Array.isArray(params)) {
+        if (params.includes(node as object)) return true;
+        if (params.some((param) => containsNode(param, node))) return true;
+      }
+    }
+    return false;
+  }
+
+  function isNonComputedMemberProperty(node: AnyNode, parent: AnyNode): boolean {
+    if (!isObject(parent)) return false;
+    if ((parent.type === 'MemberExpression' || parent.type === 'JSXMemberExpression') && parent.property === node) {
+      return !parent.computed;
+    }
+    return false;
+  }
+
+  function markStateReference(name: string): void {
+    for (let i = ctx.stack.length - 1; i >= 0; i--) {
+      const frame = ctx.stack[i];
+      if (frame.bindings.has(name)) {
+        if (frame.isComponent) {
+          for (const binding of frame.stateBindings) {
+            if (binding.valueName === name) {
+              binding.valueReferenced = true;
+            }
+            if (binding.setterName === name) {
+              binding.setterReferenced = true;
+            }
+          }
+        }
+        return;
+      }
+      if (frame.isComponent) {
+        let matched = false;
+        for (const binding of frame.stateBindings) {
+          if (binding.valueName === name) {
+            binding.valueReferenced = true;
+            matched = true;
+          }
+          if (binding.setterName === name) {
+            binding.setterReferenced = true;
+            matched = true;
+          }
+        }
+        if (matched) return;
+      }
+    }
+  }
+
+  function processNode(node: AnyNode, parent: AnyNode): boolean {
+    if (!isObject(node)) return false;
 
     const type = getNodeType(node);
 
@@ -321,17 +503,62 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
 
     // Detect deep && binary expression chains.
     if (type === 'BinaryExpression' && node.operator === '&&' && !isAndChainChild(parent)) {
-      const depth = binaryAndDepth(node);
+      const depth = binaryAndChainLength(node);
       if (depth >= 3) {
         const { line, column } = positionFrom(node, lineOffsets);
         facts.logicalExpressions.push({
           depth,
           line,
           column,
-          text: collectChainText(node),
+          text: collectChainText(node, source),
         });
       }
     }
+
+    // Detect variable bindings (including useState destructured bindings).
+    if (type === 'VariableDeclarator') {
+      const init = node.init as AnyNode;
+      // Visit initializer first so references inside it are resolved before
+      // the new binding names shadow outer names.
+      visit(init, node);
+
+      const id = node.id as AnyNode;
+      const bindingNames = collectBindingNames(id);
+      const frame = nearestFrame();
+      if (frame) {
+        for (const bindingName of bindingNames) {
+          frame.bindings.add(bindingName);
+        }
+      }
+
+      if (isUseStateDeclarator(node)) {
+        const binding = extractStateBinding(node, lineOffsets);
+        if (binding) {
+          const component = nearestComponent();
+          if (component) {
+            component.stateBindings.push(binding);
+          }
+        }
+      }
+
+      // Skip walking the pattern itself; the identifiers there are bindings,
+      // not references.
+      return true;
+    }
+
+    // Mark references to tracked state bindings, but skip binding sites such as
+    // variable declarators, function parameters, object property keys, and
+    // non-computed member-expression properties.
+    if (
+      type === 'Identifier' &&
+      typeof node.value === 'string' &&
+      !isBindingSite(node, parent) &&
+      !isNonComputedMemberProperty(node, parent)
+    ) {
+      markStateReference(node.value as string);
+    }
+
+    return false;
   }
 
   function visit(node: AnyNode, parent: AnyNode = null): void {
@@ -344,15 +571,17 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
       pushFrame(node);
     }
 
-    processNode(node, parent);
+    const skipChildren = processNode(node, parent);
 
-    for (const value of Object.values(node)) {
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          visit(item, node);
+    if (!skipChildren) {
+      for (const value of Object.values(node)) {
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            visit(item, node);
+          }
+        } else if (isObject(value)) {
+          visit(value, node);
         }
-      } else if (isObject(value)) {
-        visit(value, node);
       }
     }
 

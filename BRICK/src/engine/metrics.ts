@@ -37,6 +37,11 @@ function p90(values: number[]): number {
   return sorted[Math.max(0, index)];
 }
 
+export function resolveFrameworkMultiplier(config: ResolvedConfig): number {
+  const framework = config.framework ?? 'react';
+  return config.frameworkMultipliers[framework] ?? 1.0;
+}
+
 export function scoreFile(
   result: FileScanResult,
   frameworkMultiplier: number,
@@ -91,7 +96,7 @@ export function aggregateReport(
   const peak =
     adjustedScores.length === 0 ? 0 : Math.max(...adjustedScores);
 
-  const categoryTotals: Record<Category, number> = {
+  const categoryContributions: Record<Category, number> = {
     visual: 0,
     typo: 0,
     wcag: 0,
@@ -102,14 +107,24 @@ export function aggregateReport(
     perf: 0,
   };
 
-  for (const group of issueGroups) {
+  for (let i = 0; i < scores.length; i++) {
+    const score = scores[i];
+    const group = issueGroups[i];
+    const rawScore = group.issues.reduce(
+      (sum, issue) => sum + SEVERITY_WEIGHTS[issue.severity],
+      0,
+    );
+    if (rawScore === 0 || score.adjustedScore === 0) continue;
+
     for (const issue of group.issues) {
-      categoryTotals[issue.category] += SEVERITY_WEIGHTS[issue.severity];
+      const share = SEVERITY_WEIGHTS[issue.severity] / rawScore;
+      categoryContributions[issue.category] += score.adjustedScore * share;
     }
   }
 
-  const denominator = scores.length || 1;
-  const categoryScores: Record<Category, number> = { ...categoryTotals };
+  const totalComponentCount = scores.reduce((sum, score) => sum + score.componentCount, 0);
+  const denominator = totalComponentCount || 1;
+  const categoryScores: Record<Category, number> = { ...categoryContributions };
   for (const category of Object.keys(categoryScores) as Category[]) {
     categoryScores[category] /= denominator;
   }

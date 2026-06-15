@@ -63,4 +63,20 @@ describe('RuleRegistry', () => {
     expect(enabled).toHaveLength(1);
     expect(enabled[0].context).toEqual({ filePath: 'Button.tsx' });
   });
+
+  it('loads all seven P0 built-in rules', () => {
+    const registry = new RuleRegistry();
+    registry.loadBuiltins();
+    const rules = registry.getRules();
+    expect(rules).toHaveLength(7);
+    expect(rules.map((r) => r.id).sort()).toEqual([
+      'logic/boundary-violation',
+      'logic/ghost-defensive',
+      'logic/zombie-state',
+      'visual/arbitrary-escape',
+      'visual/generic-centering',
+      'wcag/focus-appearance',
+      'wcag/target-size',
+    ]);
+  });
 });

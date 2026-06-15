@@ -82,4 +82,109 @@ describe('extractFacts', () => {
     expect(wrapper).toBeDefined();
     expect(wrapper!.hookCalls.some((h) => h.name === 'useId')).toBe(true);
   });
+
+  it('marks both value and setter as referenced when used', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-both-referenced'));
+    const facts = extractFacts(fixture('state-both-referenced'), ast, nodeCount);
+    expect(facts.components).toHaveLength(1);
+    const binding = facts.components[0].stateBindings[0];
+    expect(binding).toBeDefined();
+    expect(binding.valueName).toBe('count');
+    expect(binding.setterName).toBe('setCount');
+    expect(binding.valueReferenced).toBe(true);
+    expect(binding.setterReferenced).toBe(true);
+  });
+
+  it('marks neither value nor setter as referenced when unused', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-none-referenced'));
+    const facts = extractFacts(fixture('state-none-referenced'), ast, nodeCount);
+    const binding = facts.components[0].stateBindings[0];
+    expect(binding).toBeDefined();
+    expect(binding.valueReferenced).toBe(false);
+    expect(binding.setterReferenced).toBe(false);
+  });
+
+  it('marks only setter as referenced when value is unused', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-setter-only'));
+    const facts = extractFacts(fixture('state-setter-only'), ast, nodeCount);
+    const binding = facts.components[0].stateBindings[0];
+    expect(binding).toBeDefined();
+    expect(binding.valueReferenced).toBe(false);
+    expect(binding.setterReferenced).toBe(true);
+  });
+
+  it('handles single-element useState pattern', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-single-element'));
+    const facts = extractFacts(fixture('state-single-element'), ast, nodeCount);
+    const binding = facts.components[0].stateBindings[0];
+    expect(binding).toBeDefined();
+    expect(binding.valueName).toBe('count');
+    expect(binding.setterName).toBeUndefined();
+    expect(binding.valueReferenced).toBe(true);
+    expect(binding.setterReferenced).toBe(false);
+  });
+
+  it('ignores useState at module level', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-module-level'));
+    const facts = extractFacts(fixture('state-module-level'), ast, nodeCount);
+    expect(facts.components).toHaveLength(1);
+    expect(facts.components[0].stateBindings).toHaveLength(0);
+  });
+
+  it('marks only value as referenced when setter is unused', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-value-only'));
+    const facts = extractFacts(fixture('state-value-only'), ast, nodeCount);
+    const binding = facts.components[0].stateBindings[0];
+    expect(binding.valueReferenced).toBe(true);
+    expect(binding.setterReferenced).toBe(false);
+  });
+
+  it('marks outer state as referenced when used in nested component', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-nested-reference'));
+    const facts = extractFacts(fixture('state-nested-reference'), ast, nodeCount);
+    const outer = facts.components.find((c) => c.name === 'Outer');
+    expect(outer).toBeDefined();
+    const binding = outer!.stateBindings[0];
+    expect(binding.valueReferenced).toBe(true);
+    expect(binding.setterReferenced).toBe(false);
+  });
+
+  it('does not treat function parameter as state reference', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-param-shadow'));
+    const facts = extractFacts(fixture('state-param-shadow'), ast, nodeCount);
+    const binding = facts.components[0].stateBindings[0];
+    expect(binding.valueReferenced).toBe(false);
+    expect(binding.setterReferenced).toBe(false);
+  });
+
+  it('tracks multiple useState bindings independently', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-multiple'));
+    const facts = extractFacts(fixture('state-multiple'), ast, nodeCount);
+    const binding = facts.components[0].stateBindings;
+    expect(binding).toHaveLength(2);
+    const nameBinding = binding.find((b) => b.valueName === 'name');
+    const emailBinding = binding.find((b) => b.valueName === 'email');
+    expect(nameBinding?.valueReferenced).toBe(true);
+    expect(nameBinding?.setterReferenced).toBe(false);
+    expect(emailBinding?.valueReferenced).toBe(false);
+    expect(emailBinding?.setterReferenced).toBe(true);
+  });
+
+  it('marks initializer references to outer state before new binding shadows them', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-initializer-reference'));
+    const facts = extractFacts(fixture('state-initializer-reference'), ast, nodeCount);
+    const outer = facts.components.find((c) => c.name === 'Outer');
+    expect(outer).toBeDefined();
+    const binding = outer!.stateBindings[0];
+    expect(binding.valueReferenced).toBe(true);
+  });
+
+  it('does not treat non-computed member property as state reference', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('state-member-property'));
+    const facts = extractFacts(fixture('state-member-property'), ast, nodeCount);
+    const binding = facts.components[0].stateBindings[0];
+    expect(binding.valueName).toBe('target');
+    expect(binding.valueReferenced).toBe(false);
+    expect(binding.setterReferenced).toBe(false);
+  });
 });

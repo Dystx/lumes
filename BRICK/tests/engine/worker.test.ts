@@ -15,7 +15,10 @@ describe('scanFile', () => {
     expect(result.filePath).toBe(fixture('sample'));
     expect(result.componentCount).toBeGreaterThan(0);
     expect(result.astNodeCount).toBeGreaterThan(0);
-    expect(result.issues).toEqual([]);
+    const ruleIds = result.issues.map((i) => i.ruleId).sort();
+    expect(ruleIds).toContain('logic/boundary-violation');
+    expect(ruleIds).toContain('wcag/target-size');
+    expect(result.issues.some((i) => i.severity === 'high')).toBe(true);
   });
 
   it('returns a parseError for a malformed file', async () => {

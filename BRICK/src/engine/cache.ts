@@ -1,7 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join } from 'path';
+import { VERSION } from '../types';
 import type { BaselineCache, ResolvedConfig } from '../types';
+
+const BASELINE_VERSION = VERSION;
 
 function sanitizeForHash(value: unknown): unknown {
   if (value instanceof RegExp) {
@@ -28,11 +31,40 @@ export function baselinePath(projectPath: string): string {
   return join(projectPath, '.slop-audit', 'cache', 'baseline.json');
 }
 
+function isBaselineCache(value: unknown): value is BaselineCache {
+  if (!value || typeof value !== 'object') return false;
+  const obj = value as Record<string, unknown>;
+  if (obj.version !== BASELINE_VERSION) return false;
+  if (typeof obj.config_hash !== 'string') return false;
+  if (typeof obj.git_head !== 'string') return false;
+  if (typeof obj.baseline_created !== 'string') return false;
+  if (typeof obj.baseline_revision !== 'number') return false;
+  if (typeof obj.totalComponentCount !== 'number') return false;
+  if (!obj.scores || typeof obj.scores !== 'object') return false;
+  for (const entry of Object.values(obj.scores)) {
+    if (!entry || typeof entry !== 'object') return false;
+    const score = entry as Record<string, unknown>;
+    if (typeof score.baselineScore !== 'number') return false;
+    if (typeof score.componentCount !== 'number') return false;
+  }
+  return true;
+}
+
 export function loadBaseline(projectPath: string): BaselineCache | undefined {
   const path = baselinePath(projectPath);
   if (!existsSync(path)) return undefined;
-  const content = readFileSync(path, 'utf-8');
-  return JSON.parse(content) as BaselineCache;
+  try {
+    const content = readFileSync(path, 'utf-8');
+    const parsed = JSON.parse(content);
+    if (!isBaselineCache(parsed)) {
+      console.error(`Invalid baseline cache at ${path}; ignoring.`);
+      return undefined;
+    }
+    return parsed;
+  } catch (err) {
+    console.error(`Failed to load baseline cache at ${path}:`, err);
+    return undefined;
+  }
 }
 
 export function saveBaseline(projectPath: string, cache: BaselineCache): void {
@@ -59,6 +91,7 @@ export function validateBaseline(
   configHash: string,
   gitHead: string,
 ): { valid: boolean; reason?: string } {
+  if (cache.version !== BASELINE_VERSION) return { valid: false, reason: 'baseline version mismatch' };
   if (cache.config_hash !== configHash) return { valid: false, reason: 'config_hash mismatch' };
   if (cache.git_head !== gitHead) return { valid: false, reason: 'git_head mismatch' };
   return { valid: true };

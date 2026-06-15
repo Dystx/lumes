@@ -3,6 +3,7 @@ import { DEFAULT_CONFIG } from '../../src/config';
 import {
   aggregateReport,
   contextTax,
+  resolveFrameworkMultiplier,
   scoreFile,
   sizeNormalization,
   SEVERITY_WEIGHTS,
@@ -167,10 +168,11 @@ describe('aggregateReport', () => {
     expect(report.p90Score).toBeLessThanOrEqual(report.peakScore);
   });
 
-  it('computes category scores averaged over file count', () => {
+  it('computes category scores from adjusted score contributions normalized by component count', () => {
+    const aIssues = [issue('high', 'logic'), issue('medium', 'wcag')];
     const scores = [
       scoreFile(
-        fileResult({ filePath: 'A.tsx', issues: [issue('high', 'logic'), issue('medium', 'wcag')] }),
+        fileResult({ filePath: 'A.tsx', issues: aIssues }),
         1.0,
         DEFAULT_CONFIG,
       ),
@@ -179,18 +181,19 @@ describe('aggregateReport', () => {
     const issueGroups = [
       {
         filePath: 'A.tsx',
-        issues: [issue('high', 'logic'), issue('medium', 'wcag')],
+        issues: aIssues,
       },
       { filePath: 'B.tsx', issues: [] },
     ];
 
     const report = aggregateReport(scores, issueGroups, DEFAULT_CONFIG);
-    expect(report.categoryScores.logic).toBe(
-      SEVERITY_WEIGHTS.high / scores.length,
-    );
-    expect(report.categoryScores.wcag).toBe(
-      SEVERITY_WEIGHTS.medium / scores.length,
-    );
+    const totalComponents = scores.reduce((sum, s) => sum + s.componentCount, 0);
+    const aRaw = aIssues.reduce((sum, i) => sum + SEVERITY_WEIGHTS[i.severity], 0);
+    const logicShare = (scores[0].adjustedScore * SEVERITY_WEIGHTS.high) / aRaw;
+    const wcagShare = (scores[0].adjustedScore * SEVERITY_WEIGHTS.medium) / aRaw;
+
+    expect(report.categoryScores.logic).toBeCloseTo(logicShare / totalComponents, 5);
+    expect(report.categoryScores.wcag).toBeCloseTo(wcagShare / totalComponents, 5);
     expect(report.categoryScores.visual).toBe(0);
   });
 
@@ -201,5 +204,22 @@ describe('aggregateReport', () => {
     expect(report.peakScore).toBe(0);
     expect(report.p90Score).toBe(0);
     expect(report.componentCount).toBe(0);
+  });
+});
+
+describe('resolveFrameworkMultiplier', () => {
+  it('returns the configured multiplier for the active framework', () => {
+    const config = { ...DEFAULT_CONFIG, framework: 'vue', frameworkMultipliers: { ...DEFAULT_CONFIG.frameworkMultipliers, vue: 1.5 } };
+    expect(resolveFrameworkMultiplier(config)).toBe(1.5);
+  });
+
+  it('defaults to react when no framework is configured', () => {
+    const config = { ...DEFAULT_CONFIG, framework: undefined };
+    expect(resolveFrameworkMultiplier(config)).toBe(DEFAULT_CONFIG.frameworkMultipliers.react);
+  });
+
+  it('falls back to 1.0 for unknown frameworks', () => {
+    const config = { ...DEFAULT_CONFIG, framework: 'unknown' };
+    expect(resolveFrameworkMultiplier(config)).toBe(1.0);
   });
 });

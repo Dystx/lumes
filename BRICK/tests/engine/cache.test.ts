@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -110,5 +110,32 @@ describe('cache', () => {
     };
     const modifiedHash = hashConfig(modified);
     expect(modifiedHash).not.toBe(baseHash);
+  });
+
+  it('loadBaseline returns undefined and does not throw for invalid JSON', () => {
+    saveBaseline(projectPath, makeCache());
+    const path = baselinePath(projectPath);
+    writeFileSync(path, '{ not json');
+    expect(loadBaseline(projectPath)).toBeUndefined();
+  });
+
+  it('loadBaseline returns undefined when version is mismatched', () => {
+    saveBaseline(projectPath, makeCache({ version: '0.0.0' }));
+    expect(loadBaseline(projectPath)).toBeUndefined();
+  });
+
+  it('loadBaseline returns undefined when required fields are missing', () => {
+    saveBaseline(projectPath, makeCache());
+    const path = baselinePath(projectPath);
+    writeFileSync(path, JSON.stringify({ version: '1.0.0' }));
+    expect(loadBaseline(projectPath)).toBeUndefined();
+  });
+
+  it('validateBaseline fails on version mismatch', () => {
+    const cache = makeCache({ version: '0.0.0' });
+    expect(validateBaseline(cache, cache.config_hash, cache.git_head)).toEqual({
+      valid: false,
+      reason: 'baseline version mismatch',
+    });
   });
 });

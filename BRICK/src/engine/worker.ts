@@ -4,14 +4,20 @@ import { extractFacts } from './visitor';
 import { RuleRegistry } from '../rules/registry';
 import type { FileScanResult, ResolvedConfig } from '../types';
 
-export async function scanFile(filePath: string, config: ResolvedConfig): Promise<FileScanResult> {
+export async function scanFile(
+  filePath: string,
+  config: ResolvedConfig,
+  registry?: RuleRegistry,
+): Promise<FileScanResult> {
   try {
     const { ast, nodeCount } = await parseFile(filePath);
     const facts = extractFacts(filePath, ast, nodeCount);
 
-    const registry = new RuleRegistry();
-    registry.loadBuiltins();
-    const rules = registry.createContexts(config, filePath);
+    const activeRegistry = registry ?? new RuleRegistry();
+    if (!registry) {
+      activeRegistry.loadBuiltins();
+    }
+    const rules = activeRegistry.createContexts(config, filePath);
     const issues = rules.flatMap(({ rule, context }) => rule.analyze(context, facts));
 
     return {
@@ -41,21 +47,18 @@ async function run(): Promise<void> {
   }
   const { filePaths, config } = data as { filePaths: string[]; config: ResolvedConfig };
 
+  const registry = new RuleRegistry();
+  registry.loadBuiltins();
+
   for (const filePath of filePaths) {
-    const result = await scanFile(filePath, config);
+    const result = await scanFile(filePath, config, registry);
     parentPort?.postMessage(result);
   }
 }
 
 if (!isMainThread) {
   run().catch((err) => {
-    parentPort?.postMessage({
-      filePath: '',
-      componentCount: 0,
-      astNodeCount: 0,
-      issues: [],
-      parseError: err instanceof Error ? `Worker fatal error: ${err.message}` : `Worker fatal error: ${String(err)}`,
-    });
+    console.error(err);
     process.exitCode = 1;
     parentPort?.close();
   });

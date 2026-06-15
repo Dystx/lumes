@@ -1,3 +1,4 @@
+import { builtinRules } from './builtins';
 import type { Rule, RuleContext, ResolvedConfig } from '../types';
 
 export interface EnabledRule {
@@ -13,7 +14,9 @@ export class RuleRegistry {
   }
 
   loadBuiltins(): void {
-    // P0: no built-ins yet; Phase 3 adds real rules.
+    for (const rule of builtinRules) {
+      this.register(rule);
+    }
   }
 
   getRules(filter?: { kind: 'ai' | 'human' }): Rule[] {
