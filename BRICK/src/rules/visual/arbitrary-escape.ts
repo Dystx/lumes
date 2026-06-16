@@ -1,6 +1,6 @@
-import type { Rule, Issue, RuleContext, ScanFacts } from '../../types';
+import type { Rule, Issue, RuleContext, ScanFacts, FixSuggestion } from '../../types';
 import { createRule } from '../rule';
-import { isLayoutArbitrary, matchesAllowlist, splitClassName } from '../utils';
+import { isLayoutArbitrary, matchesAllowlist, nearestTailwindSpacingToken, splitClassName } from '../utils';
 
 export interface ArbitraryEscapeContext {
   allowlist: readonly (string | RegExp)[];
@@ -24,6 +24,20 @@ export const arbitraryEscapeRule = createRule<ArbitraryEscapeContext>({
       const offenders = classes.filter(
         (className) => isLayoutArbitrary(className) && !matchesAllowlist(className, context.allowlist),
       );
+      const fixes: FixSuggestion[] = offenders
+        .map((offender): FixSuggestion | undefined => {
+          const token = nearestTailwindSpacingToken(offender);
+          if (!token) return undefined;
+          return {
+            kind: 'replace',
+            description: `Replace '${offender}' with '${token}'`,
+            targetFile: facts.filePath,
+            oldValue: offender,
+            newValue: token,
+          };
+        })
+        .filter((fix): fix is FixSuggestion => fix !== undefined);
+
       if (offenders.length > 0) {
         issues.push({
           ruleId: 'visual/arbitrary-escape',
@@ -34,6 +48,7 @@ export const arbitraryEscapeRule = createRule<ArbitraryEscapeContext>({
           line: classNameFact.line,
           column: classNameFact.column,
           advice: 'Replace with a design-system token or add it to arbitraryValueAllowlist if intentional.',
+          ...(fixes.length > 0 ? { fixes } : {}),
         });
       }
     }

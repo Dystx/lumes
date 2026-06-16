@@ -74,6 +74,19 @@ describe('discoverFiles', () => {
     expect(files).toEqual([join(dir, 'lib', 'helper.ts')]);
   });
 
+  it('discovers .vue, .svelte, and .astro source files', async () => {
+    mkdirSync(join(dir, 'src'), { recursive: true });
+    writeFileSync(join(dir, 'src', 'App.vue'), '');
+    writeFileSync(join(dir, 'src', 'Card.svelte'), '');
+    writeFileSync(join(dir, 'src', 'Page.astro'), '');
+    const files = await discoverFiles(dir, makeConfig({ include: ['src/**/*.{ts,tsx,js,jsx,vue,svelte,astro}'] }));
+    expect(files.sort()).toEqual([
+      join(dir, 'src', 'App.vue'),
+      join(dir, 'src', 'Card.svelte'),
+      join(dir, 'src', 'Page.astro'),
+    ]);
+  });
+
   it('does not return files that do not exist', async () => {
     const files = await discoverFiles(dir, makeConfig({ include: ['missing/**/*.ts'] }));
     expect(files).toEqual([]);

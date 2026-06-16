@@ -3,12 +3,30 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync, realpathSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { getGitHead, getGitRoot, getStagedFiles } from '../src/git';
+import {
+  getGitHead,
+  getGitRoot,
+  getStagedFiles,
+  getFileEditCount,
+  getFileLastModifiedDate,
+} from '../src/git';
 
 const createTmpDir = () => realpathSync(mkdtempSync(join(tmpdir(), 'slop-audit-git-test-')));
 
 const git = (cwd: string, ...args: string[]): void => {
   execFileSync('git', args, { cwd, encoding: 'utf-8' });
+};
+
+const gitCommitAt = (cwd: string, message: string, date: string): void => {
+  execFileSync('git', ['commit', '-m', message], {
+    cwd,
+    encoding: 'utf-8',
+    env: {
+      ...process.env,
+      GIT_AUTHOR_DATE: date,
+      GIT_COMMITTER_DATE: date,
+    },
+  });
 };
 
 describe('git helpers', () => {
@@ -73,6 +91,46 @@ describe('git helpers', () => {
 
     it('returns an empty array outside a git repository', async () => {
       expect(await getStagedFiles(tmpdir())).toEqual([]);
+    });
+  });
+
+  describe('getFileEditCount', () => {
+    it('returns the number of edits in the requested window', async () => {
+      const file = join(repo, 'counter.ts');
+      writeFileSync(file, 'let n = 0;');
+      git(repo, 'add', 'counter.ts');
+      gitCommitAt(repo, 'first', '2026-06-12T00:00:00Z');
+
+      writeFileSync(file, 'let n = 1;');
+      git(repo, 'add', 'counter.ts');
+      gitCommitAt(repo, 'second', '2026-06-14T00:00:00Z');
+
+      expect(await getFileEditCount(repo, 'counter.ts', 30)).toBe(2);
+    });
+
+    it('returns 0 outside a git repository', async () => {
+      expect(await getFileEditCount(tmpdir(), 'counter.ts', 30)).toBe(0);
+    });
+  });
+
+  describe('getFileLastModifiedDate', () => {
+    it('returns the last commit date for the file', async () => {
+      const file = join(repo, 'dated.ts');
+      writeFileSync(file, 'export const value = 1;');
+      git(repo, 'add', 'dated.ts');
+      gitCommitAt(repo, 'initial', '2026-05-01T12:00:00Z');
+
+      const date = await getFileLastModifiedDate(repo, 'dated.ts');
+      expect(date).toBeInstanceOf(Date);
+      expect(date?.toISOString()).toBe('2026-05-01T12:00:00.000Z');
+    });
+
+    it('returns undefined when there are no commits', async () => {
+      expect(await getFileLastModifiedDate(repo, 'missing.ts')).toBeUndefined();
+    });
+
+    it('returns undefined outside a git repository', async () => {
+      expect(await getFileLastModifiedDate(tmpdir(), 'missing.ts')).toBeUndefined();
     });
   });
 });

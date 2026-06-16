@@ -59,23 +59,32 @@ describe('RuleRegistry', () => {
       analyze: (): Issue[] => [],
     });
     registry.register(rule);
-    const enabled = registry.createContexts(makeConfig(), 'Button.tsx');
+    const enabled = registry.createContexts(makeConfig(), 'Button.tsx', '/tmp');
     expect(enabled).toHaveLength(1);
     expect(enabled[0].context).toEqual({ filePath: 'Button.tsx' });
   });
 
-  it('loads all seven P0 built-in rules', () => {
+  it('loads all built-in rules', () => {
     const registry = new RuleRegistry();
     registry.loadBuiltins();
     const rules = registry.getRules();
-    expect(rules).toHaveLength(7);
     expect(rules.map((r) => r.id).sort()).toEqual([
+      'arch/astro-island-leak',
+      'component/shadcn-prop-mismatch',
       'logic/boundary-violation',
       'logic/ghost-defensive',
+      'logic/qwik-hook-leak',
       'logic/zombie-state',
+      'perf/cls-image',
+      'typo/calc-fontsize',
+      'typo/calc-raw-px',
       'visual/arbitrary-escape',
+      'visual/clamp-soup',
+      'visual/forced-layout',
       'visual/generic-centering',
+      'wcag/dragging-movements',
       'wcag/focus-appearance',
+      'wcag/focus-obscured',
       'wcag/target-size',
     ]);
   });

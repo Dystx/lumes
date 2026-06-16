@@ -32,6 +32,11 @@ export const boundaryViolationRule = createRule<BoundaryViolationContext>({
             line: component.line,
             column: component.column,
             advice: "Add the 'use client' directive or move the hook to a client component.",
+            fix: {
+              kind: 'insert',
+              description: 'Insert "use client" directive',
+              targetFile: facts.filePath,
+            },
           });
         }
       }

@@ -204,6 +204,145 @@ describe('scan-based commands', () => {
     expect(report.slopIndex).toBeLessThan(unfilteredReport.slopIndex);
     expect(exitCode).toBe(0);
   });
+
+  it('outputs valid SARIF v2.1.0 JSON with --format sarif', async () => {
+    const { exitCode, stdout } = await run(['--workspace', dir, '--format', 'sarif']);
+    expect(exitCode).toBe(1);
+    const parsed = JSON.parse(stdout) as {
+      $schema: string;
+      version: string;
+      runs: Array<{
+        tool: { driver: { name: string; version: string; rules: unknown[] } };
+        results: unknown[];
+      }>;
+    };
+    expect(parsed.$schema).toBe('https://json.schemastore.org/sarif-2.1.0.json');
+    expect(parsed.version).toBe('2.1.0');
+    expect(parsed.runs).toHaveLength(1);
+    expect(parsed.runs[0].tool.driver.name).toBe('slop-audit');
+    expect(parsed.runs[0].tool.driver.version).toBe('1.0.0');
+    expect(parsed.runs[0].results.length).toBeGreaterThan(0);
+    expect(parsed.runs[0].tool.driver.rules.length).toBeGreaterThan(0);
+  });
+
+  it('prints a migration ROI heatmap with --heatmap', async () => {
+    const { exitCode, stdout } = await run(['--workspace', dir, '--heatmap']);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('ROI');
+    expect(stdout).toContain('Score');
+    expect(stdout).toContain('Recency');
+    expect(stdout).toContain('Churn');
+    expect(stdout).toContain('File');
+    expect(stdout).toContain('src/AiSlop.tsx');
+  });
+
+  it('prints heatmap as JSON with --heatmap --format json', async () => {
+    const { exitCode, stdout } = await run(['--workspace', dir, '--heatmap', '--format', 'json']);
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as Array<{ filePath: string; roi: number }>;
+    expect(parsed.length).toBeGreaterThan(0);
+    expect(parsed[0].filePath).toMatch(/src\/.+\.tsx$/);
+    expect(typeof parsed[0].roi).toBe('number');
+  });
+});
+
+function writeUseClientFixture(dir: string): void {
+  const srcDir = join(dir, 'src');
+  mkdirSync(srcDir, { recursive: true });
+  writeFileSync(
+    join(srcDir, 'ServerHook.tsx'),
+    `export function ServerHook() {
+  const [count, setCount] = useState(0);
+  return <div>{count}</div>;
+}
+`,
+  );
+}
+
+function writeLayoutArbitraryFixture(dir: string): void {
+  const srcDir = join(dir, 'src');
+  mkdirSync(srcDir, { recursive: true });
+  writeFileSync(
+    join(srcDir, 'LayoutArbitrary.tsx'),
+    `export function LayoutArbitrary() {
+  return <div className="p-[13px] m-[20px] w-[100px]" />;
+}
+`,
+  );
+}
+
+function writeFocusRingFixture(dir: string): void {
+  const srcDir = join(dir, 'src');
+  mkdirSync(srcDir, { recursive: true });
+  writeFileSync(
+    join(srcDir, 'FocusRing.tsx'),
+    `export function FocusRing() {
+  return <button className="outline-none">click</button>;
+}
+`,
+  );
+  writeFileSync(join(dir, 'globals.css'), 'body { margin: 0; }\n');
+  writeFileSync(
+    join(dir, 'slop-audit.config.mjs'),
+    `export default {
+  globalCssTarget: '${join(dir, 'globals.css').replace(/\\/g, '\\\\')}',
+};
+`,
+  );
+}
+
+describe('--fix flag', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = createTmpDir();
+  });
+
+  afterEach(() => {
+    cleanupTempDir(dir);
+  });
+
+  it('inserts "use client" for server-component hook violations', async () => {
+    writeUseClientFixture(dir);
+    const { exitCode, stdout } = await run(['--workspace', dir, '--fix']);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('Fixes applied: 1');
+    const content = readFileSync(join(dir, 'src', 'ServerHook.tsx'), 'utf8');
+    expect(content.startsWith('"use client";')).toBe(true);
+  });
+
+  it('replaces layout arbitrary values with nearest Tailwind tokens', async () => {
+    writeLayoutArbitraryFixture(dir);
+    const { exitCode, stdout } = await run(['--workspace', dir, '--fix']);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('Fixes applied:');
+    const content = readFileSync(join(dir, 'src', 'LayoutArbitrary.tsx'), 'utf8');
+    expect(content).toContain('className="p-3 m-5 w-25"');
+  });
+
+  it('injects a versioned focus-ring CSS anchor into globalCssTarget', async () => {
+    writeFocusRingFixture(dir);
+    const { exitCode, stdout } = await run(['--workspace', dir, '--fix']);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('Fixes applied:');
+    const css = readFileSync(join(dir, 'globals.css'), 'utf8');
+    expect(css).toContain('@slop-audit:v1.0.0:fix:focus-ring');
+    expect(css).toContain(':focus-visible');
+  });
+
+  it('is idempotent when run twice', async () => {
+    writeUseClientFixture(dir);
+    const first = await run(['--workspace', dir, '--fix']);
+    expect(first.exitCode).toBe(0);
+    expect(first.stdout).toContain('Fixes applied: 1');
+
+    const second = await run(['--workspace', dir, '--fix']);
+    expect(second.exitCode).toBe(0);
+    expect(second.stdout).toContain('Fixes applied: 0');
+
+    const content = readFileSync(join(dir, 'src', 'ServerHook.tsx'), 'utf8');
+    expect(content.match(/"use client";/g)).toHaveLength(1);
+  });
 });
 
 describe('default scan subcommand', () => {

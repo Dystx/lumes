@@ -1,5 +1,5 @@
 import { Command, InvalidArgumentError } from 'commander';
-import { existsSync, writeFileSync, watch, statSync, type FSWatcher } from 'node:fs';
+import { existsSync, writeFileSync, readFileSync, watch, statSync, rmSync, type FSWatcher } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
@@ -8,6 +8,7 @@ import { discoverFiles } from './discover';
 import { getGitHead, getGitRoot, getStagedFiles, getFilesSince } from './git';
 import { installHook, uninstallHook } from './installer';
 import { WorkerPool } from './engine/pool';
+import { scanFile } from './engine/worker';
 import {
   scoreFile,
   aggregateReport,
@@ -29,6 +30,13 @@ import { formatAdvice } from './report/advice';
 import { buildHeatmap, formatHeatmap } from './report/heatmap';
 import { applyFixes, type FixResult } from './fix';
 import { readRuns, appendRun } from './engine/memory';
+import { runProjectRules } from './rules/project';
+import {
+  refreshRegistrySnapshot,
+  copyBundledSnapshotToCache,
+  isRegistryFresh,
+  BUNDLED_REGISTRY_VERSION,
+} from './rules/registry-loader';
 import {
   VERSION,
   type FileScanResult,
@@ -58,6 +66,7 @@ export interface ScanProjectOptions {
   workerScript?: string;
   strict?: boolean;
   noIncrease?: boolean;
+  cache?: boolean;
 }
 
 interface ScanRunOptions extends Omit<ScanProjectOptions, 'cwd'> {
@@ -67,6 +76,7 @@ interface ScanRunOptions extends Omit<ScanProjectOptions, 'cwd'> {
   watch?: boolean;
   quiet?: boolean;
   trend?: number;
+  cache?: boolean;
 }
 
 interface CliGlobalOptions extends ScanRunOptions {
@@ -113,8 +123,9 @@ function findConfigPath(cwd: string): string | undefined {
 }
 
 export function colorForSlop(slopIndex: number): string {
-  if (slopIndex >= 50) return 'red';
-  if (slopIndex >= 25) return 'yellow';
+  if (slopIndex >= 76) return 'red';
+  if (slopIndex >= 51) return 'orange';
+  if (slopIndex >= 26) return 'yellow';
   return 'green';
 }
 
@@ -156,22 +167,70 @@ function renderTrend(runs: { slopIndex: number }[], count: number): string {
   return `Slop trend (last ${latest.length} runs): ${values.map((v) => Math.round(v)).join(' ')} ${sparkline}`;
 }
 
-function stagedScoresThresholdExceeded(scores: ComponentScore[], config: ResolvedConfig): boolean {
-  if (scores.length === 0) return false;
-  const aggregated = aggregateReport(scores, [], config);
-  const stagedReport: ProjectReport = {
-    version: VERSION,
-    generatedAt: new Date().toISOString(),
-    slopIndex: aggregated.slopIndex,
-    assemblyHealth: aggregated.assemblyHealth,
-    categoryScores: aggregated.categoryScores,
-    p90Score: aggregated.p90Score,
-    peakScore: aggregated.peakScore,
-    componentCount: aggregated.componentCount,
-    components: aggregated.components,
-    issues: [],
-  };
-  return thresholdExceeded(stagedReport, config);
+interface StagedGatingResult {
+  failed: boolean;
+  reason?: string;
+}
+
+function stagedGating(
+  scores: ComponentScore[],
+  config: ResolvedConfig,
+  baseline: BaselineCache | undefined,
+): StagedGatingResult {
+  if (scores.length === 0) return { failed: false };
+
+  const individualThreshold = config.thresholds.individualSlopThreshold;
+  for (const score of scores) {
+    if (score.adjustedScore > individualThreshold) {
+      return {
+        failed: true,
+        reason: `Staged file ${score.filePath} exceeds individual threshold (${score.adjustedScore.toFixed(1)} > ${individualThreshold}).`,
+      };
+    }
+  }
+
+  if (!baseline) {
+    const aggregated = aggregateReport(scores, [], config);
+    const exceeded = aggregated.slopIndex > config.thresholds.meanSlop;
+    return {
+      failed: exceeded,
+      reason: exceeded ? 'Staged files exceed mean slop threshold (no active baseline).' : undefined,
+    };
+  }
+
+  const stagedPaths = new Set(scores.map((s) => s.filePath));
+  const cachedTotal = baseline.totalComponentCount;
+  let newStagedComponentCount = 0;
+  let modifiedDiff = 0;
+
+  for (const score of scores) {
+    const cached = baseline.scores[score.filePath];
+    if (cached) {
+      modifiedDiff += score.componentCount - cached.componentCount;
+    } else {
+      newStagedComponentCount += score.componentCount;
+    }
+  }
+
+  const virtualN = cachedTotal + newStagedComponentCount + modifiedDiff;
+  if (virtualN <= 0) {
+    return {
+      failed: false,
+      reason: 'Virtual component count is zero; skipping mean gating.',
+    };
+  }
+
+  const sumNewStagedScores = scores.reduce((sum, s) => sum + s.adjustedScore, 0);
+  const hypotheticalMean = sumNewStagedScores / virtualN;
+
+  if (hypotheticalMean > config.thresholds.meanSlop) {
+    return {
+      failed: true,
+      reason: `Hypothetical project mean (${hypotheticalMean.toFixed(1)}) exceeds threshold (${config.thresholds.meanSlop}).`,
+    };
+  }
+
+  return { failed: false };
 }
 
 export function filterIssues(
@@ -227,6 +286,64 @@ export function serializeConfig(config: ResolvedConfig): string {
   return `export default ${serializeValue(config, 0)};\n`;
 }
 
+function appendGitignore(cwd: string): void {
+  const gitignorePath = join(cwd, '.gitignore');
+  const entry = '.slop-audit/';
+  if (existsSync(gitignorePath)) {
+    const content = readFileSync(gitignorePath, 'utf8');
+    if (content.includes(entry)) return;
+    const normalized = content.endsWith('\n') ? content : `${content}\n`;
+    writeFileSync(gitignorePath, `${normalized}${entry}\n`);
+  } else {
+    writeFileSync(gitignorePath, `${entry}\n`);
+  }
+}
+
+async function runDoctor(cwd: string): Promise<void> {
+  // Parser binding check.
+  try {
+    const { parseFile: tryParse } = await import('./engine/parser');
+    const testFile = join(cwd, '.slop-audit', '.doctor-test.ts');
+    writeFileSync(testFile, 'export const x = 1;\n');
+    await tryParse(testFile);
+    rmSync(testFile, { force: true });
+    console.error('Parser bindings are functional.');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`Warning: parser binding check failed (${message}).`);
+  }
+
+  // Registry snapshot check.
+  const refresh = await refreshRegistrySnapshot(cwd);
+  if (!refresh.ok) {
+    copyBundledSnapshotToCache(cwd);
+  }
+  const fresh = isRegistryFresh(cwd);
+  if (!fresh) {
+    console.warn(
+      `Warning: shadcn/ui registry snapshot is missing or older than bundled version ${BUNDLED_REGISTRY_VERSION}.`,
+    );
+  } else {
+    console.error('shadcn/ui registry snapshot is up-to-date.');
+  }
+  console.error(refresh.message);
+
+  // Baseline cache structural integrity check.
+  const baselineCache = loadBaseline(cwd);
+  if (baselineCache) {
+    const configHash = hashConfig(await loadConfig(cwd));
+    const gitHead = (await getGitHead(cwd)) ?? 'unknown';
+    const validation = validateBaseline(baselineCache, configHash, gitHead);
+    if (validation.valid) {
+      console.error('Baseline cache is structurally valid and matches config/git state.');
+    } else {
+      console.warn(`Warning: baseline cache invalid: ${validation.reason}`);
+    }
+  } else {
+    console.warn('Warning: no baseline cache found at .slop-audit/cache/baseline.json.');
+  }
+}
+
 function buildBaselineCache(
   report: ProjectReport,
   configHash: string,
@@ -253,8 +370,10 @@ function buildBaselineCache(
 interface ScanRunResult {
   report: ProjectReport;
   scores: ComponentScore[];
+  results: FileScanResult[];
   config: ResolvedConfig;
   noIncreaseFailure: boolean;
+  baseline?: BaselineCache;
 }
 
 async function runScan(
@@ -274,8 +393,8 @@ async function runScan(
     config.exclude = [...config.exclude, ...options.exclude];
   }
 
-  if (options.doctor) {
-    console.warn('Warning: --doctor is not implemented');
+  if (options.cache) {
+    process.env.SLOP_AUDIT_CACHE = '1';
   }
 
   let files: string[];
@@ -340,7 +459,8 @@ async function runScan(
 
   const aggregated = aggregateReport(scores, issueGroups, config);
 
-  const allIssues = results.flatMap((result) => result.issues);
+  const projectIssues = runProjectRules(results, config);
+  const allIssues = [...results.flatMap((result) => result.issues), ...projectIssues];
   allIssues.sort((a, b) => SEVERITY_WEIGHTS[b.severity] - SEVERITY_WEIGHTS[a.severity]);
 
   const configPath = findConfigPath(cwd);
@@ -381,7 +501,7 @@ async function runScan(
     appendRun(cwd, report, thresholdExceeded(report, config));
   }
 
-  return { report, scores, config, noIncreaseFailure };
+  return { report, scores, results, config, noIncreaseFailure, baseline };
 }
 
 export async function scanProject(options: ScanProjectOptions): Promise<ProjectReport> {
@@ -485,12 +605,61 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
   let closed = false;
   let watcher: FSWatcher | undefined;
 
+  const scoresMap = new Map<string, ComponentScore>();
+  const issueGroupsMap = new Map<string, Issue[]>();
+  let currentConfig: ResolvedConfig | undefined;
+  let currentBaseline: BaselineCache | undefined;
+
   function getBaselineMtime(): number | undefined {
     try {
       return statSync(baselinePath(cwd)).mtimeMs;
     } catch {
       return undefined;
     }
+  }
+
+  function buildReport(): ProjectReport {
+    const scores = Array.from(scoresMap.values());
+    const issueGroups = Array.from(issueGroupsMap.entries()).map(([filePath, issues]) => ({
+      filePath,
+      issues,
+    }));
+    const aggregated = aggregateReport(scores, issueGroups, currentConfig ?? DEFAULT_CONFIG);
+    const allIssues = Array.from(issueGroupsMap.values()).flat();
+    allIssues.sort((a, b) => SEVERITY_WEIGHTS[b.severity] - SEVERITY_WEIGHTS[a.severity]);
+
+    return {
+      version: VERSION,
+      generatedAt: new Date().toISOString(),
+      configPath,
+      slopIndex: aggregated.slopIndex,
+      assemblyHealth: aggregated.assemblyHealth,
+      categoryScores: aggregated.categoryScores,
+      p90Score: aggregated.p90Score,
+      peakScore: aggregated.peakScore,
+      componentCount: aggregated.componentCount,
+      components: aggregated.components,
+      issues: allIssues,
+    };
+  }
+
+  async function applyResult(result: FileScanResult): Promise<void> {
+    result.issues = filterIssues(result.issues, options);
+    for (const issue of result.issues) {
+      if (issue.filePath === undefined) {
+        issue.filePath = result.filePath;
+      }
+    }
+
+    const multiplier = resolveFrameworkMultiplier(currentConfig ?? DEFAULT_CONFIG);
+    const score = scoreFile(result, multiplier, currentConfig ?? DEFAULT_CONFIG, currentBaseline);
+    scoresMap.set(result.filePath, score);
+    issueGroupsMap.set(result.filePath, result.issues);
+  }
+
+  async function scanSingleFile(filePath: string): Promise<void> {
+    const result = await scanFile(filePath, currentConfig ?? DEFAULT_CONFIG);
+    await applyResult(result);
   }
 
   process.once('SIGINT', () => {
@@ -513,7 +682,14 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
     }
 
     try {
-      const { report } = await runScan(options, paths);
+      const { report, results, config, baseline } = await runScan(options, paths);
+      currentConfig = config;
+      currentBaseline = baseline;
+      scoresMap.clear();
+      issueGroupsMap.clear();
+      for (const result of results) {
+        await applyResult(result);
+      }
       await outputScanResults(report, options, cwd);
 
       if (!options.quiet) {
@@ -534,6 +710,8 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
 
   if (closed) return;
 
+  const currentFiles = new Set(issueGroupsMap.keys());
+
   watcher = watch(
     cwd,
     { recursive: true },
@@ -549,7 +727,31 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
       debounceTimer = setTimeout(() => {
         debounceTimer = undefined;
         const configChanged = configPath !== undefined && changedPath === configPath;
-        void doScan(configChanged);
+        const currentBaselineMtime = getBaselineMtime();
+        const baselineChanged = currentBaselineMtime !== baselineMtime;
+
+        if (configChanged || baselineChanged) {
+          void doScan(configChanged);
+          return;
+        }
+
+        if (!currentFiles.has(changedPath)) {
+          void doScan(false);
+          return;
+        }
+
+        void (async () => {
+          try {
+            await scanSingleFile(changedPath);
+            const report = buildReport();
+            await outputScanResults(report, options, cwd);
+            if (!options.quiet) {
+              console.error(`Rescanned ${changedPath}. Watching for changes... (press Ctrl+C to stop)`);
+            }
+          } catch (err) {
+            console.error('Incremental scan failed:', err instanceof Error ? err.message : String(err));
+          }
+        })();
       }, 100);
     },
   );
@@ -582,7 +784,8 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       .option('--no-increase', 'exit 2 if slop index increased since last run')
       .option('--trend [n]', 'print a sparkline of the last n runs', parseTrend)
       .option('--json [path]', 'write JSON report to path or stdout')
-      .option('--staged', 'scan only staged files');
+      .option('--staged', 'scan only staged files')
+      .option('--cache', 'cache parsed AST results locally');
 
     program
       .command('init')
@@ -599,8 +802,14 @@ export async function runCli({ start }: { start: number }): Promise<void> {
           process.exit(2);
         }
         writeFileSync(configPath, serializeConfig(DEFAULT_CONFIG));
+        appendGitignore(cwd);
+        const refresh = await refreshRegistrySnapshot(cwd);
+        if (!refresh.ok) {
+          copyBundledSnapshotToCache(cwd);
+        }
         if (!options.quiet) {
           console.log(`Created ${configPath}`);
+          console.log(refresh.message);
         }
         if (cmdOptions.baseline) {
           const { report, config } = await runScan({ ...options, workspace: cwd });
@@ -699,13 +908,20 @@ export async function runCli({ start }: { start: number }): Promise<void> {
         process.exit(0);
       }
 
+      if (options.doctor) {
+        await runDoctor(cwd);
+        if (!options.watch) {
+          process.exit(0);
+        }
+      }
+
       if (options.watch) {
         await watchProject(options, cwd, paths);
         return;
       }
 
       const scanStart = performance.now();
-      const { report, scores, config, noIncreaseFailure } = await runScan(options, paths);
+      const { report, scores, config, noIncreaseFailure, baseline } = await runScan(options, paths);
       const scanElapsed = Math.round(performance.now() - scanStart);
       const totalElapsed = Math.round(performance.now() - start);
 
@@ -732,7 +948,8 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       renderOutput(report, options);
 
       let exitCode: 0 | 1 | 2 = thresholdExceeded(report, config) ? 1 : 0;
-      if (options.staged && stagedScoresThresholdExceeded(scores, config)) {
+      const stagedGatingResult = options.staged ? stagedGating(scores, config, baseline) : { failed: false };
+      if (options.staged && stagedGatingResult.failed) {
         exitCode = 1;
       }
       if (options.strict && report.issues.some((issue) => issue.severity === 'high')) {
@@ -746,8 +963,8 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       }
 
       if (exitCode === 1) {
-        if (options.staged) {
-          console.error('Gating failure: staged file(s) exceed slop threshold.');
+        if (options.staged && stagedGatingResult.reason) {
+          console.error(`Gating failure: ${stagedGatingResult.reason}`);
         } else {
           console.error('Slop thresholds exceeded.');
         }

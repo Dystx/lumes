@@ -5,7 +5,7 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const BEGIN_SENTINEL = '# slop-audit-hook-begin';
 const END_SENTINEL = '# slop-audit-hook-end';
@@ -18,6 +18,10 @@ export type HookResult = {
 };
 
 function hookPath(gitRoot: string): string {
+  const huskyDir = join(gitRoot, '.husky');
+  if (existsSync(huskyDir)) {
+    return join(huskyDir, 'pre-commit');
+  }
   return join(gitRoot, '.git', 'hooks', 'pre-commit');
 }
 
@@ -70,7 +74,7 @@ export function installHook(gitRoot: string): HookResult {
     };
   }
 
-  mkdirSync(join(gitRoot, '.git', 'hooks'), { recursive: true });
+  mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, SENTINEL_BLOCK, { mode: 0o755 });
   chmodSync(path, 0o755);
 

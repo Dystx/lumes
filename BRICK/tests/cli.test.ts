@@ -74,18 +74,23 @@ const makeReport = (
 });
 
 describe('colorForSlop', () => {
-  it('returns green for slop index below 25', () => {
+  it('returns green for slop index 0-25', () => {
     expect(colorForSlop(0)).toBe('green');
-    expect(colorForSlop(24.9)).toBe('green');
+    expect(colorForSlop(25)).toBe('green');
   });
 
-  it('returns yellow for slop index between 25 and 50', () => {
-    expect(colorForSlop(25)).toBe('yellow');
-    expect(colorForSlop(49.9)).toBe('yellow');
+  it('returns yellow for slop index 26-50', () => {
+    expect(colorForSlop(26)).toBe('yellow');
+    expect(colorForSlop(50)).toBe('yellow');
   });
 
-  it('returns red for slop index 50 or above', () => {
-    expect(colorForSlop(50)).toBe('red');
+  it('returns orange for slop index 51-75', () => {
+    expect(colorForSlop(51)).toBe('orange');
+    expect(colorForSlop(75)).toBe('orange');
+  });
+
+  it('returns red for slop index 76 or above', () => {
+    expect(colorForSlop(76)).toBe('red');
     expect(colorForSlop(100)).toBe('red');
   });
 });
@@ -98,8 +103,14 @@ describe('formatBadge', () => {
     expect(badge).toContain('[![');
   });
 
-  it('uses red color for high slop index', () => {
+  it('uses orange color for high slop index', () => {
     const report = makeReport({ slopIndex: 75 });
+    const badge = formatBadge(report);
+    expect(badge).toContain('orange');
+  });
+
+  it('uses red color for severe slop index', () => {
+    const report = makeReport({ slopIndex: 76 });
     const badge = formatBadge(report);
     expect(badge).toContain('red');
   });

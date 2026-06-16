@@ -86,15 +86,33 @@ export interface StylePropFact {
   column: number;
 }
 
+export interface AstroComponentFact {
+  tag: string;
+  hasClientDirective: boolean;
+  hasEventHandler: boolean;
+  line: number;
+  column: number;
+}
+
 export interface ScanFacts {
   filePath: string;
   astNodeCount: number;
   components: ComponentFacts[];
   staticClassNames: ClassNameFact[];
   interactiveElements: ElementFact[];
+  allElements: ElementFact[];
+  imageElements: ElementFact[];
+  imports: ImportFact[];
   hooks: HookFact[];
   logicalExpressions: LogicalExpressionFact[];
   styleProps: StylePropFact[];
+  astroComponents: AstroComponentFact[];
+}
+
+export interface ImportFact {
+  source: string;
+  line: number;
+  column: number;
 }
 
 export interface FileScanResult {
@@ -103,6 +121,8 @@ export interface FileScanResult {
   astNodeCount: number;
   issues: Issue[];
   parseError?: string;
+  gapValues?: string[];
+  styleSources?: string[];
 }
 
 export interface ComponentScore {
@@ -157,6 +177,7 @@ export interface SlopAuditRun {
 export interface RuleContext {
   config: ResolvedConfig;
   filePath: string;
+  cwd: string;
 }
 
 export interface Rule<Context = unknown> {

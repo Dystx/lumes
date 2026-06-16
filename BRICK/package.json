@@ -22,6 +22,8 @@
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:perf": "tsx tests/perf/large-codebase.ts",
+    "generate-perf-fixtures": "tsx scripts/generate-perf-fixtures.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

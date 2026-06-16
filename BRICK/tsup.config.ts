@@ -19,4 +19,18 @@ export default defineConfig({
     'globby',
     'minimatch',
   ],
+  esbuildOptions(options, { format }) {
+    if (format === 'cjs') {
+      // Provide a working import.meta.url equivalent for the CJS build so
+      // createRequire/new URL(...) resolve relative to the emitted file.
+      options.define = {
+        ...(options.define ?? {}),
+        'import.meta.url': '__importMetaUrl',
+      };
+      options.banner = {
+        ...(options.banner ?? {}),
+        js: 'const __importMetaUrl = require("url").pathToFileURL(__filename).href;',
+      };
+    }
+  },
 });

@@ -31,4 +31,78 @@ describe('parseFile', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('parses an .astro file with frontmatter and JSX', async () => {
+    const dir = createTmpDir();
+    try {
+      const file = join(dir, 'Home.astro');
+      writeFileSync(
+        file,
+        `---\nconst title = 'Home';\n---\n<html lang="en">\n  <body>\n    <h1 client:load>{title}</h1>\n  </body>\n</html>\n`,
+      );
+      const result = await parseFile(file);
+      expect(result.ast.type).toBe('Module');
+      expect(result.nodeCount).toBeGreaterThan(5);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('parses an .astro file with no frontmatter', async () => {
+    const dir = createTmpDir();
+    try {
+      const file = join(dir, 'Plain.astro');
+      writeFileSync(file, `<div>hello</div>\n`);
+      const result = await parseFile(file);
+      expect(result.ast.type).toBe('Module');
+      expect(result.nodeCount).toBeGreaterThan(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('parses a .vue file with <script setup lang="ts">', async () => {
+    const dir = createTmpDir();
+    try {
+      const file = join(dir, 'Counter.vue');
+      writeFileSync(
+        file,
+        `<script setup lang="ts">\nconst count = ref(0);\nfunction inc() { count.value++; }\n</script>\n<template>\n  <button @click="inc">{{ count }}</button>\n</template>\n`,
+      );
+      const result = await parseFile(file);
+      expect(result.ast.type).toBe('Module');
+      expect(result.nodeCount).toBeGreaterThan(5);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('parses a .svelte file with a <script> block', async () => {
+    const dir = createTmpDir();
+    try {
+      const file = join(dir, 'Counter.svelte');
+      writeFileSync(
+        file,
+        `<script>\n  let count = 0;\n  function increment() { count += 1; }\n</script>\n<button on:click={increment}>{count}</button>\n`,
+      );
+      const result = await parseFile(file);
+      expect(result.ast.type).toBe('Module');
+      expect(result.nodeCount).toBeGreaterThan(5);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns an empty AST for a .vue file without a script block', async () => {
+    const dir = createTmpDir();
+    try {
+      const file = join(dir, 'TemplateOnly.vue');
+      writeFileSync(file, `<template><div>hi</div></template>\n`);
+      const result = await parseFile(file);
+      expect(result.ast.type).toBe('Module');
+      expect(result.ast.body).toHaveLength(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

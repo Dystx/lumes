@@ -37,7 +37,7 @@ async function runRule(
     writeFileSync(filePath, source);
     const { ast, nodeCount } = await parseFile(filePath);
     const facts = extractFacts(filePath, ast, nodeCount);
-    const context: RuleContext = { config, filePath };
+    const context: RuleContext = { config, filePath, cwd: dir };
     const ruleContext = targetSizeRule.create(context);
     return targetSizeRule.analyze(ruleContext, facts);
   } finally {

@@ -8,6 +8,8 @@ import type {
   HookFact,
   LogicalExpressionFact,
   StateBinding,
+  StylePropFact,
+  AstroComponentFact,
 } from '../types';
 
 type AnyNode = unknown;
@@ -157,6 +159,36 @@ function jsxElementName(node: AnyNode): string | undefined {
   return undefined;
 }
 
+function extractElementFact(node: AnyNode, lineOffsets: number[]): ElementFact | undefined {
+  if (!isObject(node) || node.type !== 'JSXOpeningElement') return undefined;
+  const tag = jsxElementName(node);
+  if (!tag) return undefined;
+
+  const attributes: Record<string, string | undefined> = {};
+  const classNames: ClassNameFact[] = [];
+  const attrs = node.attributes as AnyNode[];
+  if (Array.isArray(attrs)) {
+    for (const attr of attrs) {
+      if (!isObject(attr) || attr.type !== 'JSXAttribute') continue;
+      const name = jsxAttrName(attr);
+      if (!name) continue;
+      const raw = attr.value as AnyNode;
+      const valueNode = unwrapJsxExpression(raw);
+      const staticValue = stringLiteralValue(valueNode);
+      attributes[name] = staticValue;
+      if (name === 'className' || name === 'class') {
+        const classValue = staticClassValue(valueNode);
+        if (classValue !== undefined) {
+          const { line, column } = positionFrom(attr, lineOffsets);
+          classNames.push({ value: classValue, line, column });
+        }
+      }
+    }
+  }
+  const { line, column } = positionFrom(node, lineOffsets);
+  return { tag, attributes, classNames, line, column };
+}
+
 function unwrapJsxExpression(node: AnyNode): AnyNode {
   if (isObject(node) && node.type === 'JSXExpressionContainer') {
     return node.expression as AnyNode;
@@ -186,6 +218,79 @@ function sourceText(node: AnyNode, source: string): string {
   const end = spanEnd(node);
   if (start === undefined || end === undefined) return 'expr';
   return source.slice(Math.max(0, start - 1), Math.max(0, end - 1));
+}
+
+function lineNumberOf(source: string, index: number): number {
+  let line = 1;
+  for (let i = 0; i < index; i++) {
+    const char = source[i];
+    if (char === '\n') {
+      line++;
+    } else if (char === '\r') {
+      if (i + 1 < source.length && source[i + 1] === '\n') {
+        i++;
+      }
+      line++;
+    }
+  }
+  return line;
+}
+
+function extractAstroComponents(source: string): AstroComponentFact[] {
+  const results: AstroComponentFact[] = [];
+  const tagRegex = /<([A-Z][A-Za-z0-9]*)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagRegex.exec(source)) !== null) {
+    const tag = match[1];
+    const startIndex = match.index;
+    let i = startIndex + match[0].length;
+    let inString = false;
+    let stringChar = '';
+    let tagEnd = -1;
+
+    for (; i < source.length; i++) {
+      const ch = source[i];
+      if (inString) {
+        if (ch === '\\') {
+          i++;
+          continue;
+        }
+        if (ch === stringChar) {
+          inString = false;
+        }
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
+        inString = true;
+        stringChar = ch;
+        continue;
+      }
+      if (ch === '>' || ch === '/') {
+        tagEnd = i;
+        break;
+      }
+    }
+
+    if (tagEnd === -1) continue;
+
+    const tagSource = source.slice(startIndex, tagEnd + 1);
+    const hasClientDirective = /\sclient:[a-z]+(?:\s|>|\/|$)/i.test(tagSource);
+    const hasEventHandler = /\son[A-Z][a-zA-Z]*\s*=/i.test(tagSource);
+    const line = lineNumberOf(source, startIndex);
+    const lineStart = source.lastIndexOf('\n', startIndex) + 1;
+    const column = startIndex - lineStart + 1;
+
+    results.push({
+      tag,
+      hasClientDirective,
+      hasEventHandler,
+      line,
+      column,
+    });
+  }
+
+  return results;
 }
 
 function binaryAndChainLength(node: AnyNode): number {
@@ -259,8 +364,13 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
     components: [],
     staticClassNames: [],
     interactiveElements: [],
+    allElements: [],
+    imageElements: [],
+    imports: [],
     hooks: [],
     logicalExpressions: [],
+    styleProps: [],
+    astroComponents: [],
   };
 
   const ctx: WalkContext = {
@@ -471,33 +581,37 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
           facts.staticClassNames.push({ value: classValue, line, column });
         }
       }
+      if (attrName === 'style') {
+        const raw = node.value as AnyNode;
+        const valueNode = unwrapJsxExpression(raw);
+        if (isObject(valueNode)) {
+          const { line, column } = positionFrom(node, lineOffsets);
+          const propSource = sourceText(valueNode, source);
+          facts.styleProps.push({ source: propSource, line, column });
+        }
+      }
     }
 
-    // Detect interactive elements.
+    // Detect JSX elements (interactive, all, and images).
     if (type === 'JSXOpeningElement') {
-      const tag = jsxElementName(node);
-      if (tag === 'button' || tag === 'a' || tag === 'input') {
-        const attributes: Record<string, string | undefined> = {};
-        const classNames: ClassNameFact[] = [];
-        const attrs = node.attributes as AnyNode[];
-        for (const attr of attrs) {
-          if (!isObject(attr) || attr.type !== 'JSXAttribute') continue;
-          const name = jsxAttrName(attr);
-          if (!name) continue;
-          const raw = attr.value as AnyNode;
-          const valueNode = unwrapJsxExpression(raw);
-          const staticValue = stringLiteralValue(valueNode);
-          attributes[name] = staticValue;
-          if (name === 'className' || name === 'class') {
-            const classValue = staticClassValue(valueNode);
-            if (classValue !== undefined) {
-              const { line, column } = positionFrom(attr, lineOffsets);
-              classNames.push({ value: classValue, line, column });
-            }
-          }
+      const element = extractElementFact(node, lineOffsets);
+      if (element) {
+        facts.allElements.push(element);
+        if (element.tag === 'button' || element.tag === 'a' || element.tag === 'input') {
+          facts.interactiveElements.push(element);
         }
+        if (element.tag === 'img') {
+          facts.imageElements.push(element);
+        }
+      }
+    }
+
+    // Detect ES module imports.
+    if (type === 'ImportDeclaration') {
+      const source = stringLiteralValue(node.source as AnyNode);
+      if (source) {
         const { line, column } = positionFrom(node, lineOffsets);
-        facts.interactiveElements.push({ tag: tag as string, attributes, classNames, line, column });
+        facts.imports.push({ source, line, column });
       }
     }
 
@@ -591,6 +705,10 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
   }
 
   visit(ast);
+
+  if (filePath.toLowerCase().endsWith('.astro')) {
+    facts.astroComponents = extractAstroComponents(source);
+  }
 
   return facts;
 }

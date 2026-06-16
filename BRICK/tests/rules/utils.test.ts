@@ -9,6 +9,7 @@ import {
   isSizingToken,
   isFocusRingClass,
   isOutlineRemoval,
+  nearestTailwindSpacingToken,
 } from '../../src/rules/utils';
 
 describe('splitClassName', () => {
@@ -216,5 +217,40 @@ describe('isOutlineRemoval', () => {
     expect(isOutlineRemoval('outline-2')).toBe(false);
     expect(isOutlineRemoval('focus:outline-2')).toBe(false);
     expect(isOutlineRemoval('outline')).toBe(false);
+  });
+});
+
+describe('nearestTailwindSpacingToken', () => {
+  it('maps px values to the nearest spacing token', () => {
+    expect(nearestTailwindSpacingToken('p-[13px]')).toBe('p-3');
+    expect(nearestTailwindSpacingToken('m-[20px]')).toBe('m-5');
+    expect(nearestTailwindSpacingToken('w-[100px]')).toBe('w-25');
+  });
+
+  it('maps rem values to the nearest spacing token', () => {
+    expect(nearestTailwindSpacingToken('px-[1.5rem]')).toBe('px-6');
+    expect(nearestTailwindSpacingToken('gap-[0.5rem]')).toBe('gap-2');
+  });
+
+  it('caps values at the maximum token', () => {
+    expect(nearestTailwindSpacingToken('h-[9999px]')).toBe('h-96');
+  });
+
+  it('returns undefined for non-layout prefixes', () => {
+    expect(nearestTailwindSpacingToken('bg-[13px]')).toBeUndefined();
+    expect(nearestTailwindSpacingToken('text-[1rem]')).toBeUndefined();
+  });
+
+  it('returns undefined for complex or non-numeric values', () => {
+    expect(nearestTailwindSpacingToken('p-[calc(100%-1rem)]')).toBeUndefined();
+    expect(nearestTailwindSpacingToken('m-[auto]')).toBeUndefined();
+    expect(nearestTailwindSpacingToken('w-[100%]')).toBeUndefined();
+    expect(nearestTailwindSpacingToken('p-[1.5]')).toBeUndefined();
+  });
+
+  it('returns the full class with prefix and token', () => {
+    expect(nearestTailwindSpacingToken('min-w-[12px]')).toBe('min-w-3');
+    expect(nearestTailwindSpacingToken('max-h-[32px]')).toBe('max-h-8');
+    expect(nearestTailwindSpacingToken('inset-[16px]')).toBe('inset-4');
   });
 });

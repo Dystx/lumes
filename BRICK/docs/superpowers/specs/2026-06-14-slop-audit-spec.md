@@ -1,3 +1,5 @@
+> **⚠️ Superseded:** This document is an outdated 0.1.0-draft. The current v1.0.0 implementation is specified in `2026-06-14-slop-audit-v1.0.0-design.md`. Do not use this doc for new development.
+
 # slop-audit CLI Specification
 
 > Version: 0.1.0-draft  

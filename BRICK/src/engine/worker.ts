@@ -2,12 +2,13 @@ import { isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { parseFile } from './parser';
 import { extractFacts } from './visitor';
 import { RuleRegistry } from '../rules/registry';
-import type { FileScanResult, ResolvedConfig } from '../types';
+import type { FileScanResult, ResolvedConfig, ScanFacts } from '../types';
 
 export async function scanFile(
   filePath: string,
   config: ResolvedConfig,
   registry?: RuleRegistry,
+  cwd = process.cwd(),
 ): Promise<FileScanResult> {
   try {
     const { ast, nodeCount } = await parseFile(filePath);
@@ -17,14 +18,19 @@ export async function scanFile(
     if (!registry) {
       activeRegistry.loadBuiltins();
     }
-    const rules = activeRegistry.createContexts(config, filePath);
+    const rules = activeRegistry.createContexts(config, filePath, cwd);
     const issues = rules.flatMap(({ rule, context }) => rule.analyze(context, facts));
+
+    const gapValues = collectGapValues(facts);
+    const styleSources = collectStyleSources(facts);
 
     return {
       filePath,
       componentCount: facts.components.length,
       astNodeCount: nodeCount,
       issues,
+      gapValues,
+      styleSources,
     };
   } catch (err) {
     return {
@@ -33,6 +39,8 @@ export async function scanFile(
       astNodeCount: 0,
       issues: [],
       parseError: err instanceof Error ? err.message : String(err),
+      gapValues: [],
+      styleSources: [],
     };
   }
 }
@@ -54,6 +62,32 @@ async function run(): Promise<void> {
     const result = await scanFile(filePath, config, registry);
     parentPort?.postMessage(result);
   }
+}
+
+function collectGapValues(facts: ScanFacts): string[] {
+  const values: string[] = [];
+  for (const { value } of facts.staticClassNames) {
+    for (const token of value.split(/\s+/)) {
+      if (/^gap(-[xy])?-/.test(token)) {
+        values.push(token);
+      }
+    }
+  }
+  const gapRegex = /\bgap\s*:\s*([^;]+)/gi;
+  for (const { source } of facts.styleProps) {
+    let match: RegExpExecArray | null;
+    while ((match = gapRegex.exec(source)) !== null) {
+      values.push(match[1].trim());
+    }
+  }
+  return values;
+}
+
+function collectStyleSources(facts: ScanFacts): string[] {
+  return [
+    ...facts.staticClassNames.map((c) => c.value),
+    ...facts.styleProps.map((s) => s.source),
+  ];
 }
 
 if (!isMainThread) {

@@ -1,0 +1,49 @@
+import type { Rule, Issue, RuleContext, ScanFacts } from '../../types';
+import { createRule } from '../rule';
+
+const REACT_HOOKS = new Set(['useState', 'useEffect', 'useContext']);
+
+export interface QwikHookLeakContext {
+  isQwikFramework: boolean;
+}
+
+function importsQwik(facts: ScanFacts): boolean {
+  return facts.imports.some(
+    (imp) => imp.source === '@builder.io/qwik' || imp.source.startsWith('@builder.io/qwik/'),
+  );
+}
+
+export const qwikHookLeakRule = createRule<QwikHookLeakContext>({
+  id: 'logic/qwik-hook-leak',
+  category: 'logic',
+  severity: 'high',
+  aiSpecific: true,
+  create(context: RuleContext): QwikHookLeakContext {
+    return { isQwikFramework: context.config.framework === 'qwik' };
+  },
+  analyze(context: QwikHookLeakContext, facts: ScanFacts): Issue[] {
+    if (!context.isQwikFramework && !importsQwik(facts)) {
+      return [];
+    }
+
+    const issues: Issue[] = [];
+    for (const hook of facts.hooks) {
+      if (REACT_HOOKS.has(hook.name)) {
+        issues.push({
+          ruleId: 'logic/qwik-hook-leak',
+          category: 'logic',
+          severity: 'high',
+          aiSpecific: true,
+          message: 'React hook used inside a Qwik component',
+          line: hook.line,
+          column: hook.column,
+          advice: 'Use Qwik primitives ($state, $effect, useSignal) instead of React hooks.',
+        });
+      }
+    }
+
+    return issues;
+  },
+});
+
+export default qwikHookLeakRule satisfies Rule<QwikHookLeakContext>;

@@ -59,3 +59,30 @@ export function getGitRoot(cwd: string): string | undefined {
     throw error;
   }
 }
+
+export async function getFileEditCount(
+  cwd: string,
+  filePath: string,
+  days: number,
+): Promise<number> {
+  const output = await runGit(cwd, [
+    'log',
+    '--oneline',
+    `--since=${days}.days`,
+    '--',
+    filePath,
+  ]);
+  if (!output) return 0;
+  return output.split('\n').filter((line) => line.trim() !== '').length;
+}
+
+export async function getFileLastModifiedDate(
+  cwd: string,
+  filePath: string,
+): Promise<Date | undefined> {
+  const output = await runGit(cwd, ['log', '-1', '--format=%ct', '--', filePath]);
+  if (!output) return undefined;
+  const timestamp = Number.parseInt(output, 10);
+  if (Number.isNaN(timestamp)) return undefined;
+  return new Date(timestamp * 1000);
+}
