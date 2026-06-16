@@ -14,8 +14,9 @@ export const DEFAULT_TYPOGRAPHY_SCALE = [
 ];
 
 export const DEFAULT_CONFIG: ResolvedConfig = {
-  include: ['src/**/*.{ts,tsx,js,jsx}'],
+  include: ['src/**/*.{ts,tsx,js,jsx,vue,svelte,astro}'],
   exclude: ['**/node_modules/**', '**/.next/**', '**/dist/**'],
+  projectMemory: true,
   rules: {
     'visual/arbitrary-escape': 'medium',
     'visual/generic-centering': 'low',
@@ -24,6 +25,7 @@ export const DEFAULT_CONFIG: ResolvedConfig = {
     'logic/ghost-defensive': 'medium',
     'wcag/target-size': 'high',
     'wcag/focus-appearance': 'high',
+    'typo/calc-raw-px': 'high',
   },
   frameworkMultipliers: {
     react: 1.0,

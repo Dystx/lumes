@@ -1,5 +1,5 @@
 import { Command, InvalidArgumentError } from 'commander';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync, watch, statSync, type FSWatcher } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
@@ -24,7 +24,11 @@ import {
 } from './engine/cache';
 import { formatPretty } from './report/pretty';
 import { formatJson } from './report/json';
+import { formatSarif } from './report/sarif';
 import { formatAdvice } from './report/advice';
+import { buildHeatmap, formatHeatmap } from './report/heatmap';
+import { applyFixes, type FixResult } from './fix';
+import { readRuns, appendRun } from './engine/memory';
 import {
   VERSION,
   type FileScanResult,
@@ -42,6 +46,8 @@ export { loadConfig, DEFAULT_CONFIG } from './config';
 export interface ScanProjectOptions {
   cwd: string;
   framework?: string;
+  include?: string[];
+  exclude?: string[];
   aiOnly?: boolean;
   humanOnly?: boolean;
   ignoreWcag22?: boolean;
@@ -50,6 +56,8 @@ export interface ScanProjectOptions {
   threadCount?: number;
   tighten?: boolean;
   workerScript?: string;
+  strict?: boolean;
+  noIncrease?: boolean;
 }
 
 interface ScanRunOptions extends Omit<ScanProjectOptions, 'cwd'> {
@@ -58,15 +66,30 @@ interface ScanRunOptions extends Omit<ScanProjectOptions, 'cwd'> {
   doctor?: boolean;
   watch?: boolean;
   quiet?: boolean;
+  trend?: number;
 }
 
 interface CliGlobalOptions extends ScanRunOptions {
-  format?: 'pretty' | 'json';
+  format?: 'pretty' | 'json' | 'sarif';
   json?: true | string;
   suggest?: boolean;
+  heatmap?: boolean;
 }
 
 function parseThreads(value: string): number {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError('must be a positive integer');
+  }
+  return parsed;
+}
+
+function collectGlob(value: string, previous: string[] = []): string[] {
+  return [...previous, value];
+}
+
+function parseTrend(value: string | undefined): number {
+  if (value === undefined) return 20;
   const parsed = parseInt(value, 10);
   if (Number.isNaN(parsed) || parsed <= 0) {
     throw new InvalidArgumentError('must be a positive integer');
@@ -107,6 +130,30 @@ export function thresholdExceeded(report: ProjectReport, config: ResolvedConfig)
     report.p90Score > config.thresholds.p90Slop ||
     report.peakScore > config.thresholds.individualSlopThreshold
   );
+}
+
+export function formatSparkline(values: number[]): string {
+  if (values.length === 0) return '';
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const blocks = '▁▂▃▄▅▆▇█';
+  if (max === min) {
+    return values.map(() => blocks[0]).join('');
+  }
+  return values
+    .map((value) => {
+      const ratio = (value - min) / (max - min);
+      const index = Math.round(ratio * (blocks.length - 1));
+      return blocks[Math.min(blocks.length - 1, index)];
+    })
+    .join('');
+}
+
+function renderTrend(runs: { slopIndex: number }[], count: number): string {
+  const latest = runs.slice(-count);
+  const values = latest.map((run) => run.slopIndex);
+  const sparkline = formatSparkline(values);
+  return `Slop trend (last ${latest.length} runs): ${values.map((v) => Math.round(v)).join(' ')} ${sparkline}`;
 }
 
 function stagedScoresThresholdExceeded(scores: ComponentScore[], config: ResolvedConfig): boolean {
@@ -207,6 +254,7 @@ interface ScanRunResult {
   report: ProjectReport;
   scores: ComponentScore[];
   config: ResolvedConfig;
+  noIncreaseFailure: boolean;
 }
 
 async function runScan(
@@ -215,18 +263,19 @@ async function runScan(
 ): Promise<ScanRunResult> {
   const cwd = resolve(options.workspace ?? process.cwd());
   const loadedConfig = await loadConfig(cwd);
-  const config: ResolvedConfig = options.framework
-    ? { ...loadedConfig, framework: options.framework }
-    : loadedConfig;
-
-  if (options.fix) {
-    console.warn('Warning: --fix is not implemented');
+  const config: ResolvedConfig = { ...loadedConfig };
+  if (options.framework) {
+    config.framework = options.framework;
   }
+  if (options.include && options.include.length > 0) {
+    config.include = options.include;
+  }
+  if (options.exclude && options.exclude.length > 0) {
+    config.exclude = [...config.exclude, ...options.exclude];
+  }
+
   if (options.doctor) {
     console.warn('Warning: --doctor is not implemented');
-  }
-  if (options.watch) {
-    console.warn('Warning: --watch is not implemented');
   }
 
   let files: string[];
@@ -311,12 +360,76 @@ async function runScan(
     baseline: baselineMeta,
   };
 
-  return { report, scores, config };
+  let noIncreaseFailure = false;
+  if (options.noIncrease) {
+    const previous = readRuns(cwd).at(-1);
+    if (previous) {
+      if (report.slopIndex > previous.slopIndex) {
+        noIncreaseFailure = true;
+        if (!options.quiet) {
+          console.error(
+            `Slop index increased from ${previous.slopIndex.toFixed(1)} to ${report.slopIndex.toFixed(1)}.`,
+          );
+        }
+      }
+    } else if (!options.quiet) {
+      console.warn('Warning: no previous run found; --no-increase has nothing to compare.');
+    }
+  }
+
+  if (config.projectMemory !== false) {
+    appendRun(cwd, report, thresholdExceeded(report, config));
+  }
+
+  return { report, scores, config, noIncreaseFailure };
 }
 
 export async function scanProject(options: ScanProjectOptions): Promise<ProjectReport> {
   const { report } = await runScan({ ...options, workspace: options.cwd });
   return report;
+}
+
+function printFixSummary(
+  results: FixResult[],
+  quiet: boolean,
+): { totalApplied: number; totalSkipped: number; hasErrors: boolean } {
+  let totalApplied = 0;
+  let totalSkipped = 0;
+  let hasErrors = false;
+
+  for (const result of results) {
+    totalApplied += result.applied.length;
+    totalSkipped += result.skipped.length;
+    if (result.errors && result.errors.length > 0) {
+      hasErrors = true;
+    }
+
+    if (quiet) continue;
+
+    const entries: string[] = [];
+    for (const app of result.applied) {
+      entries.push(`  [applied] ${app.ruleId}: ${app.description}`);
+    }
+    for (const app of result.skipped) {
+      entries.push(`  [skipped] ${app.ruleId}: ${app.description}`);
+    }
+    for (const err of result.errors ?? []) {
+      entries.push(`  [error] ${err}`);
+    }
+
+    if (entries.length > 0) {
+      console.log(result.filePath);
+      for (const entry of entries) {
+        console.log(entry);
+      }
+    }
+  }
+
+  if (!quiet) {
+    console.log(`Fixes applied: ${totalApplied}, skipped: ${totalSkipped}${hasErrors ? ', errors detected' : ''}`);
+  }
+
+  return { totalApplied, totalSkipped, hasErrors };
 }
 
 function renderOutput(report: ProjectReport, options: CliGlobalOptions): void {
@@ -345,9 +458,101 @@ function renderOutput(report: ProjectReport, options: CliGlobalOptions): void {
     return;
   }
 
+  if (options.format === 'sarif') {
+    const cwd = resolve(options.workspace ?? process.cwd());
+    console.log(formatSarif(report, { cwd }));
+    return;
+  }
+
   if (!options.quiet) {
     console.log(formatPretty(report));
   }
+}
+
+async function outputScanResults(report: ProjectReport, options: CliGlobalOptions, cwd: string): Promise<void> {
+  if (options.heatmap) {
+    const entries = await buildHeatmap(report, cwd);
+    console.log(formatHeatmap(entries, { json: options.format === 'json' }));
+    return;
+  }
+  renderOutput(report, options);
+}
+
+async function watchProject(options: CliGlobalOptions, cwd: string, paths: string[]): Promise<void> {
+  let baselineMtime: number | undefined;
+  let configPath = findConfigPath(cwd);
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let closed = false;
+  let watcher: FSWatcher | undefined;
+
+  function getBaselineMtime(): number | undefined {
+    try {
+      return statSync(baselinePath(cwd)).mtimeMs;
+    } catch {
+      return undefined;
+    }
+  }
+
+  process.once('SIGINT', () => {
+    if (closed) return;
+    closed = true;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (watcher) watcher.close();
+    process.exit(0);
+  });
+
+  async function doScan(configChanged: boolean): Promise<void> {
+    if (closed) return;
+
+    const currentBaselineMtime = getBaselineMtime();
+    const baselineChanged = currentBaselineMtime !== baselineMtime;
+    baselineMtime = currentBaselineMtime;
+
+    if (configChanged) {
+      configPath = findConfigPath(cwd);
+    }
+
+    try {
+      const { report } = await runScan(options, paths);
+      await outputScanResults(report, options, cwd);
+
+      if (!options.quiet) {
+        if (configChanged) {
+          console.error('Config changed; reloaded.');
+        } else if (baselineChanged) {
+          console.error('Baseline changed; reloaded.');
+        }
+        console.error('Watching for changes... (press Ctrl+C to stop)');
+      }
+    } catch (err) {
+      console.error('Scan failed:', err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  baselineMtime = getBaselineMtime();
+  await doScan(false);
+
+  if (closed) return;
+
+  watcher = watch(
+    cwd,
+    { recursive: true },
+    (_eventType, filename) => {
+      if (closed || !filename) return;
+
+      const changedPath = resolve(cwd, filename.toString());
+
+      // Ignore changes to the baseline cache itself to avoid feedback loops.
+      if (changedPath === baselinePath(cwd)) return;
+
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        debounceTimer = undefined;
+        const configChanged = configPath !== undefined && changedPath === configPath;
+        void doScan(configChanged);
+      }, 100);
+    },
+  );
 }
 
 export async function runCli({ start }: { start: number }): Promise<void> {
@@ -357,19 +562,25 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       .description('Detect AI-generated frontend slop')
       .version(VERSION)
       .option('--framework <name>', 'framework multiplier to apply')
+      .option('--include <glob>', 'include pattern (repeatable)', collectGlob, [])
+      .option('--exclude <glob>', 'exclude pattern (repeatable)', collectGlob, [])
       .option('--ai-only', 'only report AI-specific issues')
       .option('--human-only', 'only report human-facing issues')
       .option('--ignore-wcag22', 'ignore WCAG 2.2 related issues')
-      .option('--format <pretty|json>', 'output format', 'pretty')
+      .option('--format <pretty|json|sarif>', 'output format', 'pretty')
       .option('--threads <n>', 'number of worker threads', parseThreads)
       .option('--since <ref>', 'only scan files changed since git ref')
       .option('--workspace <path>', 'workspace/project path', process.cwd())
       .option('--tighten', 'tighten baseline allowances')
-      .option('--fix', 'apply auto-fixes (not implemented)')
+      .option('--fix', 'apply auto-fixes')
       .option('--doctor', 'run diagnostics (not implemented)')
-      .option('--watch', 'watch files and re-run (not implemented)')
+      .option('--watch', 'watch files and re-run')
       .option('--suggest', 'print remediation advice')
+      .option('--heatmap', 'print migration ROI heatmap')
       .option('--quiet', 'suppress non-error output')
+      .option('--strict', 'exit 2 if any high-severity issue remains')
+      .option('--no-increase', 'exit 2 if slop index increased since last run')
+      .option('--trend [n]', 'print a sparkline of the last n runs', parseTrend)
       .option('--json [path]', 'write JSON report to path or stdout')
       .option('--staged', 'scan only staged files');
 
@@ -465,16 +676,73 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       _options: CliGlobalOptions,
       command: Command,
     ): Promise<void> => {
-      const options = command.optsWithGlobals() as CliGlobalOptions;
+      const rawGlobals = command.optsWithGlobals() as CliGlobalOptions & { increase?: boolean };
+      const options: CliGlobalOptions = {
+        ...rawGlobals,
+        noIncrease: rawGlobals.increase === false,
+      };
+
+      if (options.heatmap && options.suggest) {
+        console.error('Error: --heatmap cannot be used with --suggest');
+        process.exit(2);
+      }
+
+      const cwd = resolve(options.workspace ?? process.cwd());
+
+      if (options.trend !== undefined) {
+        const runs = readRuns(cwd);
+        if (runs.length === 0) {
+          console.log('No trend data available.');
+        } else {
+          console.log(renderTrend(runs, options.trend));
+        }
+        process.exit(0);
+      }
+
+      if (options.watch) {
+        await watchProject(options, cwd, paths);
+        return;
+      }
+
       const scanStart = performance.now();
-      const { report, scores, config } = await runScan(options, paths);
+      const { report, scores, config, noIncreaseFailure } = await runScan(options, paths);
       const scanElapsed = Math.round(performance.now() - scanStart);
       const totalElapsed = Math.round(performance.now() - start);
+
+      if (options.fix) {
+        const fixResults = await applyFixes(report, config);
+        const { totalApplied, totalSkipped, hasErrors } = printFixSummary(fixResults, options.quiet ?? false);
+
+        if (!options.quiet) {
+          console.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
+        }
+
+        process.exit(hasErrors ? 1 : 0);
+      }
+
+      if (options.heatmap) {
+        const entries = await buildHeatmap(report, cwd);
+        console.log(formatHeatmap(entries, { json: options.format === 'json' }));
+        if (!options.quiet) {
+          console.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
+        }
+        process.exit(0);
+      }
+
       renderOutput(report, options);
 
-      let exitCode: 0 | 1 = thresholdExceeded(report, config) ? 1 : 0;
+      let exitCode: 0 | 1 | 2 = thresholdExceeded(report, config) ? 1 : 0;
       if (options.staged && stagedScoresThresholdExceeded(scores, config)) {
         exitCode = 1;
+      }
+      if (options.strict && report.issues.some((issue) => issue.severity === 'high')) {
+        exitCode = 2;
+        if (!options.quiet) {
+          console.error('High-severity issues found with --strict.');
+        }
+      }
+      if (noIncreaseFailure) {
+        exitCode = 2;
       }
 
       if (exitCode === 1) {

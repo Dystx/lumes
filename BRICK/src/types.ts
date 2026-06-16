@@ -17,6 +17,8 @@ export interface FixSuggestion {
   description: string;
   targetFile?: string;
   anchor?: string;
+  oldValue?: string;
+  newValue?: string;
 }
 
 export interface Issue {
@@ -30,6 +32,7 @@ export interface Issue {
   column: number;
   advice?: string;
   fix?: FixSuggestion;
+  fixes?: FixSuggestion[];
 }
 
 export interface ClassNameFact {
@@ -77,6 +80,12 @@ export interface LogicalExpressionFact {
   text: string;
 }
 
+export interface StylePropFact {
+  source: string;
+  line: number;
+  column: number;
+}
+
 export interface ScanFacts {
   filePath: string;
   astNodeCount: number;
@@ -85,6 +94,7 @@ export interface ScanFacts {
   interactiveElements: ElementFact[];
   hooks: HookFact[];
   logicalExpressions: LogicalExpressionFact[];
+  styleProps: StylePropFact[];
 }
 
 export interface FileScanResult {
@@ -135,6 +145,15 @@ export interface BaselineCache {
   scores: Record<string, { baselineScore: number; componentCount: number }>;
 }
 
+export interface SlopAuditRun {
+  timestamp: string;
+  version: string;
+  slopIndex: number;
+  categoryScores: Record<Category, number>;
+  topOffenseIds: string[];
+  thresholdExceeded: boolean;
+}
+
 export interface RuleContext {
   config: ResolvedConfig;
   filePath: string;
@@ -159,6 +178,7 @@ export interface ResolvedConfig {
   gapTokens?: string[];
   contextTaxCaps: { cleanCap: number; standardCap: number };
   globalCssTarget?: string;
+  projectMemory?: boolean;
   thresholds: {
     meanSlop: number;
     p90Slop: number;
