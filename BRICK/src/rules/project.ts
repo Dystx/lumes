@@ -29,41 +29,51 @@ export function analyzeGapMonopoly(results: FileScanResult[], config: ResolvedCo
   const id = 'layout/gap-monopoly';
   if (!isRuleEnabled(config, id)) return [];
 
-  const counts = new Map<string, number>();
-  let total = 0;
+  const gapValues: string[] = [];
+  let containerCount = 0;
   for (const result of results) {
-    for (const value of result.gapValues ?? []) {
-      counts.set(value, (counts.get(value) ?? 0) + 1);
-      total++;
-    }
+    const values = result.gapValues ?? [];
+    gapValues.push(...values);
+    containerCount += result.gapContainerCount ?? (values.length > 0 ? 1 : 0);
   }
 
+  if (containerCount === 0) return [];
+
+  const total = gapValues.length;
   if (total === 0) return [];
 
-  const gapTokens = config.gapTokens;
-  const hasExplicitTokens =
-    Array.isArray(gapTokens) && gapTokens.length >= 1 && gapTokens.length <= 3;
-  const tolerance = hasExplicitTokens ? 0.95 : 0.8;
-
-  const issues: Issue[] = [];
-  for (const [value, count] of counts) {
-    const ratio = count / total;
-    if (ratio >= tolerance) {
-      const percentage = Math.round(ratio * 100);
-      issues.push(
-        createProjectIssue(
-          id,
-          'layout',
-          config.rules[id] as Issue['severity'],
-          true,
-          `Gap value "${value}" dominates ${percentage}% of project gap declarations.`,
-          'Introduce more spacing variety or document the intentional uniform spacing system in config.gapTokens.',
-        ),
-      );
+  const freq = new Map<string, number>();
+  let maxFreq = 0;
+  let dominantValue = '';
+  for (const val of gapValues) {
+    const next = (freq.get(val) ?? 0) + 1;
+    freq.set(val, next);
+    if (next > maxFreq) {
+      maxFreq = next;
+      dominantValue = val;
     }
   }
 
-  return issues;
+  const ratio = maxFreq / total;
+  const designSystemRestricted =
+    Array.isArray(config.gapTokens) && config.gapTokens.length >= 1 && config.gapTokens.length <= 3;
+  const tolerance = designSystemRestricted ? 0.95 : containerCount < 20 ? 0.85 : 0.7;
+
+  if (ratio <= tolerance) return [];
+
+  const score = (ratio - tolerance) / (1 - tolerance);
+  if (score <= 0.5) return [];
+
+  return [
+    createProjectIssue(
+      id,
+      'layout',
+      config.rules[id] as Issue['severity'],
+      true,
+      `Gap value "${dominantValue}" dominates ${Math.round(ratio * 100)}% of ${containerCount} gap-declaring containers (score ${score.toFixed(2)}).`,
+      'Introduce more spacing variety or document the intentional uniform spacing system in config.gapTokens.',
+    ),
+  ];
 }
 
 function normalizeStyleSource(source: string): string {

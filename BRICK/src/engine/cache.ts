@@ -6,6 +6,11 @@ import type { BaselineCache, ResolvedConfig } from '../types';
 
 const BASELINE_VERSION = VERSION;
 
+function parseVersion(version: string): [number, number, number] {
+  const parts = version.split('.').map((part) => parseInt(part, 10));
+  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
+}
+
 function sanitizeForHash(value: unknown): unknown {
   if (value instanceof RegExp) {
     return { __type: 'RegExp', source: value.source, flags: value.flags };
@@ -34,7 +39,7 @@ export function baselinePath(projectPath: string): string {
 function isBaselineCache(value: unknown): value is BaselineCache {
   if (!value || typeof value !== 'object') return false;
   const obj = value as Record<string, unknown>;
-  if (obj.version !== BASELINE_VERSION) return false;
+  if (typeof obj.version !== 'string') return false;
   if (typeof obj.config_hash !== 'string') return false;
   if (typeof obj.git_head !== 'string') return false;
   if (typeof obj.baseline_created !== 'string') return false;
@@ -90,8 +95,24 @@ export function validateBaseline(
   cache: BaselineCache,
   configHash: string,
   gitHead: string,
-): { valid: boolean; reason?: string } {
-  if (cache.version !== BASELINE_VERSION) return { valid: false, reason: 'baseline version mismatch' };
+): { valid: boolean; reason?: string; warning?: string } {
+  const current = parseVersion(BASELINE_VERSION);
+  const cached = parseVersion(cache.version);
+
+  if (current[0] !== cached[0]) {
+    return {
+      valid: false,
+      reason: `baseline major version mismatch (${cache.version} vs ${BASELINE_VERSION})`,
+    };
+  }
+
+  if (current[1] !== cached[1] || current[2] !== cached[2]) {
+    return {
+      valid: true,
+      warning: `baseline minor/patch version mismatch (${cache.version} vs ${BASELINE_VERSION}); migrating`,
+    };
+  }
+
   if (cache.config_hash !== configHash) return { valid: false, reason: 'config_hash mismatch' };
   if (cache.git_head !== gitHead) return { valid: false, reason: 'git_head mismatch' };
   return { valid: true };

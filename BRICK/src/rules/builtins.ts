@@ -6,6 +6,7 @@ import { genericCenteringRule } from './visual/generic-centering';
 import { boundaryViolationRule } from './logic/boundary-violation';
 import { ghostDefensiveRule } from './logic/ghost-defensive';
 import { qwikHookLeakRule } from './logic/qwik-hook-leak';
+import { reactiveHookSoupRule } from './logic/reactive-hook-soup';
 import { zombieStateRule } from './logic/zombie-state';
 import { targetSizeRule } from './wcag/target-size';
 import { focusAppearanceRule } from './wcag/focus-appearance';
@@ -13,6 +14,7 @@ import { focusObscuredRule } from './wcag/focus-obscured';
 import { draggingMovementsRule } from './wcag/dragging-movements';
 import { calcRawPxRule } from './typo/calc-raw-px';
 import { calcFontSizeRule } from './typo/calc-fontsize';
+import { clampOffscaleRule } from './typo/clamp-offscale';
 import { clsImageRule } from './perf/cls-image';
 import { shadcnPropMismatchRule } from './component/shadcn';
 import { astroIslandLeakRule } from './arch/astro-island-leak';
@@ -25,6 +27,7 @@ export const builtinRules: Rule[] = [
   boundaryViolationRule,
   ghostDefensiveRule,
   qwikHookLeakRule,
+  reactiveHookSoupRule,
   zombieStateRule,
   targetSizeRule,
   focusAppearanceRule,
@@ -32,6 +35,7 @@ export const builtinRules: Rule[] = [
   draggingMovementsRule,
   calcRawPxRule,
   calcFontSizeRule,
+  clampOffscaleRule,
   clsImageRule,
   shadcnPropMismatchRule,
   astroIslandLeakRule,

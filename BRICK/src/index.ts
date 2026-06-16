@@ -143,6 +143,11 @@ export function thresholdExceeded(report: ProjectReport, config: ResolvedConfig)
   );
 }
 
+function baselineStatusMessage(baseline: BaselineMeta): string {
+  const date = new Date(baseline.createdAt).toLocaleString();
+  return `Baseline active since ${date} (Revision ${baseline.baselineRevision}). Run \`slop-audit --tighten\` to reduce baseline forgiveness by 10%.`;
+}
+
 export function formatSparkline(values: number[]): string {
   if (values.length === 0) return '';
   const min = Math.min(...values);
@@ -176,6 +181,7 @@ function stagedGating(
   scores: ComponentScore[],
   config: ResolvedConfig,
   baseline: BaselineCache | undefined,
+  cwd: string,
 ): StagedGatingResult {
   if (scores.length === 0) return { failed: false };
 
@@ -190,17 +196,13 @@ function stagedGating(
   }
 
   if (!baseline) {
-    const aggregated = aggregateReport(scores, [], config);
-    const exceeded = aggregated.slopIndex > config.thresholds.meanSlop;
-    return {
-      failed: exceeded,
-      reason: exceeded ? 'Staged files exceed mean slop threshold (no active baseline).' : undefined,
-    };
+    return { failed: false };
   }
 
   const stagedPaths = new Set(scores.map((s) => s.filePath));
   const cachedTotal = baseline.totalComponentCount;
   let newStagedComponentCount = 0;
+  let deletedStagedComponentCount = 0;
   let modifiedDiff = 0;
 
   for (const score of scores) {
@@ -212,7 +214,14 @@ function stagedGating(
     }
   }
 
-  const virtualN = cachedTotal + newStagedComponentCount + modifiedDiff;
+  for (const [filePath, cached] of Object.entries(baseline.scores)) {
+    if (stagedPaths.has(filePath)) continue;
+    if (!existsSync(filePath) && !existsSync(resolve(cwd, filePath))) {
+      deletedStagedComponentCount += cached.componentCount;
+    }
+  }
+
+  const virtualN = cachedTotal + newStagedComponentCount - deletedStagedComponentCount + modifiedDiff;
   if (virtualN <= 0) {
     return {
       failed: false,
@@ -220,8 +229,20 @@ function stagedGating(
     };
   }
 
-  const sumNewStagedScores = scores.reduce((sum, s) => sum + s.adjustedScore, 0);
-  const hypotheticalMean = sumNewStagedScores / virtualN;
+  let sumAllCachedAdjustedScores = 0;
+  let sumCachedStagedScores = 0;
+  let sumNewStagedScores = 0;
+
+  for (const score of scores) {
+    if (baseline.scores[score.filePath]) {
+      sumAllCachedAdjustedScores += score.adjustedScore;
+      sumCachedStagedScores += score.adjustedScore;
+    } else {
+      sumNewStagedScores += score.adjustedScore;
+    }
+  }
+
+  const hypotheticalMean = (sumAllCachedAdjustedScores - sumCachedStagedScores + sumNewStagedScores) / virtualN;
 
   if (hypotheticalMean > config.thresholds.meanSlop) {
     return {
@@ -429,6 +450,9 @@ async function runScan(
         baselineRevision: baseline.baseline_revision,
         createdAt: baseline.baseline_created,
       };
+      if (validation.warning && !options.quiet) {
+        console.warn(`Warning: ${validation.warning}.`);
+      }
     } else if (!options.quiet) {
       console.warn(`Baseline invalid: ${validation.reason}; ignoring.`);
     }
@@ -456,6 +480,21 @@ async function runScan(
     filePath: result.filePath,
     issues: result.issues,
   }));
+
+  if (options.since && baseline) {
+    const scannedPaths = new Set(results.map((result) => result.filePath));
+    for (const [filePath, cached] of Object.entries(baseline.scores)) {
+      if (scannedPaths.has(filePath)) continue;
+      scores.push({
+        filePath,
+        rawScore: 0,
+        componentScore: 0,
+        adjustedScore: 0,
+        componentCount: cached.componentCount,
+      });
+      issueGroups.push({ filePath, issues: [] });
+    }
+  }
 
   const aggregated = aggregateReport(scores, issueGroups, config);
 
@@ -693,6 +732,9 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
       await outputScanResults(report, options, cwd);
 
       if (!options.quiet) {
+        if (report.baseline) {
+          console.error(baselineStatusMessage(report.baseline));
+        }
         if (configChanged) {
           console.error('Config changed; reloaded.');
         } else if (baselineChanged) {
@@ -775,7 +817,7 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       .option('--workspace <path>', 'workspace/project path', process.cwd())
       .option('--tighten', 'tighten baseline allowances')
       .option('--fix', 'apply auto-fixes')
-      .option('--doctor', 'run diagnostics (not implemented)')
+      .option('--doctor', 'run diagnostics')
       .option('--watch', 'watch files and re-run')
       .option('--suggest', 'print remediation advice')
       .option('--heatmap', 'print migration ROI heatmap')
@@ -925,6 +967,10 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       const scanElapsed = Math.round(performance.now() - scanStart);
       const totalElapsed = Math.round(performance.now() - start);
 
+      if (report.baseline && !options.quiet) {
+        console.error(baselineStatusMessage(report.baseline));
+      }
+
       if (options.fix) {
         const fixResults = await applyFixes(report, config);
         const { totalApplied, totalSkipped, hasErrors } = printFixSummary(fixResults, options.quiet ?? false);
@@ -948,7 +994,7 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       renderOutput(report, options);
 
       let exitCode: 0 | 1 | 2 = thresholdExceeded(report, config) ? 1 : 0;
-      const stagedGatingResult = options.staged ? stagedGating(scores, config, baseline) : { failed: false };
+      const stagedGatingResult = options.staged ? stagedGating(scores, config, baseline, cwd) : { failed: false };
       if (options.staged && stagedGatingResult.failed) {
         exitCode = 1;
       }

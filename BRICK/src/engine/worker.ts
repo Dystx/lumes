@@ -30,6 +30,7 @@ export async function scanFile(
       astNodeCount: nodeCount,
       issues,
       gapValues,
+      gapContainerCount: gapValues.length > 0 ? 1 : 0,
       styleSources,
     };
   } catch (err) {
@@ -40,6 +41,7 @@ export async function scanFile(
       issues: [],
       parseError: err instanceof Error ? err.message : String(err),
       gapValues: [],
+      gapContainerCount: 0,
       styleSources: [],
     };
   }

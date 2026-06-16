@@ -122,6 +122,7 @@ export interface FileScanResult {
   issues: Issue[];
   parseError?: string;
   gapValues?: string[];
+  gapContainerCount?: number;
   styleSources?: string[];
 }
 

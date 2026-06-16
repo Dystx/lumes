@@ -119,9 +119,15 @@ describe('cache', () => {
     expect(loadBaseline(projectPath)).toBeUndefined();
   });
 
-  it('loadBaseline returns undefined when version is mismatched', () => {
-    saveBaseline(projectPath, makeCache({ version: '0.0.0' }));
-    expect(loadBaseline(projectPath)).toBeUndefined();
+  it('loadBaseline loads cache with version mismatch and validateBaseline rejects major mismatch', () => {
+    const cache = makeCache({ version: '0.0.0' });
+    saveBaseline(projectPath, cache);
+    const loaded = loadBaseline(projectPath);
+    expect(loaded).toEqual(cache);
+    expect(validateBaseline(loaded!, cache.config_hash, cache.git_head)).toEqual({
+      valid: false,
+      reason: 'baseline major version mismatch (0.0.0 vs 1.0.0)',
+    });
   });
 
   it('loadBaseline returns undefined when required fields are missing', () => {
@@ -131,11 +137,19 @@ describe('cache', () => {
     expect(loadBaseline(projectPath)).toBeUndefined();
   });
 
-  it('validateBaseline fails on version mismatch', () => {
+  it('validateBaseline fails on major version mismatch', () => {
     const cache = makeCache({ version: '0.0.0' });
     expect(validateBaseline(cache, cache.config_hash, cache.git_head)).toEqual({
       valid: false,
-      reason: 'baseline version mismatch',
+      reason: 'baseline major version mismatch (0.0.0 vs 1.0.0)',
+    });
+  });
+
+  it('validateBaseline warns but accepts minor/patch version mismatch', () => {
+    const cache = makeCache({ version: '1.2.3' });
+    expect(validateBaseline(cache, cache.config_hash, cache.git_head)).toEqual({
+      valid: true,
+      warning: 'baseline minor/patch version mismatch (1.2.3 vs 1.0.0); migrating',
     });
   });
 });
