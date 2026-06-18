@@ -162,11 +162,14 @@ export function formatPretty(report: ProjectReport): string {
 
   if (report.parseErrors && report.parseErrors.length > 0) {
     sections.push(
-      chalk.yellow(`Parse errors (${report.parseErrors.length}) — results may be incomplete:`),
+      chalk.yellow(`Parse errors (${report.parseErrors.length}) — these files were skipped:`),
     );
     for (const { filePath, error } of report.parseErrors) {
-      sections.push(`  ${filePath}: ${error}`);
+      const firstLine = error.split('\n')[0] ?? error;
+      sections.push(`  ${filePath}: ${firstLine}`);
     }
+    sections.push('');
+    sections.push(chalk.dim('Tip: add a path to `exclude` in your config to skip files the parser can\'t handle.'));
   }
 
   if (report.issues.length > 0) {

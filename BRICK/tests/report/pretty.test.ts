@@ -139,14 +139,27 @@ describe('formatPretty', () => {
     expect(output).toContain('Replace with a spacing token from the design system.');
   });
 
-  it('lists parse errors when present', () => {
-    const report = makeReport();
-    report.parseErrors = [{ filePath: 'src/bad.tsx', error: 'Unexpected token' }];
+  it('formats parse errors concisely with a tip', () => {
+    const report = makeReport({
+      parseErrors: [{ filePath: '/project/bad.tsx', error: 'Unexpected token\n  at line 5' }],
+    });
     const output = formatPretty(report);
 
-    expect(output).toContain('Parse errors (1)');
-    expect(output).toContain('src/bad.tsx');
-    expect(output).toContain('Unexpected token');
+    expect(output).toContain('Parse errors (1) — these files were skipped:');
+    expect(output).toContain('/project/bad.tsx: Unexpected token');
+    expect(output).not.toContain('at line 5');
+    expect(output).toContain('Tip: add a path to `exclude`');
+  });
+
+  it('truncates multi-line parse errors to the first line', () => {
+    const report = makeReport({
+      parseErrors: [{ filePath: 'src/deep.tsx', error: 'SyntaxError: invalid syntax\n  at Parser.parse\n  at Object.transform' }],
+    });
+    const output = formatPretty(report);
+
+    expect(output).toContain('src/deep.tsx: SyntaxError: invalid syntax');
+    expect(output).not.toContain('Parser.parse');
+    expect(output).not.toContain('Object.transform');
   });
 
   it('prints threshold status with plain labels', () => {
