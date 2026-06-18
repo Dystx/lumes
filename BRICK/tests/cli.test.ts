@@ -18,9 +18,10 @@ import {
   serializeConfig,
   scanProject,
   formatSparkline,
+  stagedGating,
   DEFAULT_CONFIG,
 } from '../src/index';
-import type { Issue, ProjectReport, ResolvedConfig } from '../src/types';
+import type { Issue, ProjectReport, ResolvedConfig, BaselineCache, ComponentScore } from '../src/types';
 
 beforeAll(assertDistBuilt);
 
@@ -476,6 +477,95 @@ describe('--trend', () => {
     const { exitCode, stdout } = await run(['--workspace', dir, '--trend']);
     expect(exitCode).toBe(0);
     expect(stdout).toContain('No trend data available.');
+  });
+});
+
+describe('stagedGating', () => {
+  const config: ResolvedConfig = {
+    ...DEFAULT_CONFIG,
+    thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
+  };
+  let dir: string;
+
+  beforeEach(() => {
+    dir = createTmpDir();
+  });
+
+  afterEach(() => {
+    cleanupTempDir(dir);
+  });
+
+  function score(overrides: Partial<ComponentScore> = {}): ComponentScore {
+    return {
+      filePath: join(dir, 'Button.tsx'),
+      rawScore: 0,
+      componentScore: 0,
+      adjustedScore: 0,
+      componentCount: 1,
+      ...overrides,
+    };
+  }
+
+  function makeBaseline(scores: Record<string, { baselineScore: number; componentCount: number }>): BaselineCache {
+    return {
+      version: '1.0.0',
+      config_hash: 'abc',
+      git_head: 'def',
+      baseline_created: new Date().toISOString(),
+      baseline_revision: 1,
+      totalComponentCount: Object.values(scores).reduce((sum, s) => sum + s.componentCount, 0),
+      scores,
+    };
+  }
+
+  it('passes when there are no staged scores', () => {
+    expect(stagedGating([], config, undefined, dir)).toEqual({ failed: false });
+  });
+
+  it('falls back to strict individual gating when baseline is missing', () => {
+    const scores = [score({ adjustedScore: 60 })];
+    const result = stagedGating(scores, config, undefined, dir);
+    expect(result.failed).toBe(true);
+    expect(result.reason).toContain('exceeds individual threshold');
+  });
+
+  it('passes strict individual gating when all scores are within threshold', () => {
+    const scores = [score({ adjustedScore: 40 })];
+    expect(stagedGating(scores, config, undefined, dir).failed).toBe(false);
+  });
+
+  it('rejects new staged files that exceed the individual threshold', () => {
+    writeFileSync(join(dir, 'Button.tsx'), '');
+    const baseline = makeBaseline({ 'Button.tsx': { baselineScore: 10, componentCount: 1 } });
+    const scores = [score({ filePath: join(dir, 'New.tsx'), adjustedScore: 60 })];
+    const result = stagedGating(scores, config, baseline, dir);
+    expect(result.failed).toBe(true);
+    expect(result.reason).toContain('New staged file');
+  });
+
+  it('allows new staged files within the individual threshold', () => {
+    writeFileSync(join(dir, 'Button.tsx'), '');
+    const baseline = makeBaseline({ 'Button.tsx': { baselineScore: 10, componentCount: 1 } });
+    const scores = [score({ filePath: join(dir, 'New.tsx'), adjustedScore: 40 })];
+    expect(stagedGating(scores, config, baseline, dir).failed).toBe(false);
+  });
+
+  it('rejects when the hypothetical project mean exceeds the threshold', () => {
+    writeFileSync(join(dir, 'Button.tsx'), '');
+    const baseline = makeBaseline({ 'Button.tsx': { baselineScore: 0, componentCount: 1 } });
+    const scores = [score({ adjustedScore: 60, componentCount: 1 })];
+    const result = stagedGating(scores, config, baseline, dir);
+    expect(result.failed).toBe(true);
+    expect(result.reason).toContain('Hypothetical project mean');
+  });
+
+  it('degrades to individual gating when virtual component count is zero', () => {
+    // Baseline references a deleted file, and the only staged file is new.
+    const baseline = makeBaseline({ 'Old.tsx': { baselineScore: 10, componentCount: 1 } });
+    const scores = [score({ filePath: join(dir, 'New.tsx'), adjustedScore: 60, componentCount: 1 })];
+    const result = stagedGating(scores, config, baseline, dir);
+    expect(result.failed).toBe(true);
+    expect(result.reason).toContain('exceeds individual threshold');
   });
 });
 

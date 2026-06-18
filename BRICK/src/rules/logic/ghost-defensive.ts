@@ -17,7 +17,7 @@ export const ghostDefensiveRule = createRule<GhostDefensiveContext>({
     const issues: Issue[] = [];
 
     for (const expression of facts.logicalExpressions) {
-      if (expression.depth >= context.maxDepth) {
+      if (expression.depth >= context.maxDepth && expression.isOptionalChainLike) {
         issues.push({
           ruleId: 'logic/ghost-defensive',
           category: 'logic',

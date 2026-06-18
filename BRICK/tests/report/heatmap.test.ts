@@ -206,8 +206,8 @@ describe('buildHeatmap churn weights', () => {
 describe('formatHeatmap', () => {
   it('renders a sorted text table with numeric columns', () => {
     const entries: HeatmapEntry[] = [
-      { filePath: 'src/B.tsx', adjustedScore: 90, recencyWeight: 1.0, churnWeight: 1.0, roi: 90, edits: 0 },
-      { filePath: 'src/A.tsx', adjustedScore: 80, recencyWeight: 1.5, churnWeight: 2.0, roi: 240, edits: 10 },
+      { filePath: 'src/B.tsx', adjustedScore: 90, componentScore: 90, recencyWeight: 1.0, churnWeight: 1.0, roi: 90, edits: 0 },
+      { filePath: 'src/A.tsx', adjustedScore: 80, componentScore: 80, recencyWeight: 1.5, churnWeight: 2.0, roi: 240, edits: 10 },
     ];
     const output = formatHeatmap(entries);
 
@@ -230,7 +230,7 @@ describe('formatHeatmap', () => {
 
   it('returns pretty-printed JSON when json option is true', () => {
     const entries: HeatmapEntry[] = [
-      { filePath: 'src/A.tsx', adjustedScore: 80, recencyWeight: 1.5, churnWeight: 2.0, roi: 240, edits: 10 },
+      { filePath: 'src/A.tsx', adjustedScore: 80, componentScore: 80, recencyWeight: 1.5, churnWeight: 2.0, roi: 240, edits: 10 },
     ];
     const output = formatHeatmap(entries, { json: true });
     const parsed = JSON.parse(output) as HeatmapEntry[];

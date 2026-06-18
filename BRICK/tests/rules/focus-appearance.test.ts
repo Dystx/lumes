@@ -65,10 +65,10 @@ describe('wcag/focus-appearance', () => {
     expect(issues[0].ruleId).toBe('wcag/focus-appearance');
   });
 
-  it('does not flag <button className="outline-none focus:ring-2" />', async () => {
+  it('flags <button className="outline-none focus:ring-2" /> as insufficient', async () => {
     const source = `export function Form() { return <button className="outline-none focus:ring-2" />; }`;
     const issues = await runRule(source, makeConfig());
-    expect(issues).toHaveLength(0);
+    expect(issues).toHaveLength(1);
   });
 
   it('does not flag <button className="focus:outline-none focus-visible:ring-2" />', async () => {

@@ -11,7 +11,7 @@ import {
   validateBaseline,
 } from '../../src/engine/cache';
 import { DEFAULT_CONFIG } from '../../src/config';
-import type { BaselineCache, ResolvedConfig } from '../../src/types';
+import type { BaselineCache, Category, ResolvedConfig } from '../../src/types';
 
 const createTmpDir = () => mkdtempSync(join(tmpdir(), 'slop-audit-cache-test-'));
 
@@ -110,6 +110,51 @@ describe('cache', () => {
     };
     const modifiedHash = hashConfig(modified);
     expect(modifiedHash).not.toBe(baseHash);
+  });
+
+  it('hashConfig ignores default-valued overrides so new defaults do not invalidate baselines', () => {
+    const baseHash = hashConfig(DEFAULT_CONFIG);
+    const withSameDefault: ResolvedConfig = {
+      ...DEFAULT_CONFIG,
+      wcag: {
+        ...DEFAULT_CONFIG.wcag,
+        targetSizeRequireTailwind: DEFAULT_CONFIG.wcag.targetSizeRequireTailwind,
+      },
+    };
+    expect(hashConfig(withSameDefault)).toBe(baseHash);
+  });
+
+  it('hashConfig ignores non-scoring fields like telemetry and projectMemory', () => {
+    const baseHash = hashConfig(DEFAULT_CONFIG);
+    const withToggles: ResolvedConfig = {
+      ...DEFAULT_CONFIG,
+      telemetry: !DEFAULT_CONFIG.telemetry,
+      projectMemory: !DEFAULT_CONFIG.projectMemory,
+    };
+    expect(hashConfig(withToggles)).toBe(baseHash);
+  });
+
+  it('hashConfig changes when categoryWeights change', () => {
+    const baseHash = hashConfig(DEFAULT_CONFIG);
+    const weights = DEFAULT_CONFIG.categoryWeights as Record<Category, number>;
+    const modified: ResolvedConfig = {
+      ...DEFAULT_CONFIG,
+      categoryWeights: {
+        ...weights,
+        visual: weights.visual + 1,
+      },
+    };
+    expect(hashConfig(modified)).not.toBe(baseHash);
+  });
+
+  it('hashConfig ignores include/exclude so default scan path changes do not invalidate baselines', () => {
+    const baseHash = hashConfig(DEFAULT_CONFIG);
+    const withDifferentPaths: ResolvedConfig = {
+      ...DEFAULT_CONFIG,
+      include: ['src/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
+      exclude: ['**/*.stories.tsx'],
+    };
+    expect(hashConfig(withDifferentPaths)).toBe(baseHash);
   });
 
   it('loadBaseline returns undefined and does not throw for invalid JSON', () => {

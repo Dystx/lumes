@@ -16,6 +16,8 @@ function makeFacts(staticClassNames: ScanFacts['staticClassNames'] = [], stylePr
     logicalExpressions: [],
     styleProps,
     astroComponents: [],
+    consoleCalls: [],
+    stringLiterals: [],
   };
 }
 
@@ -57,6 +59,13 @@ describe('typo/clamp-offscale', () => {
   it('ignores non-typography clamp classes', () => {
     const context = clampOffscaleRule.create({ config: baseConfig, filePath: '/x.tsx', cwd: '/' });
     const facts = makeFacts([{ value: 'w-[clamp(1rem,2vw,3rem)]', line: 2, column: 3 }]);
+    expect(clampOffscaleRule.analyze(context, facts)).toHaveLength(0);
+  });
+
+  it('respects a custom typographyScale config', () => {
+    const config = { ...baseConfig, typographyScale: ['0.5rem', '10rem'] };
+    const context = clampOffscaleRule.create({ config, filePath: '/x.tsx', cwd: '/' });
+    const facts = makeFacts([], [{ source: "{ fontSize: 'clamp(0.5rem, 10vw, 10rem)' }", line: 2, column: 3 }]);
     expect(clampOffscaleRule.analyze(context, facts)).toHaveLength(0);
   });
 });

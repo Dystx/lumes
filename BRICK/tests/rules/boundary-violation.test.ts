@@ -36,7 +36,7 @@ async function runRule(
     const filePath = join(dir, fileName);
     writeFileSync(filePath, source);
     const { ast, nodeCount } = await parseFile(filePath);
-    const facts = extractFacts(filePath, ast, nodeCount);
+    const facts = extractFacts(filePath, ast, nodeCount, config.supportsRsc ?? true);
     const context: RuleContext = { config, filePath, cwd: dir };
     const ruleContext = boundaryViolationRule.create(context);
     return boundaryViolationRule.analyze(ruleContext, facts);
@@ -98,5 +98,17 @@ export function Page() {
       "Client hook 'useContext' called inside a server component",
       "Client hook 'useEffect' called inside a server component",
     ]);
+  });
+
+  it('does not flag hooks when supportsRsc is false', async () => {
+    const source = `
+export function Page() {
+  const [x, setX] = useState(0);
+  useEffect(() => {}, []);
+  return <div />;
+}
+`;
+    const issues = await runRule(source, makeConfig({ supportsRsc: false }));
+    expect(issues).toHaveLength(0);
   });
 });

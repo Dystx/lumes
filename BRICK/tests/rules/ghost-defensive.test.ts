@@ -93,4 +93,70 @@ export function Box() {
     const issues = await runRule(source, makeConfig());
     expect(issues).toHaveLength(2);
   });
+
+  it('does not flag type-guard && chains', async () => {
+    const source = `
+export function validate(run: unknown) {
+  return (
+    typeof run === 'object' &&
+    run !== null &&
+    typeof (run as any).version === 'string' &&
+    Array.isArray((run as any).ids)
+  );
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(0);
+  });
+
+  it('does not flag AST-walking guard chains', async () => {
+    const source = `
+function isStringLiteral(node: unknown) {
+  return (
+    typeof node === 'object' &&
+    node !== null &&
+    (node as any).type === 'StringLiteral' &&
+    typeof (node as any).value === 'string'
+  );
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(0);
+  });
+
+  it('does not flag bounds-check && chains', async () => {
+    const source = `
+export function match(oldLines: string[], newLines: string[]) {
+  return (
+    start < oldLines.length &&
+    start < newLines.length &&
+    oldLines[start] === newLines[start]
+  );
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(0);
+  });
+
+  it('does not flag tag-dispatch && chains', async () => {
+    const source = `
+export function isInteractive(tag: string) {
+  return tag !== 'button' && tag !== 'a' && tag !== 'input';
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(0);
+  });
+
+  it('flags deep optional-access chains even with nullish checks', async () => {
+    const source = `
+export function User() {
+  const user = res !== null && res.data !== null && res.data.user;
+  return <div>{user}</div>;
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('logic/ghost-defensive');
+  });
 });

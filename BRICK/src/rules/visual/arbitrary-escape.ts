@@ -22,7 +22,10 @@ export const arbitraryEscapeRule = createRule<ArbitraryEscapeContext>({
     for (const classNameFact of facts.staticClassNames) {
       const classes = splitClassName(classNameFact.value);
       const offenders = classes.filter(
-        (className) => isLayoutArbitrary(className) && !matchesAllowlist(className, context.allowlist),
+        (className) =>
+          isLayoutArbitrary(className) &&
+          !className.includes('calc(') &&
+          !matchesAllowlist(className, context.allowlist),
       );
       const fixes: FixSuggestion[] = offenders
         .map((offender): FixSuggestion | undefined => {

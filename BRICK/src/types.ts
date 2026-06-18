@@ -2,6 +2,8 @@ export const VERSION = '1.0.0';
 
 export type Severity = 'low' | 'medium' | 'high';
 
+export type RuleSeverity = Severity | 'auto';
+
 export type Category =
   | 'visual'
   | 'typo'
@@ -78,6 +80,7 @@ export interface LogicalExpressionFact {
   line: number;
   column: number;
   text: string;
+  isOptionalChainLike: boolean;
 }
 
 export interface StylePropFact {
@@ -90,6 +93,18 @@ export interface AstroComponentFact {
   tag: string;
   hasClientDirective: boolean;
   hasEventHandler: boolean;
+  line: number;
+  column: number;
+}
+
+export interface ConsoleCallFact {
+  method: 'log' | 'warn' | 'error' | 'info' | 'debug';
+  line: number;
+  column: number;
+}
+
+export interface StringLiteralFact {
+  value: string;
   line: number;
   column: number;
 }
@@ -107,12 +122,15 @@ export interface ScanFacts {
   logicalExpressions: LogicalExpressionFact[];
   styleProps: StylePropFact[];
   astroComponents: AstroComponentFact[];
+  consoleCalls: ConsoleCallFact[];
+  stringLiterals: StringLiteralFact[];
 }
 
 export interface ImportFact {
   source: string;
   line: number;
   column: number;
+  importedNames?: string[];
 }
 
 export interface FileScanResult {
@@ -124,6 +142,7 @@ export interface FileScanResult {
   gapValues?: string[];
   gapContainerCount?: number;
   styleSources?: string[];
+  elementTags?: string[];
 }
 
 export interface ComponentScore {
@@ -151,9 +170,12 @@ export interface ProjectReport {
   p90Score: number;
   peakScore: number;
   componentCount: number;
+  fileCount?: number;
   components: ComponentScore[];
   issues: Issue[];
+  parseErrors?: Array<{ filePath: string; error: string }>;
   baseline?: BaselineMeta;
+  thresholds?: { meanSlop: number; p90Slop: number; individualSlopThreshold: number };
 }
 
 export interface BaselineCache {
@@ -192,22 +214,30 @@ export interface Rule<Context = unknown> {
 
 export interface ResolvedConfig {
   framework?: string;
+  hasTailwind?: boolean;
+  supportsRsc?: boolean;
   include: string[];
   exclude: string[];
-  rules: Record<string, Severity | 'off'>;
+  rules: Record<string, RuleSeverity | 'off'>;
+  categoryWeights?: Record<Category, number>;
   frameworkMultipliers: Record<string, number>;
   ruleConfig: Record<string, unknown>;
   gapTokens?: string[];
   contextTaxCaps: { cleanCap: number; standardCap: number };
   globalCssTarget?: string;
   projectMemory?: boolean;
+  telemetry?: boolean;
   thresholds: {
     meanSlop: number;
     p90Slop: number;
     individualSlopThreshold: number;
   };
+  spacingScale?: number[];
+  typographyScale?: string[];
   arbitraryValueAllowlist: (string | RegExp)[];
+  clampAllowlist?: (string | RegExp)[];
   wcag: {
     targetSizeExemptSelectors: string[];
+    targetSizeRequireTailwind?: boolean;
   };
 }

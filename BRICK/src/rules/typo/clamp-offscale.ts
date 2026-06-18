@@ -3,7 +3,7 @@ import { createRule } from '../rule';
 import { DEFAULT_TYPOGRAPHY_SCALE } from '../../config';
 
 export interface ClampOffscaleContext {
-  // No per-context state required.
+  scale: string[];
 }
 
 const CLAMP_RE = /clamp\(\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^)]+)\s*\)/gi;
@@ -20,31 +20,30 @@ function toRem(value: string): number | undefined {
   return num;
 }
 
-function isOffScale(value: string): boolean {
+function isOffScale(value: string, scale: string[]): boolean {
   const rem = toRem(value);
   if (rem === undefined) return false;
-  const scale = DEFAULT_TYPOGRAPHY_SCALE.map((token) => {
-    const parsed = toRem(token);
-    return parsed ?? 0;
-  }).filter((v) => v > 0);
+  const numericScale = scale
+    .map((token) => toRem(token))
+    .filter((v): v is number => v !== undefined && v > 0);
 
-  if (scale.length === 0) return false;
+  if (numericScale.length === 0) return false;
 
   let nearestRatio = Infinity;
-  for (const token of scale) {
+  for (const token of numericScale) {
     const ratio = Math.abs(rem - token) / token;
     if (ratio < nearestRatio) nearestRatio = ratio;
   }
   return nearestRatio > 0.2;
 }
 
-function findOffscaleClamp(source: string): string | undefined {
+function findOffscaleClamp(source: string, scale: string[]): string | undefined {
   CLAMP_RE.lastIndex = 0;
   const hasFontContext = FONT_SIZE_CONTEXT_RE.test(source);
   let match: RegExpExecArray | null;
   while ((match = CLAMP_RE.exec(source)) !== null) {
     const [min, preferred, max] = [match[1], match[2], match[3]];
-    if (isOffScale(min) || isOffScale(preferred) || isOffScale(max)) {
+    if (isOffScale(min, scale) || isOffScale(preferred, scale) || isOffScale(max, scale)) {
       return match[0];
     }
   }
@@ -59,14 +58,17 @@ export const clampOffscaleRule = createRule<ClampOffscaleContext>({
   category: 'typo',
   severity: 'medium',
   aiSpecific: false,
-  create(_context: RuleContext): ClampOffscaleContext {
-    return {};
+  create(context: RuleContext): ClampOffscaleContext {
+    return {
+      scale: context.config.typographyScale ?? DEFAULT_TYPOGRAPHY_SCALE,
+    };
   },
-  analyze(_context: ClampOffscaleContext, facts: ScanFacts): Issue[] {
+  analyze(context: ClampOffscaleContext, facts: ScanFacts): Issue[] {
     const issues: Issue[] = [];
+    const { scale } = context;
 
     for (const styleProp of facts.styleProps) {
-      const offscale = findOffscaleClamp(styleProp.source);
+      const offscale = findOffscaleClamp(styleProp.source, scale);
       if (offscale) {
         issues.push({
           ruleId: 'typo/clamp-offscale',
@@ -87,7 +89,7 @@ export const clampOffscaleRule = createRule<ClampOffscaleContext>({
       if (match) {
         for (const token of match) {
           const inner = token.slice(6, -1); // strip text-[ and ]
-          const offscale = findOffscaleClamp(inner);
+          const offscale = findOffscaleClamp(inner, scale);
           if (offscale) {
             issues.push({
               ruleId: 'typo/clamp-offscale',

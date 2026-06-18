@@ -89,7 +89,7 @@ export function formatPretty(report: ProjectReport): string {
   if (report.componentCount <= 10) {
     sections.push(
       chalk.yellow(
-        `⚠ Micro-repo warning: only ${report.componentCount} component(s) scanned; scores may be noisy.`,
+        'Small project detected (<=10 components). Scores are not normalized. Focus on keeping individual component scores low.',
       ),
     );
   }
@@ -99,6 +99,15 @@ export function formatPretty(report: ProjectReport): string {
   const componentsSection = formatTopComponents(report.components);
   if (componentsSection) {
     sections.push(componentsSection);
+  }
+
+  if (report.parseErrors && report.parseErrors.length > 0) {
+    sections.push(
+      chalk.yellow(`Parse errors (${report.parseErrors.length}) — results may be incomplete:`),
+    );
+    for (const { filePath, error } of report.parseErrors) {
+      sections.push(`  ${filePath}: ${error}`);
+    }
   }
 
   if (report.issues.length > 0) {

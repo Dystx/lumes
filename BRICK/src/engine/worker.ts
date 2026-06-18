@@ -2,7 +2,22 @@ import { isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { parseFile } from './parser';
 import { extractFacts } from './visitor';
 import { RuleRegistry } from '../rules/registry';
-import type { FileScanResult, ResolvedConfig, ScanFacts } from '../types';
+import { setLoggerQuiet } from './logger';
+import type { FileScanResult, Issue, ResolvedConfig, ScanFacts, Severity } from '../types';
+
+function applyRuleOverrides(issues: Issue[], rules: ResolvedConfig['rules']): Issue[] {
+  const result: Issue[] = [];
+  for (const issue of issues) {
+    const override = rules[issue.ruleId];
+    if (override === 'off') continue;
+    if (override === 'auto' || override === undefined) {
+      result.push(issue);
+      continue;
+    }
+    result.push({ ...issue, severity: override });
+  }
+  return result;
+}
 
 export async function scanFile(
   filePath: string,
@@ -12,17 +27,19 @@ export async function scanFile(
 ): Promise<FileScanResult> {
   try {
     const { ast, nodeCount } = await parseFile(filePath);
-    const facts = extractFacts(filePath, ast, nodeCount);
+    const facts = extractFacts(filePath, ast, nodeCount, config.supportsRsc ?? true);
 
     const activeRegistry = registry ?? new RuleRegistry();
     if (!registry) {
       activeRegistry.loadBuiltins();
     }
     const rules = activeRegistry.createContexts(config, filePath, cwd);
-    const issues = rules.flatMap(({ rule, context }) => rule.analyze(context, facts));
+    const rawIssues = rules.flatMap(({ rule, context }) => rule.analyze(context, facts));
+    const issues = applyRuleOverrides(rawIssues, config.rules);
 
     const gapValues = collectGapValues(facts);
     const styleSources = collectStyleSources(facts);
+    const elementTags = facts.allElements.map((e) => e.tag);
 
     return {
       filePath,
@@ -30,8 +47,9 @@ export async function scanFile(
       astNodeCount: nodeCount,
       issues,
       gapValues,
-      gapContainerCount: gapValues.length > 0 ? 1 : 0,
+      gapContainerCount: gapValues.length,
       styleSources,
+      elementTags,
     };
   } catch (err) {
     return {
@@ -48,37 +66,43 @@ export async function scanFile(
 }
 
 async function run(): Promise<void> {
-  const data = workerData as { filePaths: unknown; config: unknown };
-  if (!Array.isArray(data.filePaths)) {
-    throw new Error('workerData.filePaths must be an array of file paths');
-  }
+  const data = workerData as { config: unknown; quiet?: unknown };
   if (!data.config || typeof data.config !== 'object') {
     throw new Error('workerData.config must be a ResolvedConfig object');
   }
-  const { filePaths, config } = data as { filePaths: string[]; config: ResolvedConfig };
+  setLoggerQuiet(data.quiet === true);
+  const { config } = data as { config: ResolvedConfig };
 
   const registry = new RuleRegistry();
   registry.loadBuiltins();
 
-  for (const filePath of filePaths) {
-    const result = await scanFile(filePath, config, registry);
-    parentPort?.postMessage(result);
+  if (!parentPort) {
+    throw new Error('parentPort is not available in worker thread');
   }
+
+  parentPort.on('message', async (msg: { filePath?: string }) => {
+    if (!parentPort || !msg.filePath) return;
+    const result = await scanFile(msg.filePath, config, registry);
+    parentPort.postMessage({ type: 'result', result });
+    parentPort.postMessage({ type: 'ready' });
+  });
+
+  parentPort.postMessage({ type: 'ready' });
 }
 
 function collectGapValues(facts: ScanFacts): string[] {
   const values: string[] = [];
+  // One representative gap token per gap-declaring container.
   for (const { value } of facts.staticClassNames) {
-    for (const token of value.split(/\s+/)) {
-      if (/^gap(-[xy])?-/.test(token)) {
-        values.push(token);
-      }
+    const firstGap = value.split(/\s+/).find((token) => /^gap(-[xy])?-/.test(token));
+    if (firstGap) {
+      values.push(firstGap);
     }
   }
-  const gapRegex = /\bgap\s*:\s*([^;]+)/gi;
+  const gapRegex = /\bgap\s*:\s*([^;]+)/i;
   for (const { source } of facts.styleProps) {
-    let match: RegExpExecArray | null;
-    while ((match = gapRegex.exec(source)) !== null) {
+    const match = gapRegex.exec(source);
+    if (match && match[1]) {
       values.push(match[1].trim());
     }
   }

@@ -8,6 +8,7 @@ const MAX_EDITS = 10;
 export interface HeatmapEntry {
   filePath: string;
   adjustedScore: number;
+  componentScore: number;
   recencyWeight: number;
   churnWeight: number;
   roi: number;
@@ -52,11 +53,12 @@ export async function buildHeatmap(
         ? computeRecencyWeight(lastModified, reference)
         : 1.0;
       const churnWeight = computeChurnWeight(edits);
-      const roi = component.adjustedScore * recencyWeight * churnWeight;
+      const roi = component.componentScore * recencyWeight * churnWeight;
 
       return {
         filePath: component.filePath,
         adjustedScore: component.adjustedScore,
+        componentScore: component.componentScore,
         recencyWeight,
         churnWeight,
         roi,

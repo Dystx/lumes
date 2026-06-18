@@ -97,6 +97,16 @@ export function Box() {
     expect(issues).toHaveLength(0);
   });
 
+  it('exempts calc() arbitrary values as responsive logic', async () => {
+    const source = `
+export function Box() {
+  return <div className="w-[calc(100%-2rem)]" />;
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(0);
+  });
+
   it('reports line and column from the className attribute', async () => {
     const source = `
 export function Box() {

@@ -11,6 +11,14 @@ function isGapClass(className: string, gapTokens: string[] | undefined): boolean
   return className.startsWith('gap-');
 }
 
+function matchesPattern(value: string, gapTokens: string[] | undefined): boolean {
+  const classes = splitClassName(value);
+  return (
+    hasAllClasses(classes, REQUIRED_LAYOUT_CLASSES) &&
+    classes.some((className) => isGapClass(className, gapTokens))
+  );
+}
+
 export interface ForcedLayoutContext {
   threshold: number;
   gapTokens: string[] | undefined;
@@ -35,29 +43,54 @@ export const forcedLayoutRule = createRule<ForcedLayoutContext>({
     };
   },
   analyze(context: ForcedLayoutContext, facts: ScanFacts): Issue[] {
-    const matches: Array<{ line: number; column: number }> = [];
+    // Suppressed when the project intentionally restricts gap tokens.
+    if (
+      context.gapTokens &&
+      context.gapTokens.length >= 1 &&
+      context.gapTokens.length <= 3
+    ) {
+      return [];
+    }
+
+    let runStart: { line: number; column: number } | null = null;
+    let runLength = 0;
 
     for (const classNameFact of facts.staticClassNames) {
-      const classes = splitClassName(classNameFact.value);
-      if (
-        hasAllClasses(classes, REQUIRED_LAYOUT_CLASSES) &&
-        classes.some((className) => isGapClass(className, context.gapTokens))
-      ) {
-        matches.push({ line: classNameFact.line, column: classNameFact.column });
+      if (matchesPattern(classNameFact.value, context.gapTokens)) {
+        if (runStart === null) {
+          runStart = { line: classNameFact.line, column: classNameFact.column };
+        }
+        runLength++;
+      } else {
+        if (runStart !== null && runLength > context.threshold) {
+          return [
+            {
+              ruleId: 'visual/forced-layout',
+              category: 'visual',
+              severity: 'medium',
+              aiSpecific: true,
+              message: `Repetitive flex-col gap wrapper pattern detected (${runLength} instances)`,
+              line: runStart.line,
+              column: runStart.column,
+              advice: 'Extract a reusable layout component or restrict gapTokens to intentional values.',
+            },
+          ];
+        }
+        runStart = null;
+        runLength = 0;
       }
     }
 
-    if (matches.length > context.threshold) {
-      const first = matches[0];
+    if (runStart !== null && runLength > context.threshold) {
       return [
         {
           ruleId: 'visual/forced-layout',
           category: 'visual',
           severity: 'medium',
           aiSpecific: true,
-          message: `Repetitive flex-col gap wrapper pattern detected (${matches.length} instances)`,
-          line: first.line,
-          column: first.column,
+          message: `Repetitive flex-col gap wrapper pattern detected (${runLength} instances)`,
+          line: runStart.line,
+          column: runStart.column,
           advice: 'Extract a reusable layout component or restrict gapTokens to intentional values.',
         },
       ];

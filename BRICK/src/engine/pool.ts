@@ -2,6 +2,7 @@ import { Worker } from 'worker_threads';
 import { cpus } from 'os';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'url';
+import { logger } from './logger';
 import type { FileScanResult, ResolvedConfig } from '../types';
 
 export interface WorkerPoolOptions {
@@ -9,19 +10,38 @@ export interface WorkerPoolOptions {
   workerScript?: string;
   config: ResolvedConfig;
   workerTimeoutMs?: number;
+  quiet?: boolean;
 }
 
-const MAX_RETRIES = 1;
+const MAX_RETRIES = 2;
 const DEFAULT_WORKER_TIMEOUT_MS = 60_000;
 
 function defaultWorkerScript(): string {
-  // When this module is bundled into dist/index.js, the worker lives under
-  // dist/engine/worker.js. When used directly from dist/engine/pool.js, the
-  // worker is a sibling. Try the sibling first, then fall back to the bundled
-  // location so the default works regardless of how WorkerPool is loaded.
+  // Prefer the CJS worker build: Node >= v24.14.0 can abort under concurrent
+  // ESM->CJS preparse in worker threads (nodejs/node#63323). The CJS worker
+  // uses require() for its dependencies and avoids that path.
+  const cjsSibling = fileURLToPath(new URL('./worker.cjs', import.meta.url));
+  if (existsSync(cjsSibling)) return cjsSibling;
   const sibling = fileURLToPath(new URL('./worker.js', import.meta.url));
   if (existsSync(sibling)) return sibling;
-  return fileURLToPath(new URL('./engine/worker.js', import.meta.url));
+  return fileURLToPath(new URL('./engine/worker.cjs', import.meta.url));
+}
+
+function parseNodeVersion(): [number, number, number] {
+  const match = process.version.match(/v(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return [0, 0, 0];
+  return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)];
+}
+
+function nodeVersionAtLeast(major: number, minor: number, patch: number): boolean {
+  const [vMajor, vMinor, vPatch] = parseNodeVersion();
+  if (vMajor !== major) return vMajor > major;
+  if (vMinor !== minor) return vMinor > minor;
+  return vPatch >= patch;
+}
+
+function isEsmWorkerScript(script: string): boolean {
+  return script.endsWith('.mjs') || (!script.endsWith('.cjs') && script.endsWith('.js'));
 }
 
 export class WorkerPool {
@@ -29,104 +49,178 @@ export class WorkerPool {
   private config: ResolvedConfig;
   private threadCount: number;
   private workerTimeoutMs: number;
+  private quiet: boolean;
 
   constructor(options: WorkerPoolOptions) {
     this.config = options.config;
     this.workerTimeoutMs = options.workerTimeoutMs ?? DEFAULT_WORKER_TIMEOUT_MS;
+    this.quiet = options.quiet ?? false;
     const requested = options.threadCount ?? Math.max(1, cpus().length - 1);
     if (requested <= 0) throw new Error('threadCount must be > 0');
     this.threadCount = requested;
     this.workerScript = options.workerScript ?? defaultWorkerScript();
+
+    if (
+      options.workerScript &&
+      isEsmWorkerScript(options.workerScript) &&
+      nodeVersionAtLeast(24, 14, 0)
+    ) {
+      logger.warn(
+        'Warning: ESM worker scripts on Node >= v24.14.0 can crash under concurrent CJS imports (nodejs/node#63323). Prefer the CJS worker build.',
+      );
+    }
   }
 
   async scan(filePaths: string[]): Promise<FileScanResult[]> {
     if (filePaths.length === 0) return [];
+
     const results: FileScanResult[] = [];
     const seen = new Set<string>();
-    const batches: string[][] = Array.from({ length: this.threadCount }, () => []);
-    for (let i = 0; i < filePaths.length; i++) {
-      batches[i % this.threadCount].push(filePaths[i]);
+    const pending = filePaths.slice();
+    const workers: Worker[] = [];
+    const inFlight = new Map<Worker, string>();
+    const timers = new Map<Worker, ReturnType<typeof setTimeout>>();
+    const retryCounts = new Map<string, number>();
+    let resolved = false;
+
+    const handleResult = (result: FileScanResult) => {
+      if (!seen.has(result.filePath)) {
+        seen.add(result.filePath);
+        results.push(result);
+      }
+    };
+
+    const maybeResolve = () => {
+      if (resolved) return;
+      if (pending.length === 0 && inFlight.size === 0) {
+        resolved = true;
+        for (const w of workers) {
+          w.terminate().catch(() => {});
+        }
+      }
+    };
+
+    const clearTimer = (worker: Worker) => {
+      const timer = timers.get(worker);
+      if (timer !== undefined) {
+        clearTimeout(timer);
+        timers.delete(worker);
+      }
+    };
+
+    const onWorkerFailure = (worker: Worker, filePath: string | undefined, err: Error) => {
+      clearTimer(worker);
+      inFlight.delete(worker);
+      const index = workers.indexOf(worker);
+      if (index !== -1) workers.splice(index, 1);
+      worker.terminate().catch(() => {});
+
+      if (!filePath) {
+        // No file was assigned when the worker died. If work remains, replace
+        // the worker so the pool can still make progress.
+        if (pending.length > 0) spawnWorker();
+        maybeResolve();
+        return;
+      }
+
+      const retries = (retryCounts.get(filePath) ?? 0) + 1;
+      retryCounts.set(filePath, retries);
+
+      if (retries <= MAX_RETRIES) {
+        logger.error(`Worker failed for ${filePath}; retrying (${retries}/${MAX_RETRIES})`);
+        pending.unshift(filePath);
+        spawnWorker();
+      } else {
+        logger.error(`Worker failed for ${filePath}; retries exhausted`);
+        handleResult({
+          filePath,
+          componentCount: 0,
+          astNodeCount: 0,
+          issues: [],
+          parseError: err.message,
+          gapValues: [],
+          gapContainerCount: 0,
+          styleSources: [],
+        });
+      }
+      maybeResolve();
+    };
+
+    const assignNext = (worker: Worker): boolean => {
+      if (pending.length === 0) return false;
+      const filePath = pending.shift()!;
+      inFlight.set(worker, filePath);
+      clearTimer(worker);
+      timers.set(
+        worker,
+        setTimeout(() => {
+          if (resolved) return;
+          const activeFile = inFlight.get(worker);
+          logger.error(`Worker timed out processing ${activeFile ?? 'file'}`);
+          onWorkerFailure(
+            worker,
+            activeFile,
+            new Error(`Worker timed out after ${this.workerTimeoutMs}ms`),
+          );
+        }, this.workerTimeoutMs),
+      );
+      worker.postMessage({ filePath });
+      return true;
+    };
+
+    const spawnWorker = () => {
+      if (resolved) return;
+      const worker = new Worker(this.workerScript, {
+        workerData: { config: this.config, quiet: this.quiet },
+      });
+      workers.push(worker);
+
+      worker.on('message', (msg: { type?: string; result?: FileScanResult }) => {
+        if (resolved) return;
+        if (msg.type === 'ready') {
+          assignNext(worker);
+          maybeResolve();
+        } else if (msg.type === 'result' && msg.result) {
+          clearTimer(worker);
+          inFlight.delete(worker);
+          handleResult(msg.result);
+        }
+      });
+
+      worker.on('error', (err) => {
+        if (resolved) return;
+        onWorkerFailure(worker, inFlight.get(worker), err);
+      });
+
+      worker.on('exit', (code) => {
+        if (resolved) return;
+        if (code === 0) {
+          clearTimer(worker);
+          inFlight.delete(worker);
+          const index = workers.indexOf(worker);
+          if (index !== -1) workers.splice(index, 1);
+          maybeResolve();
+        } else {
+          onWorkerFailure(
+            worker,
+            inFlight.get(worker),
+            new Error(`Worker exited with code ${code}`),
+          );
+        }
+      });
+    };
+
+    for (let i = 0; i < this.threadCount; i++) {
+      spawnWorker();
     }
 
-    await Promise.all(batches.filter((batch) => batch.length > 0).map((batch) => this.runWorker(batch, results, seen)));
-    return results;
-  }
-
-  private runWorker(batch: string[], results: FileScanResult[], seen: Set<string>): Promise<void> {
-    return new Promise((res, rej) => {
-      let retries = 0;
-      let settled = false;
-      let currentWorker: Worker | undefined;
-      let lastError: Error | undefined;
-
-      const cleanup = (worker: Worker, timer: ReturnType<typeof setTimeout>) => {
-        clearTimeout(timer);
-        worker.terminate().catch(() => {});
-      };
-
-      const spawn = () => {
-        const worker = new Worker(this.workerScript, {
-          workerData: { filePaths: batch, config: this.config },
-        });
-        currentWorker = worker;
-
-        const timer = setTimeout(() => {
-          if (settled) return;
-          cleanup(worker, timer);
-          if (retries < MAX_RETRIES) {
-            retries++;
-            console.error(`Worker timed out after ${this.workerTimeoutMs}ms; retrying (${retries}/${MAX_RETRIES})`);
-            spawn();
-          } else {
-            settled = true;
-            rej(new Error(`Worker timed out after ${this.workerTimeoutMs}ms`));
-          }
-        }, this.workerTimeoutMs);
-
-        worker.on('message', (msg: FileScanResult) => {
-          if (worker !== currentWorker || settled) return;
-          if (!seen.has(msg.filePath)) {
-            seen.add(msg.filePath);
-            results.push(msg);
-          }
-        });
-
-        worker.on('error', (err) => {
-          if (worker !== currentWorker || settled) return;
-          cleanup(worker, timer);
-          lastError = err;
-          console.error('Worker error:', err);
-          if (retries < MAX_RETRIES) {
-            retries++;
-            spawn();
-          } else {
-            settled = true;
-            rej(err);
-          }
-        });
-
-        worker.on('exit', (code) => {
-          if (worker !== currentWorker || settled) return;
-          cleanup(worker, timer);
-          if (code === 0) {
-            settled = true;
-            res();
-          } else {
-            const err = lastError ?? new Error(`Worker exited with code ${code}`);
-            console.error(`Worker exited with code ${code}`);
-            if (retries < MAX_RETRIES) {
-              retries++;
-              lastError = undefined;
-              spawn();
-            } else {
-              settled = true;
-              rej(err);
-            }
-          }
-        });
-      };
-
-      spawn();
+    return new Promise((resolve) => {
+      const check = setInterval(() => {
+        if (resolved) {
+          clearInterval(check);
+          resolve(results);
+        }
+      }, 10);
     });
   }
 }

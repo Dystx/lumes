@@ -1,3 +1,4 @@
+import { isAbsolute, relative } from 'node:path';
 import type {
   BaselineCache,
   Category,
@@ -7,6 +8,7 @@ import type {
   ResolvedConfig,
   Severity,
 } from '../types';
+
 
 export const SEVERITY_WEIGHTS: Record<Severity, number> = {
   low: 1,
@@ -47,15 +49,31 @@ export function scoreFile(
   frameworkMultiplier: number,
   config: ResolvedConfig,
   baseline?: BaselineCache,
+  cwd?: string,
 ): ComponentScore {
-  const rawScore = result.issues.reduce(
-    (sum, issue) => sum + SEVERITY_WEIGHTS[issue.severity],
-    0,
-  );
+  const groups = new Map<string, { weightedSum: number; count: number }>();
+  for (const issue of result.issues) {
+    const entry = groups.get(issue.ruleId) ?? { weightedSum: 0, count: 0 };
+    const weight = SEVERITY_WEIGHTS[issue.severity] * (config.categoryWeights?.[issue.category] ?? 1);
+    entry.weightedSum += weight;
+    entry.count += 1;
+    groups.set(issue.ruleId, entry);
+  }
+
+  let rawScore = 0;
+  for (const { weightedSum, count } of groups.values()) {
+    rawScore += weightedSum * (1 + Math.log10(count));
+  }
+
   const hasHighSeverity = result.issues.some((issue) => issue.severity === 'high');
   const tax = contextTax(result.astNodeCount, hasHighSeverity, config.contextTaxCaps);
   const componentScore = Math.min(100, rawScore * frameworkMultiplier * tax);
-  const baselineScore = baseline?.scores[result.filePath]?.baselineScore ?? 0;
+  const baselineKey = cwd
+    ? isAbsolute(result.filePath)
+      ? relative(cwd, result.filePath)
+      : result.filePath
+    : result.filePath;
+  const baselineScore = baseline?.scores[baselineKey]?.baselineScore ?? 0;
   const adjustedScore = baseline ? Math.max(0, componentScore - baselineScore) : componentScore;
 
   return {
@@ -69,7 +87,7 @@ export function scoreFile(
 
 export function aggregateReport(
   scores: ComponentScore[],
-  issueGroups: Array<{ filePath: string; issues: Array<{ category: Category; severity: Severity }> }>,
+  issueGroups: Array<{ filePath: string; issues: Array<{ category: Category; severity: Severity; ruleId: string }> }>,
   config: ResolvedConfig,
 ): Pick<
   ProjectReport,
@@ -89,10 +107,11 @@ export function aggregateReport(
 
   const componentCount = scores.reduce((sum, score) => sum + score.componentCount, 0);
   const norm = sizeNormalization(componentCount);
-  const slopIndex = mean * norm;
+  const p90Score = p90(adjustedScores);
+  const blended = (mean + 0.5 * p90Score) / 1.5;
+  const slopIndex = blended * norm;
   const assemblyHealth = 100 - slopIndex;
 
-  const p90Score = p90(adjustedScores);
   const peak =
     adjustedScores.length === 0 ? 0 : Math.max(...adjustedScores);
 
@@ -107,23 +126,39 @@ export function aggregateReport(
     perf: 0,
   };
 
+  const categoryWeights = config.categoryWeights ?? {} as Record<Category, number>;
+
   for (let i = 0; i < scores.length; i++) {
     const score = scores[i];
     const group = issueGroups[i];
-    const rawScore = group.issues.reduce(
-      (sum, issue) => sum + SEVERITY_WEIGHTS[issue.severity],
-      0,
-    );
-    if (rawScore === 0 || score.adjustedScore === 0) continue;
+
+    const ruleGroups = new Map<string, { count: number; weightedSum: number }>();
+    for (const issue of group.issues) {
+      const entry = ruleGroups.get(issue.ruleId) ?? { count: 0, weightedSum: 0 };
+      const weight = SEVERITY_WEIGHTS[issue.severity] * (categoryWeights[issue.category] ?? 1);
+      entry.count += 1;
+      entry.weightedSum += weight;
+      ruleGroups.set(issue.ruleId, entry);
+    }
+
+    let groupWeightedSum = 0;
+    for (const entry of ruleGroups.values()) {
+      const density = 1 + Math.log10(entry.count);
+      groupWeightedSum += entry.weightedSum * density;
+    }
+
+    if (groupWeightedSum === 0 || score.adjustedScore === 0) continue;
 
     for (const issue of group.issues) {
-      const share = SEVERITY_WEIGHTS[issue.severity] / rawScore;
+      const entry = ruleGroups.get(issue.ruleId)!;
+      const density = 1 + Math.log10(entry.count);
+      const weighted = SEVERITY_WEIGHTS[issue.severity] * (categoryWeights[issue.category] ?? 1) * density;
+      const share = weighted / groupWeightedSum;
       categoryContributions[issue.category] += score.adjustedScore * share;
     }
   }
 
-  const totalComponentCount = scores.reduce((sum, score) => sum + score.componentCount, 0);
-  const denominator = totalComponentCount || 1;
+  const denominator = componentCount || 1;
   const categoryScores: Record<Category, number> = { ...categoryContributions };
   for (const category of Object.keys(categoryScores) as Category[]) {
     categoryScores[category] /= denominator;
@@ -136,6 +171,6 @@ export function aggregateReport(
     p90Score,
     peakScore: peak,
     componentCount,
-    components: scores,
+    components: [...scores],
   };
 }

@@ -19,8 +19,9 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup",
-    "test": "vitest run",
+    "generate:rules": "tsx scripts/generate-rule-registry.ts",
+    "build": "pnpm generate:rules && tsup",
+    "test": "pnpm generate:rules && vitest run",
     "test:watch": "vitest",
     "test:perf": "tsx tests/perf/large-codebase.ts",
     "generate-perf-fixtures": "tsx scripts/generate-perf-fixtures.ts",

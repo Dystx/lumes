@@ -20,6 +20,8 @@ function makeFacts(filePath: string, elements: ScanFacts['allElements']): ScanFa
     logicalExpressions: [],
     styleProps: [],
     astroComponents: [],
+    consoleCalls: [],
+    stringLiterals: [],
   };
 }
 

@@ -62,7 +62,7 @@ export function Hero() {
       'clamp() uses raw viewport units without a design token alias',
     );
     expect(issues[0].advice).toBe(
-      'Replace viewport-only clamp() with token-based fluid sizing or alias the values in your design config.',
+      'Replace viewport-only clamp() with token-based fluid sizing, alias the values in your design config, or add the clamp to clampAllowlist if intentional.',
     );
   });
 
@@ -86,7 +86,7 @@ export function Hero() {
   it('ignores clamp() that aliases values with var()', async () => {
     const source = `
 export function Hero() {
-  return <div style={{ fontSize: 'clamp(var(--min), 2vw, var(--max))' }} />;
+  return <div style={{ fontSize: 'clamp(var(--min), var(--pref), var(--max))' }} />;
 }
 `;
     const issues = await runRule(source, makeConfig());
@@ -117,5 +117,59 @@ export function Hero() {
     expect(issues).toHaveLength(1);
     expect(issues[0].line).toBe(5);
     expect(issues[0].column).toBe(7);
+  });
+
+  it('flags raw viewport units even when other values are aliased', async () => {
+    const source = `
+export function Hero() {
+  return <div style={{ fontSize: 'clamp(var(--min), 2vw, var(--max))' }} />;
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(1);
+  });
+
+  it('ignores fully aliased viewport values', async () => {
+    const source = `
+export function Hero() {
+  return <div style={{ fontSize: 'clamp(var(--min), var(--pref), var(--max))' }} />;
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(0);
+  });
+
+  it('flags raw viewport clamp in a Tailwind arbitrary class', async () => {
+    const source = `
+export function Hero() {
+  return <div className="text-[clamp(1rem,2vw,2rem)]" />;
+}
+`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('visual/clamp-soup');
+  });
+
+  it('respects clampAllowlist entries', async () => {
+    const source = `
+export function Hero() {
+  return <div style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }} />;
+}
+`;
+    const issues = await runRule(
+      source,
+      makeConfig({ clampAllowlist: ['clamp(1rem, 2vw, 2rem)'] }),
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  it('respects clampAllowlist regex patterns', async () => {
+    const source = `
+export function Hero() {
+  return <div style={{ fontSize: 'clamp(1rem, 2vw, 2rem)' }} />;
+}
+`;
+    const issues = await runRule(source, makeConfig({ clampAllowlist: [/clamp\([^)]*2vw[^)]*\)/i] }));
+    expect(issues).toHaveLength(0);
   });
 });

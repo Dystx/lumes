@@ -1,7 +1,58 @@
 import { describe, expect, it } from 'vitest';
+import { readdir, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { RuleRegistry } from '../../src/rules/registry';
 import { createRule } from '../../src/rules/rule';
 import type { Issue, ResolvedConfig, Rule, ScanFacts } from '../../src/types';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const RULES_DIR = path.resolve(__dirname, '../../src/rules');
+
+interface RuleModuleInfo {
+  category: string;
+  file: string;
+  name: string;
+  id: string;
+}
+
+async function discoverRuleModules(): Promise<RuleModuleInfo[]> {
+  const entries = await readdir(RULES_DIR, { withFileTypes: true });
+  const categories = entries
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+
+  const modules: RuleModuleInfo[] = [];
+  for (const category of categories) {
+    const categoryDir = path.join(RULES_DIR, category);
+    const files = (await readdir(categoryDir))
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+      .sort();
+
+    for (const file of files) {
+      const filePath = path.join(categoryDir, file);
+      const content = await readFile(filePath, 'utf8');
+      const exportMatch = content.match(/export\s+const\s+(\w+Rule)\b/);
+      if (!exportMatch) {
+        continue;
+      }
+      const name = exportMatch[1];
+      const idMatch = content.match(/id:\s*['"]([^'"]+)['"]/);
+      if (!idMatch) {
+        throw new Error(`Rule module ${category}/${file} is missing an id field.`);
+      }
+      modules.push({
+        category,
+        file: file.replace(/\.ts$/, ''),
+        name,
+        id: idMatch[1],
+      });
+    }
+  }
+
+  return modules.sort((a, b) => `${a.category}/${a.file}`.localeCompare(`${b.category}/${b.file}`));
+}
 
 function makeConfig(): ResolvedConfig {
   return {
@@ -64,30 +115,12 @@ describe('RuleRegistry', () => {
     expect(enabled[0].context).toEqual({ filePath: 'Button.tsx' });
   });
 
-  it('loads all built-in rules', () => {
+  it('loads all built-in rules', async () => {
+    const modules = await discoverRuleModules();
     const registry = new RuleRegistry();
     registry.loadBuiltins();
-    const rules = registry.getRules();
-    expect(rules.map((r) => r.id).sort()).toEqual([
-      'arch/astro-island-leak',
-      'component/shadcn-prop-mismatch',
-      'logic/boundary-violation',
-      'logic/ghost-defensive',
-      'logic/qwik-hook-leak',
-      'logic/reactive-hook-soup',
-      'logic/zombie-state',
-      'perf/cls-image',
-      'typo/calc-fontsize',
-      'typo/calc-raw-px',
-      'typo/clamp-offscale',
-      'visual/arbitrary-escape',
-      'visual/clamp-soup',
-      'visual/forced-layout',
-      'visual/generic-centering',
-      'wcag/dragging-movements',
-      'wcag/focus-appearance',
-      'wcag/focus-obscured',
-      'wcag/target-size',
-    ]);
+    const actualIds = registry.getRules().map((r) => r.id).sort();
+    const expectedIds = modules.map((m) => m.id).sort();
+    expect(actualIds).toEqual(expectedIds);
   });
 });

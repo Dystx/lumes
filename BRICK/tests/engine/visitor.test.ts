@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parseFile } from '../../src/engine/parser';
 import { extractFacts } from '../../src/engine/visitor';
+import { writeFileSync, mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
 import { join } from 'path';
 
 const fixture = (name: string) => join(__dirname, `../fixtures/${name}.tsx`);
@@ -33,6 +35,12 @@ describe('extractFacts', () => {
     const facts = extractFacts(fixture('use-client'), ast, nodeCount);
     expect(facts.components.length).toBe(1);
     expect(facts.components[0].isServerComponent).toBe(false);
+  });
+
+  it('treats all components as client when supportsRsc is false', async () => {
+    const { ast, nodeCount } = await parseFile(fixture('sample'));
+    const facts = extractFacts(fixture('sample'), ast, nodeCount, false);
+    expect(facts.components.every((c) => !c.isServerComponent)).toBe(true);
   });
 
   it('collects interactive elements with class names', async () => {
@@ -186,5 +194,54 @@ describe('extractFacts', () => {
     expect(binding.valueName).toBe('target');
     expect(binding.valueReferenced).toBe(false);
     expect(binding.setterReferenced).toBe(false);
+  });
+
+  it('collects console calls', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'slop-audit-visitor-test-'));
+    const filePath = join(dir, 'console.tsx');
+    writeFileSync(filePath, `console.log('a'); console.warn('b');`);
+    try {
+      const { ast, nodeCount } = await parseFile(filePath);
+      const facts = extractFacts(filePath, ast, nodeCount);
+      expect(facts.consoleCalls.map((c) => c.method).sort()).toEqual(['log', 'warn']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('collects string literals', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'slop-audit-visitor-test-'));
+    const filePath = join(dir, 'strings.tsx');
+    writeFileSync(filePath, `const a = "hello"; const b = 'world';`);
+    try {
+      const { ast, nodeCount } = await parseFile(filePath);
+      const facts = extractFacts(filePath, ast, nodeCount);
+      const values = facts.stringLiterals.map((s) => s.value);
+      expect(values).toContain('hello');
+      expect(values).toContain('world');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('collects imported names from import declarations', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'slop-audit-visitor-test-'));
+    const filePath = join(dir, 'imports.tsx');
+    writeFileSync(
+      filePath,
+      `import React, { useState, useEffect as useFx } from 'react';\nimport * as RN from 'react-native';\nimport type { ViewStyle } from 'react-native';`,
+    );
+    try {
+      const { ast, nodeCount } = await parseFile(filePath);
+      const facts = extractFacts(filePath, ast, nodeCount);
+      const react = facts.imports.find((i) => i.source === 'react');
+      const rn = facts.imports.find((i) => i.source === 'react-native');
+      expect(react?.importedNames).toContain('React');
+      expect(react?.importedNames).toContain('useState');
+      expect(react?.importedNames).toContain('useEffect');
+      expect(rn?.importedNames).toContain('RN');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

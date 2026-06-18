@@ -7,7 +7,7 @@ import { generatePerfFixtures } from '../../scripts/generate-perf-fixtures';
 
 const BUDGET_MS = 8000;
 const COMPONENT_COUNT = 2000;
-const WORKER_SCRIPT = resolve(process.cwd(), 'dist', 'engine', 'worker.js');
+const WORKER_SCRIPT = resolve(process.cwd(), 'dist', 'engine', 'worker.cjs');
 
 function assertDistBuilt(): void {
   if (!existsSync(WORKER_SCRIPT)) {

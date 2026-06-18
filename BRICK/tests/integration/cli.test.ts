@@ -87,6 +87,46 @@ describe('init command', () => {
   });
 });
 
+describe('baseline lifecycle', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = createTmpDir();
+  });
+
+  afterEach(() => {
+    cleanupTempDir(dir);
+  });
+
+  it('persists --tighten to the baseline cache', async () => {
+    writeGitRepo(dir);
+    await execFileAsync('git', ['init'], { cwd: dir });
+
+    const init = await run(['init', '--yes', '--baseline', '--workspace', dir]);
+    expect(init.exitCode).toBe(0);
+
+    const baselineFile = join(dir, '.slop-audit', 'cache', 'baseline.json');
+    const before = JSON.parse(readFileSync(baselineFile, 'utf8')) as {
+      baseline_revision: number;
+      scores: Record<string, { baselineScore: number }>;
+    };
+
+    const tighten = await run(['--workspace', dir, '--tighten', '--json']);
+    expect(tighten.exitCode).toBe(0);
+
+    const after = JSON.parse(readFileSync(baselineFile, 'utf8')) as {
+      baseline_revision: number;
+      scores: Record<string, { baselineScore: number }>;
+    };
+    expect(after.baseline_revision).toBe(before.baseline_revision + 1);
+    for (const file of Object.keys(before.scores)) {
+      const previous = before.scores[file].baselineScore;
+      const next = after.scores[file].baselineScore;
+      expect(next).toBeCloseTo(previous * 0.9, 2);
+    }
+  });
+});
+
 describe('git hook commands', () => {
   let dir: string;
 
@@ -171,6 +211,14 @@ describe('scan-based commands', () => {
     const { exitCode, stdout } = await run(['suggest', '--workspace', dir]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Remediation advice');
+  });
+
+  it('suppresses non-error output with --quiet', async () => {
+    const { exitCode, stdout, stderr } = await run(['--workspace', dir, '--quiet']);
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe('');
+    expect(stderr).not.toContain('scan took');
+    expect(stderr).not.toContain('Slop Index');
   });
 
   it('exits with code 1 and reports issues when thresholds are exceeded', async () => {
@@ -370,5 +418,24 @@ describe('default scan subcommand', () => {
     expect(exitCode).toBe(0);
     const report = JSON.parse(stdout) as ProjectReport;
     expect(report.components.length).toBeGreaterThan(0);
+  });
+});
+
+describe('doctor command', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = createTmpDir();
+  });
+
+  afterEach(() => {
+    cleanupTempDir(dir);
+  });
+
+  it('exits 0 when parser bindings are functional', async () => {
+    const { exitCode, stderr } = await run(['--doctor', '--workspace', dir]);
+    expect(exitCode).toBe(0);
+    expect(stderr).toContain('Platform:');
+    expect(stderr).toContain('Parser bindings are functional.');
   });
 });

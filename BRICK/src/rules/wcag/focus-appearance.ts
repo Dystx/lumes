@@ -1,6 +1,8 @@
 import type { Rule, Issue, RuleContext, ScanFacts } from '../../types';
 import { createRule } from '../rule';
-import { splitClassName, isFocusRingClass, isOutlineRemoval } from '../utils';
+import { splitClassName, isOutlineRemoval } from '../utils';
+
+const FOCUS_VISIBLE_RING_RE = /^focus-visible:ring-.+$/;
 
 export interface FocusAppearanceContext {
   globalCssTarget?: string;
@@ -21,7 +23,7 @@ export const focusAppearanceRule = createRule<FocusAppearanceContext>({
       const classes = element.classNames.flatMap((fact) => splitClassName(fact.value));
 
       const removesOutline = classes.some((className) => isOutlineRemoval(className));
-      const hasFocusRing = classes.some((className) => isFocusRingClass(className));
+      const hasFocusRing = classes.some((className) => FOCUS_VISIBLE_RING_RE.test(className));
 
       if (removesOutline && !hasFocusRing) {
         const issue: Issue = {
@@ -33,7 +35,7 @@ export const focusAppearanceRule = createRule<FocusAppearanceContext>({
           line: element.line,
           column: element.column,
           advice:
-            'Add a focus:ring-* or focus-visible:ring-* class, or remove outline-none.',
+            'Add a focus-visible:ring-* class, or remove outline-none.',
         };
         if (context.globalCssTarget) {
           issue.fix = {

@@ -8,7 +8,7 @@ import {
   sizeNormalization,
   SEVERITY_WEIGHTS,
 } from '../../src/engine/metrics';
-import type { BaselineCache, FileScanResult, Issue } from '../../src/types';
+import type { BaselineCache, FileScanResult, Issue, ResolvedConfig } from '../../src/types';
 
 const baselineCache = (
   scores: Record<string, { baselineScore: number; componentCount?: number }>,
@@ -141,10 +141,39 @@ describe('scoreFile', () => {
     );
     expect(result.adjustedScore).toBe(0);
   });
+
+  it('looks up baseline by relative path when given an absolute file path', () => {
+    const cwd = process.cwd();
+    const result = scoreFile(
+      fileResult({ filePath: `${cwd}/Button.tsx`, issues: [issue('medium', 'visual')] }),
+      1.0,
+      DEFAULT_CONFIG,
+      baselineCache({ 'Button.tsx': { baselineScore: 2 } }),
+      cwd,
+    );
+    expect(result.adjustedScore).toBe(Math.max(0, result.componentScore - 2));
+  });
+
+  it('applies category weights', () => {
+    const config: ResolvedConfig = {
+      ...DEFAULT_CONFIG,
+      categoryWeights: { ...DEFAULT_CONFIG.categoryWeights!, visual: 3.0, logic: 1.0 },
+    };
+    const visual = scoreFile(fileResult({ issues: [issue('low', 'visual')] }), 1.0, config);
+    const logic = scoreFile(fileResult({ issues: [issue('low', 'logic')] }), 1.0, config);
+    expect(visual.rawScore).toBeGreaterThan(logic.rawScore);
+  });
+
+  it('applies a density multiplier for repeated rule instances', () => {
+    const issues: Issue[] = Array.from({ length: 10 }, () => issue('low', 'visual'));
+    const single = scoreFile(fileResult({ issues: [issue('low', 'visual')] }), 1.0, DEFAULT_CONFIG);
+    const repeated = scoreFile(fileResult({ issues }), 1.0, DEFAULT_CONFIG);
+    expect(repeated.rawScore).toBeGreaterThan(single.rawScore * 10);
+  });
 });
 
 describe('aggregateReport', () => {
-  it('aggregates mean, peak, slopIndex and assemblyHealth', () => {
+  it('aggregates mean, peak, slopIndex and assemblyHealth using mean/p90 blend', () => {
     const scores = [
       scoreFile(fileResult({ filePath: 'A.tsx', issues: [issue('high', 'logic')] }), 1.0, DEFAULT_CONFIG),
       scoreFile(fileResult({ filePath: 'B.tsx', issues: [issue('low', 'visual')] }), 1.0, DEFAULT_CONFIG),
@@ -157,9 +186,11 @@ describe('aggregateReport', () => {
     const report = aggregateReport(scores, issueGroups, DEFAULT_CONFIG);
     const expectedMean =
       (scores[0].adjustedScore + scores[1].adjustedScore) / scores.length;
+    const expectedP90 = Math.max(scores[0].adjustedScore, scores[1].adjustedScore);
+    const expectedBlend = (expectedMean + 0.5 * expectedP90) / 1.5;
 
     expect(report.componentCount).toBe(2);
-    expect(report.slopIndex).toBeCloseTo(expectedMean * sizeNormalization(2), 5);
+    expect(report.slopIndex).toBeCloseTo(expectedBlend * sizeNormalization(2), 5);
     expect(report.assemblyHealth).toBeCloseTo(100 - report.slopIndex, 5);
     expect(report.peakScore).toBe(Math.max(scores[0].adjustedScore, scores[1].adjustedScore));
     expect(report.p90Score).toBeGreaterThanOrEqual(
@@ -195,6 +226,43 @@ describe('aggregateReport', () => {
     expect(report.categoryScores.logic).toBeCloseTo(logicShare / totalComponents, 5);
     expect(report.categoryScores.wcag).toBeCloseTo(wcagShare / totalComponents, 5);
     expect(report.categoryScores.visual).toBe(0);
+  });
+
+  it('weights category scores by categoryWeights', () => {
+    const issues: Issue[] = [
+      { ruleId: 'visual-rule', category: 'visual', severity: 'low', aiSpecific: true, message: 'v', line: 1, column: 1 },
+      { ruleId: 'logic-rule', category: 'logic', severity: 'low', aiSpecific: true, message: 'l', line: 1, column: 1 },
+    ];
+    const config: ResolvedConfig = {
+      ...DEFAULT_CONFIG,
+      categoryWeights: { ...DEFAULT_CONFIG.categoryWeights!, visual: 2, logic: 1 },
+    };
+    const scores = [scoreFile(fileResult({ issues }), 1.0, config)];
+    const report = aggregateReport(scores, [{ filePath: 'Button.tsx', issues }], config);
+    expect(report.categoryScores.visual).toBeGreaterThan(report.categoryScores.logic);
+  });
+
+  it('weights category scores by rule density', () => {
+    const repeated: Issue[] = Array.from({ length: 10 }, () => ({
+      ruleId: 'dense',
+      category: 'visual',
+      severity: 'low',
+      aiSpecific: true,
+      message: 'd',
+      line: 1,
+      column: 1,
+    }));
+    const single: Issue[] = [
+      { ruleId: 'sparse', category: 'logic', severity: 'low', aiSpecific: true, message: 's', line: 1, column: 1 },
+    ];
+    const issues = [...repeated, ...single];
+    const config: ResolvedConfig = {
+      ...DEFAULT_CONFIG,
+      categoryWeights: { ...DEFAULT_CONFIG.categoryWeights!, visual: 1, logic: 1 },
+    };
+    const scores = [scoreFile(fileResult({ issues }), 1.0, config)];
+    const report = aggregateReport(scores, [{ filePath: 'Button.tsx', issues }], config);
+    expect(report.categoryScores.visual).toBeGreaterThan(report.categoryScores.logic * 10);
   });
 
   it('handles empty scores gracefully', () => {

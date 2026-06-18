@@ -90,11 +90,11 @@ function parseWithSwc(content: string, filePath: string): ParseResult {
 }
 
 function parseAstro(source: string): ParseResult {
-  // Replace the optional frontmatter block with whitespace so that byte offsets
-  // and line numbers in the parsed AST still map back to the original file.
-  const replaced = source.replace(/^---\r?\n[\s\S]*?\r?\n---/, (match) =>
-    match.replace(/[^\r\n]/g, ' '),
-  );
+  // Astro templates are HTML-like, not valid TSX. Replace every non-newline
+  // character with whitespace so line/column offsets are preserved, then parse
+  // the blank file as a no-op module. The visitor performs Astro-specific
+  // extraction from the original source text.
+  const replaced = source.replace(/[^\r\n]/g, ' ');
   const ast = parseSync(replaced, {
     syntax: 'typescript',
     tsx: true,
@@ -186,7 +186,21 @@ function parseSource(source: string, filePath: string): ParseResult {
     case 'svelte':
       return parseSvelte(source);
     default:
-      return parseWithSwc(source, filePath);
+      try {
+        return parseWithSwc(source, filePath);
+      } catch (error) {
+        // Many projects put JSX inside .js files (e.g. Next.js app router).
+        // Retry once with JSX enabled before giving up.
+        if (ext === 'js') {
+          const ast = parseSync(source, {
+            syntax: 'ecmascript',
+            jsx: true,
+            target: 'es2022',
+          });
+          return { ast, nodeCount: countNodes(ast) };
+        }
+        throw error;
+      }
   }
 }
 

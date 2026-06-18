@@ -1,9 +1,9 @@
 import { Command, InvalidArgumentError } from 'commander';
-import { existsSync, writeFileSync, readFileSync, watch, statSync, rmSync, type FSWatcher } from 'node:fs';
-import { resolve, join, dirname } from 'node:path';
+import { existsSync, writeFileSync, readFileSync, watch, statSync, rmSync, mkdirSync, type FSWatcher } from 'node:fs';
+import { resolve, join, dirname, relative } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-import { loadConfig, DEFAULT_CONFIG } from './config';
+import { loadConfig, DEFAULT_CONFIG, detectStack, detectMonorepoRoot } from './config';
 import { discoverFiles } from './discover';
 import { getGitHead, getGitRoot, getStagedFiles, getFilesSince } from './git';
 import { installHook, uninstallHook } from './installer';
@@ -27,9 +27,13 @@ import { formatPretty } from './report/pretty';
 import { formatJson } from './report/json';
 import { formatSarif } from './report/sarif';
 import { formatAdvice } from './report/advice';
+import { formatUnifiedDiff } from './report/unified-diff';
 import { buildHeatmap, formatHeatmap } from './report/heatmap';
 import { applyFixes, type FixResult } from './fix';
 import { readRuns, appendRun } from './engine/memory';
+import { recordTelemetry, readTelemetry } from './engine/telemetry';
+import { formatFlywheel, summarizeTelemetry } from './report/flywheel';
+import { logger, setLoggerQuiet } from './engine/logger';
 import { runProjectRules } from './rules/project';
 import {
   refreshRegistrySnapshot,
@@ -77,6 +81,7 @@ interface ScanRunOptions extends Omit<ScanProjectOptions, 'cwd'> {
   quiet?: boolean;
   trend?: number;
   cache?: boolean;
+  baseline?: boolean;
 }
 
 interface CliGlobalOptions extends ScanRunOptions {
@@ -177,7 +182,19 @@ interface StagedGatingResult {
   reason?: string;
 }
 
-function stagedGating(
+function checkIndividualThreshold(scores: ComponentScore[], threshold: number): StagedGatingResult {
+  for (const score of scores) {
+    if (score.adjustedScore > threshold) {
+      return {
+        failed: true,
+        reason: `Staged file ${score.filePath} exceeds individual threshold (${score.adjustedScore.toFixed(1)} > ${threshold}).`,
+      };
+    }
+  }
+  return { failed: false };
+}
+
+export function stagedGating(
   scores: ComponentScore[],
   config: ResolvedConfig,
   baseline: BaselineCache | undefined,
@@ -186,27 +203,31 @@ function stagedGating(
   if (scores.length === 0) return { failed: false };
 
   const individualThreshold = config.thresholds.individualSlopThreshold;
+
+  // On cache mismatch/missing, degrade to strict individual file gating.
+  if (!baseline) {
+    return checkIndividualThreshold(scores, individualThreshold);
+  }
+
   for (const score of scores) {
-    if (score.adjustedScore > individualThreshold) {
+    const relPath = relative(cwd, score.filePath);
+    const isNewFile = !baseline.scores[relPath];
+    if (isNewFile && score.adjustedScore > individualThreshold) {
       return {
         failed: true,
-        reason: `Staged file ${score.filePath} exceeds individual threshold (${score.adjustedScore.toFixed(1)} > ${individualThreshold}).`,
+        reason: `New staged file ${relPath} exceeds individual threshold (${score.adjustedScore.toFixed(1)} > ${individualThreshold}).`,
       };
     }
   }
 
-  if (!baseline) {
-    return { failed: false };
-  }
-
-  const stagedPaths = new Set(scores.map((s) => s.filePath));
+  const stagedPaths = new Set(scores.map((s) => relative(cwd, s.filePath)));
   const cachedTotal = baseline.totalComponentCount;
   let newStagedComponentCount = 0;
   let deletedStagedComponentCount = 0;
   let modifiedDiff = 0;
 
   for (const score of scores) {
-    const cached = baseline.scores[score.filePath];
+    const cached = baseline.scores[relative(cwd, score.filePath)];
     if (cached) {
       modifiedDiff += score.componentCount - cached.componentCount;
     } else {
@@ -223,26 +244,26 @@ function stagedGating(
 
   const virtualN = cachedTotal + newStagedComponentCount - deletedStagedComponentCount + modifiedDiff;
   if (virtualN <= 0) {
-    return {
-      failed: false,
-      reason: 'Virtual component count is zero; skipping mean gating.',
-    };
+    return checkIndividualThreshold(scores, individualThreshold);
   }
 
   let sumAllCachedAdjustedScores = 0;
-  let sumCachedStagedScores = 0;
-  let sumNewStagedScores = 0;
-
-  for (const score of scores) {
-    if (baseline.scores[score.filePath]) {
-      sumAllCachedAdjustedScores += score.adjustedScore;
-      sumCachedStagedScores += score.adjustedScore;
-    } else {
-      sumNewStagedScores += score.adjustedScore;
-    }
+  for (const cached of Object.values(baseline.scores)) {
+    sumAllCachedAdjustedScores += cached.baselineScore;
   }
 
-  const hypotheticalMean = (sumAllCachedAdjustedScores - sumCachedStagedScores + sumNewStagedScores) / virtualN;
+  let sumCachedStagedScores = 0;
+  let sumNewStagedScores = 0;
+  for (const score of scores) {
+    const cached = baseline.scores[relative(cwd, score.filePath)];
+    if (cached) {
+      sumCachedStagedScores += cached.baselineScore;
+    }
+    sumNewStagedScores += score.adjustedScore;
+  }
+
+  const hypotheticalMean =
+    (sumAllCachedAdjustedScores - sumCachedStagedScores + sumNewStagedScores) / virtualN;
 
   if (hypotheticalMean > config.thresholds.meanSlop) {
     return {
@@ -320,18 +341,24 @@ function appendGitignore(cwd: string): void {
   }
 }
 
-async function runDoctor(cwd: string): Promise<void> {
+async function runDoctor(cwd: string): Promise<number> {
+  let exitCode = 0;
+
+  logger.error(`Platform: ${process.platform} ${process.arch}, Node ${process.version}`);
+
   // Parser binding check.
   try {
     const { parseFile: tryParse } = await import('./engine/parser');
     const testFile = join(cwd, '.slop-audit', '.doctor-test.ts');
+    mkdirSync(dirname(testFile), { recursive: true });
     writeFileSync(testFile, 'export const x = 1;\n');
     await tryParse(testFile);
     rmSync(testFile, { force: true });
-    console.error('Parser bindings are functional.');
+    logger.error('Parser bindings are functional.');
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.warn(`Warning: parser binding check failed (${message}).`);
+    logger.error(`Error: parser binding check failed (${message}).`);
+    exitCode = 3;
   }
 
   // Registry snapshot check.
@@ -341,13 +368,13 @@ async function runDoctor(cwd: string): Promise<void> {
   }
   const fresh = isRegistryFresh(cwd);
   if (!fresh) {
-    console.warn(
+    logger.warn(
       `Warning: shadcn/ui registry snapshot is missing or older than bundled version ${BUNDLED_REGISTRY_VERSION}.`,
     );
   } else {
-    console.error('shadcn/ui registry snapshot is up-to-date.');
+    logger.error('shadcn/ui registry snapshot is up-to-date.');
   }
-  console.error(refresh.message);
+  logger.error(refresh.message);
 
   // Baseline cache structural integrity check.
   const baselineCache = loadBaseline(cwd);
@@ -356,24 +383,27 @@ async function runDoctor(cwd: string): Promise<void> {
     const gitHead = (await getGitHead(cwd)) ?? 'unknown';
     const validation = validateBaseline(baselineCache, configHash, gitHead);
     if (validation.valid) {
-      console.error('Baseline cache is structurally valid and matches config/git state.');
+      logger.error('Baseline cache is structurally valid and matches config/git state.');
     } else {
-      console.warn(`Warning: baseline cache invalid: ${validation.reason}`);
+      logger.warn(`Warning: baseline cache invalid: ${validation.reason}`);
     }
   } else {
-    console.warn('Warning: no baseline cache found at .slop-audit/cache/baseline.json.');
+    logger.warn('Warning: no baseline cache found at .slop-audit/cache/baseline.json.');
   }
+
+  return exitCode;
 }
 
 function buildBaselineCache(
   report: ProjectReport,
   configHash: string,
   gitHead: string,
+  cwd: string,
 ): BaselineCache {
   const scores: BaselineCache['scores'] = {};
   for (const component of report.components) {
-    scores[component.filePath] = {
-      baselineScore: component.adjustedScore,
+    scores[relative(cwd, component.filePath)] = {
+      baselineScore: component.componentScore,
       componentCount: component.componentCount,
     };
   }
@@ -401,6 +431,7 @@ async function runScan(
   options: ScanRunOptions,
   explicitPaths?: string[],
 ): Promise<ScanRunResult> {
+  setLoggerQuiet(!!options.quiet);
   const cwd = resolve(options.workspace ?? process.cwd());
   const loadedConfig = await loadConfig(cwd);
   const config: ResolvedConfig = { ...loadedConfig };
@@ -451,16 +482,17 @@ async function runScan(
         createdAt: baseline.baseline_created,
       };
       if (validation.warning && !options.quiet) {
-        console.warn(`Warning: ${validation.warning}.`);
+        logger.warn(`Warning: ${validation.warning}.`);
       }
     } else if (!options.quiet) {
-      console.warn(`Baseline invalid: ${validation.reason}; ignoring.`);
+      logger.warn(`Baseline invalid: ${validation.reason}; ignoring.`);
     }
   }
 
   const pool = new WorkerPool({
     config,
     threadCount: options.threadCount,
+    quiet: options.quiet,
     ...(options.workerScript ? { workerScript: options.workerScript } : {}),
   });
   const results = await pool.scan(files);
@@ -475,8 +507,9 @@ async function runScan(
   }
 
   const multiplier = resolveFrameworkMultiplier(config);
-  const scores = results.map((result) => scoreFile(result, multiplier, config, baseline));
-  const issueGroups = results.map((result) => ({
+  const scorableResults = results.filter((result) => !result.parseError);
+  const scores = scorableResults.map((result) => scoreFile(result, multiplier, config, baseline, cwd));
+  const issueGroups = scorableResults.map((result) => ({
     filePath: result.filePath,
     issues: result.issues,
   }));
@@ -485,6 +518,7 @@ async function runScan(
     const scannedPaths = new Set(results.map((result) => result.filePath));
     for (const [filePath, cached] of Object.entries(baseline.scores)) {
       if (scannedPaths.has(filePath)) continue;
+      if (!existsSync(filePath)) continue;
       scores.push({
         filePath,
         rawScore: 0,
@@ -498,9 +532,13 @@ async function runScan(
 
   const aggregated = aggregateReport(scores, issueGroups, config);
 
-  const projectIssues = runProjectRules(results, config);
+  const projectIssues = filterIssues(runProjectRules(results, config), options);
   const allIssues = [...results.flatMap((result) => result.issues), ...projectIssues];
   allIssues.sort((a, b) => SEVERITY_WEIGHTS[b.severity] - SEVERITY_WEIGHTS[a.severity]);
+
+  const parseErrors = results
+    .filter((result) => result.parseError)
+    .map((result) => ({ filePath: result.filePath, error: result.parseError as string }));
 
   const configPath = findConfigPath(cwd);
 
@@ -514,9 +552,12 @@ async function runScan(
     p90Score: aggregated.p90Score,
     peakScore: aggregated.peakScore,
     componentCount: aggregated.componentCount,
+    fileCount: results.length,
     components: aggregated.components,
     issues: allIssues,
+    parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
     baseline: baselineMeta,
+    thresholds: config.thresholds,
   };
 
   let noIncreaseFailure = false;
@@ -526,19 +567,21 @@ async function runScan(
       if (report.slopIndex > previous.slopIndex) {
         noIncreaseFailure = true;
         if (!options.quiet) {
-          console.error(
+          logger.error(
             `Slop index increased from ${previous.slopIndex.toFixed(1)} to ${report.slopIndex.toFixed(1)}.`,
           );
         }
       }
     } else if (!options.quiet) {
-      console.warn('Warning: no previous run found; --no-increase has nothing to compare.');
+      logger.warn('Warning: no previous run found; --no-increase has nothing to compare.');
     }
   }
 
   if (config.projectMemory !== false) {
     appendRun(cwd, report, thresholdExceeded(report, config));
   }
+
+  recordTelemetry(cwd, report, results, config);
 
   return { report, scores, results, config, noIncreaseFailure, baseline };
 }
@@ -577,24 +620,28 @@ function printFixSummary(
     }
 
     if (entries.length > 0) {
-      console.log(result.filePath);
+      logger.info(result.filePath);
       for (const entry of entries) {
-        console.log(entry);
+        logger.info(entry);
       }
     }
   }
 
   if (!quiet) {
-    console.log(`Fixes applied: ${totalApplied}, skipped: ${totalSkipped}${hasErrors ? ', errors detected' : ''}`);
+    logger.info(`Fixes applied: ${totalApplied}, skipped: ${totalSkipped}${hasErrors ? ', errors detected' : ''}`);
   }
 
   return { totalApplied, totalSkipped, hasErrors };
 }
 
-function renderOutput(report: ProjectReport, options: CliGlobalOptions): void {
+function renderOutput(report: ProjectReport, options: CliGlobalOptions, cwd: string): void {
   if (options.suggest) {
     if (!options.quiet) {
-      console.log(formatAdvice(report));
+      logger.info(formatAdvice(report));
+      const diff = formatUnifiedDiff(report, cwd);
+      if (diff) {
+        logger.info(diff);
+      }
     }
     return;
   }
@@ -604,37 +651,37 @@ function renderOutput(report: ProjectReport, options: CliGlobalOptions): void {
     if (typeof options.json === 'string') {
       writeFileSync(resolve(options.json), json);
       if (!options.quiet) {
-        console.error(`Wrote JSON report to ${options.json}`);
+        logger.error(`Wrote JSON report to ${options.json}`);
       }
     } else {
-      console.log(json);
+      logger.info(json);
     }
     return;
   }
 
   if (options.format === 'json') {
-    console.log(formatJson(report));
+    logger.info(formatJson(report));
     return;
   }
 
   if (options.format === 'sarif') {
     const cwd = resolve(options.workspace ?? process.cwd());
-    console.log(formatSarif(report, { cwd }));
+    logger.info(formatSarif(report, { cwd }));
     return;
   }
 
   if (!options.quiet) {
-    console.log(formatPretty(report));
+    logger.info(formatPretty(report));
   }
 }
 
 async function outputScanResults(report: ProjectReport, options: CliGlobalOptions, cwd: string): Promise<void> {
   if (options.heatmap) {
     const entries = await buildHeatmap(report, cwd);
-    console.log(formatHeatmap(entries, { json: options.format === 'json' }));
+    logger.info(formatHeatmap(entries, { json: options.format === 'json' }));
     return;
   }
-  renderOutput(report, options);
+  renderOutput(report, options, cwd);
 }
 
 async function watchProject(options: CliGlobalOptions, cwd: string, paths: string[]): Promise<void> {
@@ -677,8 +724,10 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
       p90Score: aggregated.p90Score,
       peakScore: aggregated.peakScore,
       componentCount: aggregated.componentCount,
+      fileCount: issueGroupsMap.size,
       components: aggregated.components,
       issues: allIssues,
+      thresholds: (currentConfig ?? DEFAULT_CONFIG).thresholds,
     };
   }
 
@@ -691,7 +740,7 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
     }
 
     const multiplier = resolveFrameworkMultiplier(currentConfig ?? DEFAULT_CONFIG);
-    const score = scoreFile(result, multiplier, currentConfig ?? DEFAULT_CONFIG, currentBaseline);
+    const score = scoreFile(result, multiplier, currentConfig ?? DEFAULT_CONFIG, currentBaseline, cwd);
     scoresMap.set(result.filePath, score);
     issueGroupsMap.set(result.filePath, result.issues);
   }
@@ -733,17 +782,17 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
 
       if (!options.quiet) {
         if (report.baseline) {
-          console.error(baselineStatusMessage(report.baseline));
+          logger.error(baselineStatusMessage(report.baseline));
         }
         if (configChanged) {
-          console.error('Config changed; reloaded.');
+          logger.error('Config changed; reloaded.');
         } else if (baselineChanged) {
-          console.error('Baseline changed; reloaded.');
+          logger.error('Baseline changed; reloaded.');
         }
-        console.error('Watching for changes... (press Ctrl+C to stop)');
+        logger.error('Watching for changes... (press Ctrl+C to stop)');
       }
     } catch (err) {
-      console.error('Scan failed:', err instanceof Error ? err.message : String(err));
+      logger.error(`Scan failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -761,9 +810,6 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
       if (closed || !filename) return;
 
       const changedPath = resolve(cwd, filename.toString());
-
-      // Ignore changes to the baseline cache itself to avoid feedback loops.
-      if (changedPath === baselinePath(cwd)) return;
 
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
@@ -788,10 +834,10 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
             const report = buildReport();
             await outputScanResults(report, options, cwd);
             if (!options.quiet) {
-              console.error(`Rescanned ${changedPath}. Watching for changes... (press Ctrl+C to stop)`);
+              logger.error(`Rescanned ${changedPath}. Watching for changes... (press Ctrl+C to stop)`);
             }
           } catch (err) {
-            console.error('Incremental scan failed:', err instanceof Error ? err.message : String(err));
+            logger.error(`Incremental scan failed: ${err instanceof Error ? err.message : String(err)}`);
           }
         })();
       }, 100);
@@ -824,6 +870,7 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       .option('--quiet', 'suppress non-error output')
       .option('--strict', 'exit 2 if any high-severity issue remains')
       .option('--no-increase', 'exit 2 if slop index increased since last run')
+      .option('--baseline', 'save a baseline after this scan')
       .option('--trend [n]', 'print a sparkline of the last n runs', parseTrend)
       .option('--json [path]', 'write JSON report to path or stdout')
       .option('--staged', 'scan only staged files')
@@ -832,35 +879,44 @@ export async function runCli({ start }: { start: number }): Promise<void> {
     program
       .command('init')
       .description('create a slop-audit config file')
-      .option('--baseline', 'run an initial scan and save a baseline')
       .option('--yes', 'overwrite existing config')
-      .action(async (cmdOptions: { baseline?: boolean; yes?: boolean }, command: Command) => {
+      .action(async (cmdOptions: { yes?: boolean }, command: Command) => {
         const options = command.optsWithGlobals() as CliGlobalOptions;
         const cwd = resolve(options.workspace ?? process.cwd());
         const configPath = join(cwd, 'slop-audit.config.mjs');
+        const detected = detectStack(cwd);
+        const initialConfig = { ...DEFAULT_CONFIG, ...detected };
+        const proposed = serializeConfig(initialConfig);
         if (existsSync(configPath) && !cmdOptions.yes) {
-          console.error(`Config file already exists: ${configPath}`);
-          console.error('Use --yes to overwrite');
+          const current = readFileSync(configPath, 'utf8');
+          logger.error(`Config file already exists: ${configPath}`);
+          logger.error('');
+          logger.error('--- current');
+          logger.error(current);
+          logger.error('+++ proposed');
+          logger.error(proposed);
+          logger.error('');
+          logger.error('Use --yes to overwrite');
           process.exit(2);
         }
-        writeFileSync(configPath, serializeConfig(DEFAULT_CONFIG));
+        writeFileSync(configPath, serializeConfig(initialConfig));
         appendGitignore(cwd);
         const refresh = await refreshRegistrySnapshot(cwd);
         if (!refresh.ok) {
           copyBundledSnapshotToCache(cwd);
         }
         if (!options.quiet) {
-          console.log(`Created ${configPath}`);
-          console.log(refresh.message);
+          logger.info(`Created ${configPath}`);
+          logger.info(refresh.message);
         }
-        if (cmdOptions.baseline) {
+        if (options.baseline) {
           const { report, config } = await runScan({ ...options, workspace: cwd });
           const configHash = hashConfig(config);
           const gitHead = (await getGitHead(cwd)) ?? 'unknown';
-          const cache = buildBaselineCache(report, configHash, gitHead);
+          const cache = buildBaselineCache(report, configHash, gitHead, cwd);
           saveBaseline(cwd, cache);
           if (!options.quiet) {
-            console.log(`Saved baseline to ${baselinePath(cwd)}`);
+            logger.info(`Saved baseline to ${baselinePath(cwd)}`);
           }
         }
         process.exit(0);
@@ -874,12 +930,12 @@ export async function runCli({ start }: { start: number }): Promise<void> {
         const cwd = resolve(options.workspace ?? process.cwd());
         const root = getGitRoot(cwd);
         if (!root) {
-          console.error('Not a git repository');
+          logger.error('Not a git repository');
           process.exit(2);
         }
         const result = installHook(root);
         if (!options.quiet) {
-          console.log(result.message);
+          logger.info(result.message);
         }
         process.exit(result.exitCode);
       });
@@ -892,12 +948,12 @@ export async function runCli({ start }: { start: number }): Promise<void> {
         const cwd = resolve(options.workspace ?? process.cwd());
         const root = getGitRoot(cwd);
         if (!root) {
-          console.error('Not a git repository');
+          logger.error('Not a git repository');
           process.exit(2);
         }
         const result = uninstallHook(root);
         if (!options.quiet) {
-          console.log(result.message);
+          logger.info(result.message);
         }
         process.exit(result.exitCode);
       });
@@ -908,7 +964,7 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       .action(async (_cmdOptions: Record<string, unknown>, command: Command) => {
         const options = command.optsWithGlobals() as CliGlobalOptions;
         const { report } = await runScan(options);
-        console.log(formatBadge(report));
+        logger.info(formatBadge(report));
         process.exit(0);
       });
 
@@ -918,7 +974,27 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       .action(async (_cmdOptions: Record<string, unknown>, command: Command) => {
         const options = command.optsWithGlobals() as CliGlobalOptions;
         const { report } = await runScan(options);
-        console.log(formatAdvice(report));
+        const cwd = resolve(options.workspace ?? process.cwd());
+        logger.info(formatAdvice(report));
+        const diff = formatUnifiedDiff(report, cwd);
+        if (diff) logger.info(diff);
+        process.exit(0);
+      });
+
+    program
+      .command('flywheel')
+      .description('summarize aggregated scan telemetry')
+      .option('--format <pretty|json>', 'output format', 'pretty')
+      .action(async (cmdOptions: { format?: 'pretty' | 'json' }, command: Command) => {
+        const options = command.optsWithGlobals() as CliGlobalOptions;
+        const cwd = resolve(options.workspace ?? process.cwd());
+        const payloads = readTelemetry(cwd);
+        if (payloads.length === 0) {
+          logger.info('No flywheel telemetry found. Run a scan first.');
+          process.exit(0);
+        }
+        const summary = summarizeTelemetry(payloads);
+        logger.info(formatFlywheel(summary, { json: cmdOptions.format === 'json' }));
         process.exit(0);
       });
 
@@ -933,8 +1009,15 @@ export async function runCli({ start }: { start: number }): Promise<void> {
         noIncrease: rawGlobals.increase === false,
       };
 
+      if (command.getOptionValueSource('workspace') === 'default') {
+        const autoRoot = detectMonorepoRoot(process.cwd());
+        if (autoRoot) {
+          options.workspace = autoRoot;
+        }
+      }
+
       if (options.heatmap && options.suggest) {
-        console.error('Error: --heatmap cannot be used with --suggest');
+        logger.error('Error: --heatmap cannot be used with --suggest');
         process.exit(2);
       }
 
@@ -943,17 +1026,17 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       if (options.trend !== undefined) {
         const runs = readRuns(cwd);
         if (runs.length === 0) {
-          console.log('No trend data available.');
+          logger.info('No trend data available.');
         } else {
-          console.log(renderTrend(runs, options.trend));
+          logger.info(renderTrend(runs, options.trend));
         }
         process.exit(0);
       }
 
       if (options.doctor) {
-        await runDoctor(cwd);
+        const doctorExit = await runDoctor(cwd);
         if (!options.watch) {
-          process.exit(0);
+          process.exit(doctorExit);
         }
       }
 
@@ -967,8 +1050,30 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       const scanElapsed = Math.round(performance.now() - scanStart);
       const totalElapsed = Math.round(performance.now() - start);
 
+      if (options.baseline) {
+        const cwd = resolve(options.workspace ?? process.cwd());
+        const configHash = hashConfig(config);
+        const gitHead = (await getGitHead(cwd)) ?? 'unknown';
+        const cache = buildBaselineCache(report, configHash, gitHead, cwd);
+        saveBaseline(cwd, cache);
+        if (!options.quiet) {
+          logger.info(`Saved baseline to ${baselinePath(cwd)}`);
+        }
+      }
+
+      if (options.tighten && baseline) {
+        saveBaseline(cwd, baseline);
+        if (!options.quiet) {
+          logger.error(`Tightened baseline saved (revision ${baseline.baseline_revision}).`);
+        }
+      }
+
+      if (options.doctor && !options.quiet) {
+        logger.error(`Doctor: bootstrap ${totalElapsed - scanElapsed}ms, scan ${scanElapsed}ms`);
+      }
+
       if (report.baseline && !options.quiet) {
-        console.error(baselineStatusMessage(report.baseline));
+        logger.error(baselineStatusMessage(report.baseline));
       }
 
       if (options.fix) {
@@ -976,7 +1081,7 @@ export async function runCli({ start }: { start: number }): Promise<void> {
         const { totalApplied, totalSkipped, hasErrors } = printFixSummary(fixResults, options.quiet ?? false);
 
         if (!options.quiet) {
-          console.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
+          logger.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
         }
 
         process.exit(hasErrors ? 1 : 0);
@@ -984,14 +1089,14 @@ export async function runCli({ start }: { start: number }): Promise<void> {
 
       if (options.heatmap) {
         const entries = await buildHeatmap(report, cwd);
-        console.log(formatHeatmap(entries, { json: options.format === 'json' }));
+        logger.info(formatHeatmap(entries, { json: options.format === 'json' }));
         if (!options.quiet) {
-          console.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
+          logger.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
         }
         process.exit(0);
       }
 
-      renderOutput(report, options);
+      renderOutput(report, options, cwd);
 
       let exitCode: 0 | 1 | 2 = thresholdExceeded(report, config) ? 1 : 0;
       const stagedGatingResult = options.staged ? stagedGating(scores, config, baseline, cwd) : { failed: false };
@@ -1001,7 +1106,7 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       if (options.strict && report.issues.some((issue) => issue.severity === 'high')) {
         exitCode = 2;
         if (!options.quiet) {
-          console.error('High-severity issues found with --strict.');
+          logger.error('High-severity issues found with --strict.');
         }
       }
       if (noIncreaseFailure) {
@@ -1010,13 +1115,13 @@ export async function runCli({ start }: { start: number }): Promise<void> {
 
       if (exitCode === 1) {
         if (options.staged && stagedGatingResult.reason) {
-          console.error(`Gating failure: ${stagedGatingResult.reason}`);
+          logger.error(`Gating failure: ${stagedGatingResult.reason}`);
         } else {
-          console.error('Slop thresholds exceeded.');
+          logger.error('Slop thresholds exceeded.');
         }
       }
       if (!options.quiet) {
-        console.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
+        logger.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
       }
       process.exit(exitCode);
     };
@@ -1028,7 +1133,7 @@ export async function runCli({ start }: { start: number }): Promise<void> {
 
     await program.parseAsync(process.argv);
   } catch (err) {
-    console.error('Unexpected error:', err instanceof Error ? err.message : String(err));
+    logger.error(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(3);
   }
 }

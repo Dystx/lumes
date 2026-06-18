@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { createHash } from 'crypto';
 import { join } from 'path';
 import { VERSION } from '../types';
+import { DEFAULT_CONFIG } from '../config';
 import type { BaselineCache, ResolvedConfig } from '../types';
 
 const BASELINE_VERSION = VERSION;
@@ -26,9 +27,84 @@ function sanitizeForHash(value: unknown): unknown {
   return value;
 }
 
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a instanceof RegExp && b instanceof RegExp) {
+    return a.source === b.source && a.flags === b.flags;
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((item, index) => valuesEqual(item, b[index]));
+  }
+  if (a !== null && b !== null && typeof a === 'object' && typeof b === 'object') {
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    const aRecord = a as Record<string, unknown>;
+    const bRecord = b as Record<string, unknown>;
+    return aKeys.every((key) => valuesEqual(aRecord[key], bRecord[key]));
+  }
+  return false;
+}
+
+const BASELINE_HASH_KEYS = new Set<keyof ResolvedConfig>([
+  'framework',
+  'hasTailwind',
+  'supportsRsc',
+  'rules',
+  'categoryWeights',
+  'frameworkMultipliers',
+  'ruleConfig',
+  'gapTokens',
+  'contextTaxCaps',
+  'spacingScale',
+  'typographyScale',
+  'arbitraryValueAllowlist',
+  'clampAllowlist',
+  'wcag',
+]);
+
+function stripDefaults(value: unknown, defaultValue: unknown): unknown {
+  if (valuesEqual(value, defaultValue)) return undefined;
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForHash(item));
+  }
+
+  if (value !== null && typeof value === 'object') {
+    const defaultRecord = (defaultValue ?? {}) as Record<string, unknown>;
+    const valueRecord = value as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(valueRecord)) {
+      const stripped = stripDefaults(val, defaultRecord[key]);
+      if (stripped !== undefined) {
+        result[key] = stripped;
+      }
+    }
+    return result;
+  }
+
+  return sanitizeForHash(value);
+}
+
+function pickBaselineConfig(config: ResolvedConfig): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+  const defaultRecord = DEFAULT_CONFIG as unknown as Record<string, unknown>;
+  const configRecord = config as unknown as Record<string, unknown>;
+  for (const key of BASELINE_HASH_KEYS) {
+    const value = configRecord[key];
+    if (value === undefined) continue;
+    const stripped = stripDefaults(value, defaultRecord[key]);
+    if (stripped !== undefined) {
+      picked[key] = stripped;
+    }
+  }
+  return picked;
+}
+
 export function hashConfig(config: ResolvedConfig): string {
   return createHash('sha256')
-    .update(JSON.stringify(sanitizeForHash(config)))
+    .update(JSON.stringify(sanitizeForHash(pickBaselineConfig(config))))
     .digest('hex');
 }
 

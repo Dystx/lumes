@@ -80,3 +80,85 @@ export function nearestTailwindSpacingToken(className: string): string | undefin
 
   return `${prefix}-${token}`;
 }
+
+export interface StylePropEntry {
+  property: string;
+  value: string;
+}
+
+function toKebabCase(value: string): string {
+  return value
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase();
+}
+
+export function parseStyleObject(source: string): StylePropEntry[] {
+  const trimmed = source.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return [];
+
+  const body = trimmed.slice(1, -1);
+  const entries: StylePropEntry[] = [];
+  let current = '';
+  let depth = 0;
+  let inString: false | '"' | "'" | '`' = false;
+  let escaped = false;
+
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === inString) {
+        inString = false;
+      }
+      current += ch;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'" || ch === '`') {
+      inString = ch;
+      current += ch;
+      continue;
+    }
+
+    if (ch === '{' || ch === '(' || ch === '[') {
+      depth++;
+      current += ch;
+      continue;
+    }
+
+    if (ch === '}' || ch === ')' || ch === ']') {
+      depth--;
+      current += ch;
+      continue;
+    }
+
+    if (ch === ',' && depth === 0) {
+      const segment = current.trim();
+      const match = /^([a-zA-Z0-9-]+)\s*:/.exec(segment);
+      if (match) {
+        const property = toKebabCase(match[1]);
+        const value = segment.slice(match[0].length).trim();
+        entries.push({ property, value });
+      }
+      current = '';
+      continue;
+    }
+
+    current += ch;
+  }
+
+  const segment = current.trim();
+  const match = /^([a-zA-Z0-9-]+)\s*:/.exec(segment);
+  if (match) {
+    const property = toKebabCase(match[1]);
+    const value = segment.slice(match[0].length).trim();
+    entries.push({ property, value });
+  }
+
+  return entries;
+}

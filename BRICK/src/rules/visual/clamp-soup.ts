@@ -1,15 +1,43 @@
 import type { Issue, Rule, RuleContext, ScanFacts } from '../../types';
 import { createRule } from '../rule';
+import { matchesAllowlist } from '../utils';
 
 export interface ClampSoupContext {
-  // No per-context state required.
+  allowlist: (string | RegExp)[];
 }
 
-const CLAMP_RE = /clamp\s*\([^)]*\)/gi;
+const CLAMP_RE = /clamp\s*\((?:[^()]|\([^)]*\))*\)/gi;
 const VIEWPORT_UNIT_RE = /(?<![a-zA-Z_])(vw|vh)(?![a-zA-Z0-9_])/;
 
-function isClampSoup(value: string): boolean {
-  return VIEWPORT_UNIT_RE.test(value) && !value.includes('var(');
+function hasRawViewportUnit(value: string): boolean {
+  // Strip CSS custom-property aliases; any remaining viewport unit is raw.
+  const withoutVar = value.replace(/var\([^)]*\)/g, '');
+  return VIEWPORT_UNIT_RE.test(withoutVar);
+}
+
+function findClampIssues(
+  source: string,
+  line: number,
+  column: number,
+  allowlist: (string | RegExp)[],
+  issues: Issue[],
+): void {
+  const clamps = source.match(CLAMP_RE) ?? [];
+  for (const clamp of clamps) {
+    if (matchesAllowlist(clamp, allowlist)) continue;
+    if (hasRawViewportUnit(clamp)) {
+      issues.push({
+        ruleId: 'visual/clamp-soup',
+        category: 'visual',
+        severity: 'high',
+        aiSpecific: true,
+        message: 'clamp() uses raw viewport units without a design token alias',
+        line,
+        column,
+        advice: 'Replace viewport-only clamp() with token-based fluid sizing, alias the values in your design config, or add the clamp to clampAllowlist if intentional.',
+      });
+    }
+  }
 }
 
 export const clampSoupRule = createRule<ClampSoupContext>({
@@ -17,28 +45,20 @@ export const clampSoupRule = createRule<ClampSoupContext>({
   category: 'visual',
   severity: 'high',
   aiSpecific: true,
-  create(_context: RuleContext): ClampSoupContext {
-    return {};
+  create(context: RuleContext): ClampSoupContext {
+    return {
+      allowlist: context.config.clampAllowlist ?? [],
+    };
   },
-  analyze(_context: ClampSoupContext, facts: ScanFacts): Issue[] {
+  analyze(context: ClampSoupContext, facts: ScanFacts): Issue[] {
     const issues: Issue[] = [];
 
     for (const styleProp of facts.styleProps) {
-      const clamps = styleProp.source.match(CLAMP_RE) ?? [];
-      for (const clamp of clamps) {
-        if (isClampSoup(clamp)) {
-          issues.push({
-            ruleId: 'visual/clamp-soup',
-            category: 'visual',
-            severity: 'high',
-            aiSpecific: true,
-            message: 'clamp() uses raw viewport units without a design token alias',
-            line: styleProp.line,
-            column: styleProp.column,
-            advice: 'Replace viewport-only clamp() with token-based fluid sizing or alias the values in your design config.',
-          });
-        }
-      }
+      findClampIssues(styleProp.source, styleProp.line, styleProp.column, context.allowlist, issues);
+    }
+
+    for (const classNameFact of facts.staticClassNames) {
+      findClampIssues(classNameFact.value, classNameFact.line, classNameFact.column, context.allowlist, issues);
     }
 
     return issues;

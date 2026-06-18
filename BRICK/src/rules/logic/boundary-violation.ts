@@ -5,6 +5,7 @@ const CLIENT_HOOKS = new Set(['useState', 'useEffect', 'useContext']);
 
 export interface BoundaryViolationContext {
   clientHooks: ReadonlySet<string>;
+  supportsRsc: boolean;
 }
 
 export const boundaryViolationRule = createRule<BoundaryViolationContext>({
@@ -12,10 +13,12 @@ export const boundaryViolationRule = createRule<BoundaryViolationContext>({
   category: 'logic',
   severity: 'high',
   aiSpecific: true,
-  create(_context: RuleContext): BoundaryViolationContext {
-    return { clientHooks: CLIENT_HOOKS };
+  create(ruleContext: RuleContext): BoundaryViolationContext {
+    return { clientHooks: CLIENT_HOOKS, supportsRsc: ruleContext.config.supportsRsc ?? true };
   },
   analyze(context: BoundaryViolationContext, facts: ScanFacts): Issue[] {
+    if (context.supportsRsc === false) return [];
+
     const issues: Issue[] = [];
 
     for (const component of facts.components) {

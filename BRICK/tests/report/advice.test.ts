@@ -101,4 +101,96 @@ describe('formatAdvice', () => {
 
     expect(output).toContain('No problem categories detected');
   });
+
+  it('prints per-issue guidance', () => {
+    const report = makeReport({
+      visual: 0,
+      typo: 0,
+      wcag: 0,
+      layout: 5,
+      component: 0,
+      logic: 0,
+      arch: 0,
+      perf: 0,
+    });
+    report.issues = [
+      {
+        ruleId: 'layout/magic-spacing',
+        category: 'layout',
+        severity: 'medium',
+        aiSpecific: false,
+        filePath: 'src/Card.tsx',
+        line: 10,
+        column: 4,
+        message: 'Magic spacing value used.',
+        advice: 'Replace with a spacing token.',
+      },
+    ];
+
+    const output = formatAdvice(report);
+    expect(output).toContain('Per-issue guidance');
+    expect(output).toContain('src/Card.tsx:10:4');
+    expect(output).toContain('layout/magic-spacing');
+    expect(output).toContain('Replace with a spacing token.');
+  });
+
+  it('marks structural issues with a GIR boundary marker', () => {
+    const report = makeReport({
+      visual: 0,
+      typo: 0,
+      wcag: 0,
+      layout: 5,
+      component: 0,
+      logic: 0,
+      arch: 0,
+      perf: 0,
+    });
+    report.issues = [
+      {
+        ruleId: 'layout/gap-monopoly',
+        category: 'layout',
+        severity: 'medium',
+        aiSpecific: true,
+        line: 1,
+        column: 1,
+        message: 'One gap value dominates the project.',
+        advice: 'Introduce a shared layout primitive.',
+      },
+    ];
+
+    const output = formatAdvice(report);
+    expect(output).toContain('[GIR]');
+    expect(output).toContain('layout/gap-monopoly');
+  });
+
+  it('does not mark safe-fix issues with GIR', () => {
+    const report = makeReport({
+      visual: 0,
+      typo: 0,
+      wcag: 0,
+      layout: 5,
+      component: 0,
+      logic: 0,
+      arch: 0,
+      perf: 0,
+    });
+    report.issues = [
+      {
+        ruleId: 'layout-token',
+        category: 'layout',
+        severity: 'medium',
+        aiSpecific: false,
+        filePath: 'src/Card.tsx',
+        line: 2,
+        column: 3,
+        message: 'Replace class.',
+        advice: 'Use token.',
+        fix: { kind: 'replace', targetFile: 'src/Card.tsx', oldValue: 'p-4', newValue: 'p-3', description: 'token' },
+      },
+    ];
+
+    const output = formatAdvice(report);
+    expect(output).not.toContain('[GIR]');
+    expect(output).toContain('• src/Card.tsx:2:3');
+  });
 });

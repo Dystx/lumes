@@ -37,6 +37,19 @@ function sentinelsPresent(content: string): { begin: boolean; end: boolean } {
   };
 }
 
+function replaceSentinelBlock(content: string): string {
+  const lines = content.split(/\r?\n/);
+  const beginIndex = lines.indexOf(BEGIN_SENTINEL);
+  const endIndex = lines.indexOf(END_SENTINEL);
+  if (beginIndex === -1 || endIndex === -1 || beginIndex > endIndex) {
+    return content;
+  }
+
+  const before = lines.slice(0, beginIndex);
+  const after = lines.slice(endIndex + 1);
+  return `${before.join('\n')}${before.length > 0 ? '\n' : ''}${SENTINEL_BLOCK}${after.join('\n')}`;
+}
+
 export function installHook(gitRoot: string): HookResult {
   const path = hookPath(gitRoot);
 
@@ -45,9 +58,19 @@ export function installHook(gitRoot: string): HookResult {
     const { begin, end } = sentinelsPresent(content);
 
     if (begin && end) {
+      const replaced = replaceSentinelBlock(content);
+      if (replaced === content) {
+        return {
+          ok: true,
+          message: 'Hook already installed',
+          exitCode: 0,
+        };
+      }
+      writeFileSync(path, replaced.endsWith('\n') ? replaced : `${replaced}\n`);
+      chmodSync(path, 0o755);
       return {
         ok: true,
-        message: 'Hook already installed',
+        message: 'Replaced pre-commit hook block',
         exitCode: 0,
       };
     }

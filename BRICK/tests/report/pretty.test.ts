@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { formatPretty } from '../../src/report/pretty.js';
 import type { ProjectReport } from '../../src/types.js';
 
-function makeReport(componentCount: number): ProjectReport {
+function makeReport(overrides: Partial<ProjectReport> = {}): ProjectReport {
   return {
     version: '1.0.0',
     generatedAt: new Date().toISOString(),
@@ -21,7 +21,8 @@ function makeReport(componentCount: number): ProjectReport {
     },
     p90Score: 88.0,
     peakScore: 92.0,
-    componentCount,
+    componentCount: 25,
+    fileCount: 12,
     components: [
       {
         filePath: 'src/pages/Home.tsx',
@@ -61,12 +62,14 @@ function makeReport(componentCount: number): ProjectReport {
         column: 10,
       },
     ],
+    thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
+    ...overrides,
   };
 }
 
 describe('formatPretty', () => {
   it('includes header and legend', () => {
-    const output = formatPretty(makeReport(25));
+    const output = formatPretty(makeReport());
 
     expect(output).toContain('Slop Index: 34');
     expect(output).toContain('Assembly Health: 66');
@@ -76,20 +79,20 @@ describe('formatPretty', () => {
   });
 
   it('warns about micro-repos', () => {
-    const output = formatPretty(makeReport(8));
+    const output = formatPretty(makeReport({ componentCount: 8 }));
 
-    expect(output).toContain('Micro-repo warning');
-    expect(output).toContain('8 component(s) scanned');
+    expect(output).toContain('Small project detected (<=10 components)');
+    expect(output).toContain('Scores are not normalized');
   });
 
   it('does not warn for larger repos', () => {
-    const output = formatPretty(makeReport(25));
+    const output = formatPretty(makeReport());
 
-    expect(output).not.toContain('Micro-repo warning');
+    expect(output).not.toContain('Small project detected');
   });
 
   it('shows category breakdown rows sorted by score', () => {
-    const output = formatPretty(makeReport(25));
+    const output = formatPretty(makeReport());
 
     expect(output).toContain('Visual');
     expect(output).toContain('Logic');
@@ -98,7 +101,7 @@ describe('formatPretty', () => {
   });
 
   it('lists top offending components sorted by adjusted score', () => {
-    const output = formatPretty(makeReport(25));
+    const output = formatPretty(makeReport());
 
     expect(output).toContain('Top offending components');
     expect(output).toContain('src/pages/Home.tsx');
@@ -109,7 +112,7 @@ describe('formatPretty', () => {
   });
 
   it('renders per-issue details and advice', () => {
-    const output = formatPretty(makeReport(25));
+    const output = formatPretty(makeReport());
 
     expect(output).toContain('magic-spacing');
     expect(output).toContain('zombie-state');
@@ -117,5 +120,15 @@ describe('formatPretty', () => {
     expect(output).toContain('src/pages/Home.tsx:42:10');
     expect(output).toContain('Avoid magic spacing values in layout');
     expect(output).toContain('Replace with a spacing token from the design system.');
+  });
+
+  it('lists parse errors when present', () => {
+    const report = makeReport();
+    report.parseErrors = [{ filePath: 'src/bad.tsx', error: 'Unexpected token' }];
+    const output = formatPretty(report);
+
+    expect(output).toContain('Parse errors (1)');
+    expect(output).toContain('src/bad.tsx');
+    expect(output).toContain('Unexpected token');
   });
 });

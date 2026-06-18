@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 export const execFileAsync = promisify(execFile);
 export const repoRoot = resolve(__dirname, '../..');
 export const binPath = join(repoRoot, 'bin', 'slop-audit.js');
-export const workerScript = join(repoRoot, 'dist', 'engine', 'worker.js');
+export const workerScript = join(repoRoot, 'dist', 'engine', 'worker.cjs');
 
 export const createTmpDir = () => mkdtempSync(join(tmpdir(), 'slop-audit-test-'));
 

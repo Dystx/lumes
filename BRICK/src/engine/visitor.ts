@@ -10,6 +10,7 @@ import type {
   StateBinding,
   StylePropFact,
   AstroComponentFact,
+  ConsoleCallFact,
 } from '../types';
 
 type AnyNode = unknown;
@@ -236,6 +237,89 @@ function lineNumberOf(source: string, index: number): number {
   return line;
 }
 
+interface SourceRange {
+  start: number;
+  end: number;
+}
+
+function findScriptBlockRange(source: string): SourceRange | undefined {
+  const openMatch = source.match(/<script(?:\s[^>]*)?>/i);
+  if (!openMatch || openMatch.index === undefined) return undefined;
+  const start = openMatch.index;
+  const closeMatch = source.match(/<\/script>/i);
+  if (!closeMatch || closeMatch.index === undefined) return undefined;
+  const end = closeMatch.index + closeMatch[0].length;
+  return { start, end };
+}
+
+function findAstroFrontmatterRange(source: string): SourceRange | undefined {
+  const match = source.match(/^---\r?\n[\s\S]*?\r?\n---/);
+  if (!match || match.index === undefined) return undefined;
+  return { start: match.index, end: match.index + match[0].length };
+}
+
+function positionFromCharOffset(source: string, offset: number): { line: number; column: number } {
+  const line = lineNumberOf(source, offset);
+  const lineStart = source.lastIndexOf('\n', offset) + 1;
+  const column = offset - lineStart + 1;
+  return { line, column };
+}
+
+function extractStaticTemplateClassNames(
+  source: string,
+  skipRanges: SourceRange[],
+): ClassNameFact[] {
+  const facts: ClassNameFact[] = [];
+  const tagRegex = /<[a-zA-Z][^>]*>/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagRegex.exec(source)) !== null) {
+    const tagStart = match.index;
+    const tagEnd = tagStart + match[0].length;
+    if (skipRanges.some((range) => tagStart < range.end && tagEnd > range.start)) {
+      continue;
+    }
+
+    const classAttrMatch = /\sclass\s*=\s*(["'])([^]*?)\1/.exec(match[0]);
+    if (!classAttrMatch) continue;
+
+    const value = classAttrMatch[2];
+    if (!value.trim()) continue;
+
+    const valueStartInTag = classAttrMatch.index + classAttrMatch[0].indexOf(value);
+    const offset = tagStart + valueStartInTag;
+    const { line, column } = positionFromCharOffset(source, offset);
+    facts.push({ value, line, column });
+  }
+
+  return facts;
+}
+
+function mergeTemplateClassNames(filePath: string, source: string, facts: ScanFacts): void {
+  const ext = filePath.split('.').pop()?.toLowerCase();
+  if (ext !== 'vue' && ext !== 'svelte' && ext !== 'astro') return;
+
+  const skipRanges: SourceRange[] = [];
+  if (ext === 'vue' || ext === 'svelte') {
+    const scriptRange = findScriptBlockRange(source);
+    if (scriptRange) skipRanges.push(scriptRange);
+  }
+  if (ext === 'astro') {
+    const frontmatterRange = findAstroFrontmatterRange(source);
+    if (frontmatterRange) skipRanges.push(frontmatterRange);
+  }
+
+  const templateFacts = extractStaticTemplateClassNames(source, skipRanges);
+  const seen = new Set(facts.staticClassNames.map((f) => `${f.line}:${f.column}:${f.value}`));
+  for (const fact of templateFacts) {
+    const key = `${fact.line}:${fact.column}:${fact.value}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      facts.staticClassNames.push(fact);
+    }
+  }
+}
+
 function extractAstroComponents(source: string): AstroComponentFact[] {
   const results: AstroComponentFact[] = [];
   const tagRegex = /<([A-Z][A-Za-z0-9]*)/g;
@@ -306,6 +390,72 @@ function collectChainText(node: AnyNode, source: string): string {
   return sourceText(node, source);
 }
 
+function isIdentifierNode(node: AnyNode): boolean {
+  return isObject(node) && node.type === 'Identifier' && typeof node.value === 'string';
+}
+
+function isMemberExpressionNode(node: AnyNode): boolean {
+  return isObject(node) && node.type === 'MemberExpression' && isObject(node.object);
+}
+
+function isNullOrUndefinedLiteral(node: AnyNode): boolean {
+  if (!isObject(node)) return false;
+  if (node.type === 'NullLiteral') return true;
+  return isIdentifierNode(node) && node.value === 'undefined';
+}
+
+function extractNullishChecked(node: AnyNode): AnyNode | undefined {
+  if (
+    !isObject(node) ||
+    node.type !== 'BinaryExpression' ||
+    !['===', '!==', '==', '!='].includes(node.operator as string)
+  ) {
+    return undefined;
+  }
+  const left = node.left as AnyNode;
+  const right = node.right as AnyNode;
+  const leftNullish = isNullOrUndefinedLiteral(left);
+  const rightNullish = isNullOrUndefinedLiteral(right);
+  if (leftNullish && (isIdentifierNode(right) || isMemberExpressionNode(right))) return right;
+  if (rightNullish && (isIdentifierNode(left) || isMemberExpressionNode(left))) return left;
+  return undefined;
+}
+
+function collectAndOperands(node: AnyNode, operands: AnyNode[] = []): AnyNode[] {
+  if (isObject(node) && node.type === 'BinaryExpression' && node.operator === '&&') {
+    collectAndOperands(node.left as AnyNode, operands);
+    collectAndOperands(node.right as AnyNode, operands);
+  } else {
+    operands.push(node);
+  }
+  return operands;
+}
+
+function isOptionalChainPattern(node: AnyNode, source: string): boolean {
+  const operands = collectAndOperands(node);
+  if (operands.length < 3) return false;
+  let previous: AnyNode | undefined;
+  for (let i = 0; i < operands.length; i++) {
+    const operand = operands[i];
+    let base = extractNullishChecked(operand);
+    if (!base && (isIdentifierNode(operand) || isMemberExpressionNode(operand))) {
+      base = operand;
+    }
+    if (!base) return false;
+    if (i === 0) {
+      if (!isIdentifierNode(base) && !isMemberExpressionNode(base)) return false;
+      previous = base;
+      continue;
+    }
+    if (!isMemberExpressionNode(base)) return false;
+    const objectText = sourceText((base as { object: AnyNode }).object, source);
+    const previousText = sourceText(previous as AnyNode, source);
+    if (objectText !== previousText) return false;
+    previous = base;
+  }
+  return true;
+}
+
 function isUseStateDeclarator(node: Record<string, unknown>): boolean {
   const init = node.init as AnyNode;
   if (!isObject(init) || init.type !== 'CallExpression') return false;
@@ -354,7 +504,12 @@ function extractStateBinding(node: Record<string, unknown>, lineOffsets: number[
   };
 }
 
-export function extractFacts(filePath: string, ast: Module, nodeCount: number): ScanFacts {
+export function extractFacts(
+  filePath: string,
+  ast: Module,
+  nodeCount: number,
+  supportsRsc = true,
+): ScanFacts {
   const source = readFileSync(filePath, 'utf-8');
   const lineOffsets = buildLineOffsets(source);
 
@@ -371,11 +526,13 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
     logicalExpressions: [],
     styleProps: [],
     astroComponents: [],
+    consoleCalls: [],
+    stringLiterals: [],
   };
 
   const ctx: WalkContext = {
     stack: [],
-    useClient: false,
+    useClient: !supportsRsc,
   };
 
   function nearestComponent(): FunctionFrame | null {
@@ -567,6 +724,32 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
         const { line, column } = positionFrom(node, lineOffsets);
         attachHook({ name: callee.value as string, line, column });
       }
+      if (isObject(callee) && callee.type === 'MemberExpression') {
+        const obj = (callee as Record<string, unknown>).object as AnyNode;
+        const prop = (callee as Record<string, unknown>).property as AnyNode;
+        if (
+          isObject(obj) &&
+          obj.type === 'Identifier' &&
+          obj.value === 'console' &&
+          isObject(prop) &&
+          prop.type === 'Identifier' &&
+          typeof prop.value === 'string' &&
+          ['log', 'warn', 'error', 'info', 'debug'].includes(prop.value as string)
+        ) {
+          const { line, column } = positionFrom(node, lineOffsets);
+          facts.consoleCalls.push({
+            method: prop.value as ConsoleCallFact['method'],
+            line,
+            column,
+          });
+        }
+      }
+    }
+
+    // Detect string literals for placeholder-text checks.
+    if (type === 'StringLiteral' && typeof node.value === 'string') {
+      const { line, column } = positionFrom(node, lineOffsets);
+      facts.stringLiterals.push({ value: node.value as string, line, column });
     }
 
     // Detect static className / class JSX attributes.
@@ -611,7 +794,35 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
       const source = stringLiteralValue(node.source as AnyNode);
       if (source) {
         const { line, column } = positionFrom(node, lineOffsets);
-        facts.imports.push({ source, line, column });
+        const importedNames: string[] = [];
+        const specifiers = node.specifiers as AnyNode[];
+        if (Array.isArray(specifiers)) {
+          for (const specifier of specifiers) {
+            if (!isObject(specifier)) continue;
+            if (
+              specifier.type === 'ImportDefaultSpecifier' ||
+              specifier.type === 'ImportNamespaceSpecifier'
+            ) {
+              const local = specifier.local as AnyNode;
+              if (isObject(local) && local.type === 'Identifier' && typeof local.value === 'string') {
+                importedNames.push(local.value as string);
+              }
+            } else if (specifier.type === 'ImportSpecifier') {
+              const imported = specifier.imported as AnyNode;
+              const local = specifier.local as AnyNode;
+              if (
+                isObject(imported) &&
+                typeof imported.value === 'string' &&
+                imported.value.length > 0
+              ) {
+                importedNames.push(imported.value as string);
+              } else if (isObject(local) && local.type === 'Identifier' && typeof local.value === 'string') {
+                importedNames.push(local.value as string);
+              }
+            }
+          }
+        }
+        facts.imports.push({ source, line, column, importedNames });
       }
     }
 
@@ -625,6 +836,7 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
           line,
           column,
           text: collectChainText(node, source),
+          isOptionalChainLike: isOptionalChainPattern(node, source),
         });
       }
     }
@@ -709,6 +921,8 @@ export function extractFacts(filePath: string, ast: Module, nodeCount: number): 
   if (filePath.toLowerCase().endsWith('.astro')) {
     facts.astroComponents = extractAstroComponents(source);
   }
+
+  mergeTemplateClassNames(filePath, source, facts);
 
   return facts;
 }

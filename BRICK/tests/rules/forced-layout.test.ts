@@ -126,7 +126,7 @@ export function Page() {
     expect(issues).toHaveLength(0);
   });
 
-  it('only counts gap tokens from allowlist when gapTokens is configured', async () => {
+  it('is suppressed when gapTokens restricts available gap options', async () => {
     const source = `
 export function Page() {
   return (
@@ -143,10 +143,7 @@ export function Page() {
       source,
       makeConfig({ gapTokens: ['gap-4'], ruleConfig: { forcedLayoutThreshold: 2 } }),
     );
-    expect(issues).toHaveLength(1);
-    expect(issues[0].message).toBe(
-      'Repetitive flex-col gap wrapper pattern detected (3 instances)',
-    );
+    expect(issues).toHaveLength(0);
   });
 
   it('falls back to any gap- prefix when gapTokens is empty', async () => {
@@ -162,6 +159,24 @@ export function Page() {
 }
 `;
     const issues = await runRule(source, makeConfig({ gapTokens: [] }));
+    expect(issues).toHaveLength(0);
+  });
+
+  it('does not flag non-consecutive wrappers', async () => {
+    const source = `
+export function Page() {
+  return (
+    <>
+      <div className="flex flex-col gap-4">A</div>
+      <div className="flex flex-col gap-4">B</div>
+      <div className="other">break</div>
+      <div className="flex flex-col gap-4">C</div>
+      <div className="flex flex-col gap-4">D</div>
+    </>
+  );
+}
+`;
+    const issues = await runRule(source, makeConfig());
     expect(issues).toHaveLength(0);
   });
 });

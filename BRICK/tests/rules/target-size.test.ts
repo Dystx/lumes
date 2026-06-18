@@ -16,6 +16,7 @@ function makeConfig(overrides?: Partial<ResolvedConfig>): ResolvedConfig {
     ruleConfig: {},
     contextTaxCaps: { cleanCap: 0, standardCap: 0 },
     arbitraryValueAllowlist: [],
+    hasTailwind: true,
     wcag: { targetSizeExemptSelectors: [] },
     thresholds: {
       meanSlop: 0,
@@ -94,6 +95,102 @@ describe('wcag/target-size', () => {
   it('flags a zero or auto explicit size', async () => {
     const source = `export function Form() { return <button width="0" height="auto" />; }`;
     const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(1);
+  });
+
+  it('flags height/width tokens below the minimum threshold', async () => {
+    const source = `export function Form() { return <button className="h-4 w-4" />; }`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(1);
+  });
+
+  it('accepts height/width tokens at the minimum threshold', async () => {
+    const source = `export function Form() { return <button className="h-6 w-6" />; }`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(0);
+  });
+
+  it('flags padding tokens below the minimum threshold', async () => {
+    const source = `export function Form() { return <button className="p-1" />; }`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(1);
+  });
+
+  it('accepts padding tokens at the minimum threshold', async () => {
+    const source = `export function Form() { return <button className="p-2" />; }`;
+    const issues = await runRule(source, makeConfig());
+    expect(issues).toHaveLength(0);
+  });
+
+  it('exempts a class selector with a leading dot', async () => {
+    const source = `export function Form() { return <button className="icon-btn" />; }`;
+    const issues = await runRule(
+      source,
+      makeConfig({ wcag: { targetSizeExemptSelectors: ['.icon-btn'] } }),
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  it('exempts a tag-qualified class selector', async () => {
+    const source = `export function Form() { return <button className="icon-btn" />; }`;
+    const issues = await runRule(
+      source,
+      makeConfig({ wcag: { targetSizeExemptSelectors: ['button.icon-btn'] } }),
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  it('does not exempt a mismatched tag-qualified selector', async () => {
+    const source = `export function Form() { return <a className="icon-btn" />; }`;
+    const issues = await runRule(
+      source,
+      makeConfig({ wcag: { targetSizeExemptSelectors: ['button.icon-btn'] } }),
+    );
+    expect(issues).toHaveLength(1);
+  });
+
+  it('exempts an id selector', async () => {
+    const source = `export function Form() { return <button id="skip" className="icon-btn" />; }`;
+    const issues = await runRule(
+      source,
+      makeConfig({ wcag: { targetSizeExemptSelectors: ['#skip'] } }),
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  it('exempts an attribute selector', async () => {
+    const source = `export function Form() { return <button aria-label="Close" className="icon-btn" />; }`;
+    const issues = await runRule(
+      source,
+      makeConfig({ wcag: { targetSizeExemptSelectors: ['[aria-label]'] } }),
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  it('exempts a tag with attribute selector', async () => {
+    const source = `export function Form() { return <button data-testid="submit" className="icon-btn" />; }`;
+    const issues = await runRule(
+      source,
+      makeConfig({ wcag: { targetSizeExemptSelectors: ['button[data-testid="submit"]'] } }),
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  it('skips when Tailwind is not detected and targetSizeRequireTailwind is true', async () => {
+    const source = `export function Form() { return <button />; }`;
+    const issues = await runRule(source, makeConfig({ hasTailwind: false }));
+    expect(issues).toHaveLength(0);
+  });
+
+  it('runs without Tailwind when targetSizeRequireTailwind is false', async () => {
+    const source = `export function Form() { return <button />; }`;
+    const issues = await runRule(
+      source,
+      makeConfig({
+        hasTailwind: false,
+        wcag: { targetSizeExemptSelectors: [], targetSizeRequireTailwind: false },
+      }),
+    );
     expect(issues).toHaveLength(1);
   });
 });

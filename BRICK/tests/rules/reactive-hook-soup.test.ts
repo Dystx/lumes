@@ -16,6 +16,8 @@ function makeFacts(components: ScanFacts['components']): ScanFacts {
     logicalExpressions: [],
     styleProps: [],
     astroComponents: [],
+    consoleCalls: [],
+    stringLiterals: [],
   };
 }
 
