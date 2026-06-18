@@ -43,6 +43,8 @@ function makeReport(overrides?: Partial<ProjectReport>): ProjectReport {
     p90Score: 0,
     peakScore: 0,
     componentCount: 0,
+    fileCount: 1,
+    thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
     components: [],
     issues: [],
     ...overrides,

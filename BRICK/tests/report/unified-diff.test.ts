@@ -46,6 +46,8 @@ function makeReport(issues: Issue[]): ProjectReport {
     p90Score: 100,
     peakScore: 100,
     componentCount: 1,
+    fileCount: 1,
+    thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
     components: [],
     issues,
   };

@@ -14,6 +14,8 @@ function makeReport(
     p90Score: 88.0,
     peakScore: 92.0,
     componentCount: 12,
+    fileCount: 1,
+    thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
     components: [],
     issues: [],
   };

@@ -54,6 +54,8 @@ const makeReport = (
   p90Score: 15,
   peakScore: 20,
   componentCount: 2,
+  fileCount: 1,
+  thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
   components: [
     {
       filePath: 'A.tsx',

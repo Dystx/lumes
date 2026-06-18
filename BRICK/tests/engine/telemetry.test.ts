@@ -36,6 +36,8 @@ function makeReport(overrides: Partial<ProjectReport> = {}): ProjectReport {
     p90Score: 10,
     peakScore: 20,
     componentCount: 2,
+    fileCount: 1,
+    thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
     components: [
       { filePath: '/project/src/A.tsx', rawScore: 5, componentScore: 10, adjustedScore: 10, componentCount: 1 },
       { filePath: '/project/src/B.tsx', rawScore: 0, componentScore: 0, adjustedScore: 0, componentCount: 1 },

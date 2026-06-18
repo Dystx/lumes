@@ -170,12 +170,12 @@ export interface ProjectReport {
   p90Score: number;
   peakScore: number;
   componentCount: number;
-  fileCount?: number;
+  fileCount: number;
   components: ComponentScore[];
   issues: Issue[];
   parseErrors?: Array<{ filePath: string; error: string }>;
   baseline?: BaselineMeta;
-  thresholds?: { meanSlop: number; p90Slop: number; individualSlopThreshold: number };
+  thresholds: { meanSlop: number; p90Slop: number; individualSlopThreshold: number };
 }
 
 export interface BaselineCache {

@@ -75,8 +75,8 @@ describe('formatPretty', () => {
     );
   });
 
-  it('falls back to 0 files when fileCount is omitted', () => {
-    const output = formatPretty(makeReport({ fileCount: undefined }));
+  it('renders zero files when fileCount is 0', () => {
+    const output = formatPretty(makeReport({ fileCount: 0 }));
     expect(output).toContain('Scanned 0 files,');
   });
 

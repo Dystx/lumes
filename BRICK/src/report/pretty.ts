@@ -38,7 +38,7 @@ function pluralize(count: number, word: string): string {
 
 function formatSummary(report: ProjectReport): string {
   const counts = countBySeverity(report.issues);
-  const fileCount = report.fileCount ?? 0;
+  const fileCount = report.fileCount;
   return `Scanned ${pluralize(fileCount, 'file')}, ${pluralize(report.componentCount, 'component')}, ${pluralize(report.issues.length, 'issue')} (high: ${counts.high}, medium: ${counts.medium}, low: ${counts.low})`;
 }
 
@@ -60,14 +60,14 @@ function formatCategoryTable(categoryScores: Record<Category, number>): string {
   return ['Category breakdown', ...rows].join('\n');
 }
 
-const thresholdLabels: Record<keyof NonNullable<ProjectReport['thresholds']>, string> = {
+const thresholdLabels: Record<keyof ProjectReport['thresholds'], string> = {
   meanSlop: 'Project average',
   p90Slop: 'Worst 10% of files',
   individualSlopThreshold: 'Highest single file',
 };
 
 function formatThresholds(report: ProjectReport): string[] {
-  const thresholds = report.thresholds ?? { meanSlop: 0, p90Slop: 0, individualSlopThreshold: 0 };
+  const thresholds = report.thresholds;
   const rows: string[] = [];
   const checks: Array<{ key: keyof typeof thresholds; value: number }> = [
     { key: 'meanSlop', value: report.slopIndex },
