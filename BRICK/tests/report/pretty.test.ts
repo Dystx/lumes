@@ -68,13 +68,30 @@ function makeReport(overrides: Partial<ProjectReport> = {}): ProjectReport {
 }
 
 describe('formatPretty', () => {
-  it('includes header and legend', () => {
+  it('prints a scan summary', () => {
     const output = formatPretty(makeReport());
-
-    expect(output).toContain('Slop Index: 34');
-    expect(output).toContain('Assembly Health: 66');
     expect(output).toContain(
-      '(0-100, higher = better, inverse of Slop Index)',
+      'Scanned 12 files, 25 components, 2 issues (high: 1, medium: 1, low: 0)',
+    );
+  });
+
+  it('falls back to 0 files when fileCount is omitted', () => {
+    const output = formatPretty(makeReport({ fileCount: undefined }));
+    expect(output).toContain('Scanned 0 files,');
+  });
+
+  it('prints a zero-issue summary with pluralized nouns', () => {
+    const output = formatPretty(makeReport({ issues: [], componentCount: 1, fileCount: 1 }));
+    expect(output).toContain(
+      'Scanned 1 file, 1 component, 0 issues (high: 0, medium: 0, low: 0)',
+    );
+  });
+
+  it('includes score line and legend', () => {
+    const output = formatPretty(makeReport());
+    expect(output).toContain('Slop Index: 34  |  Health: 66');
+    expect(output).toContain(
+      '(lower Slop Index is better; Health is the inverse)',
     );
   });
 

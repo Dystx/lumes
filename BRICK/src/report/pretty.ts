@@ -24,6 +24,24 @@ function severityColor(severity: Severity): (text: string) => string {
   }
 }
 
+function countBySeverity(issues: Issue[]): Record<Severity, number> {
+  const counts: Record<Severity, number> = { low: 0, medium: 0, high: 0 };
+  for (const issue of issues) {
+    counts[issue.severity] += 1;
+  }
+  return counts;
+}
+
+function pluralize(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
+}
+
+function formatSummary(report: ProjectReport): string {
+  const counts = countBySeverity(report.issues);
+  const fileCount = report.fileCount ?? 0;
+  return `Scanned ${pluralize(fileCount, 'file')}, ${pluralize(report.componentCount, 'component')}, ${pluralize(report.issues.length, 'issue')} (high: ${counts.high}, medium: ${counts.medium}, low: ${counts.low})`;
+}
+
 function severityBadge(severity: Severity): string {
   const colorize = severityColor(severity);
   const label = severity.toUpperCase().padEnd(6, ' ');
@@ -78,13 +96,15 @@ function formatIssue(issue: Issue): string {
 export function formatPretty(report: ProjectReport): string {
   const sections: string[] = [];
 
+  sections.push(formatSummary(report));
+
   const slopIndex = Math.round(report.slopIndex);
   const assemblyHealth = Math.round(report.assemblyHealth);
 
   sections.push(
-    chalk.bold(`Slop Index: ${slopIndex} | Assembly Health: ${assemblyHealth}`),
+    chalk.bold(`Slop Index: ${slopIndex}  |  Health: ${assemblyHealth}`),
   );
-  sections.push(chalk.dim('(0-100, higher = better, inverse of Slop Index)'));
+  sections.push(chalk.dim('(lower Slop Index is better; Health is the inverse)'));
 
   if (report.componentCount <= 10) {
     sections.push(
