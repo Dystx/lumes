@@ -264,17 +264,17 @@ describe('--watch', () => {
 
         function cleanup() {
           clearTimeout(timeout);
-          child.stderr.off('data', checkReady);
+          child.stdout.off('data', checkReady);
         }
 
         function checkReady() {
-          if (stderr.includes('Watching for changes')) {
+          if (stdout.includes('Watching for changes')) {
             cleanup();
             resolve();
           }
         }
 
-        child.stderr.on('data', checkReady);
+        child.stdout.on('data', checkReady);
         checkReady();
       });
 

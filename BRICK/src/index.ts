@@ -344,7 +344,7 @@ function appendGitignore(cwd: string): void {
 async function runDoctor(cwd: string): Promise<number> {
   let exitCode = 0;
 
-  logger.error(`Platform: ${process.platform} ${process.arch}, Node ${process.version}`);
+  logger.info(`Platform: ${process.platform} ${process.arch}, Node ${process.version}`);
 
   // Parser binding check.
   try {
@@ -354,7 +354,7 @@ async function runDoctor(cwd: string): Promise<number> {
     writeFileSync(testFile, 'export const x = 1;\n');
     await tryParse(testFile);
     rmSync(testFile, { force: true });
-    logger.error('Parser bindings are functional.');
+    logger.info('Parser bindings are functional.');
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(`Error: parser binding check failed (${message}).`);
@@ -372,9 +372,9 @@ async function runDoctor(cwd: string): Promise<number> {
       `Warning: shadcn/ui registry snapshot is missing or older than bundled version ${BUNDLED_REGISTRY_VERSION}.`,
     );
   } else {
-    logger.error('shadcn/ui registry snapshot is up-to-date.');
+    logger.info('shadcn/ui registry snapshot is up-to-date.');
   }
-  logger.error(refresh.message);
+  logger.info(refresh.message);
 
   // Baseline cache structural integrity check.
   const baselineCache = loadBaseline(cwd);
@@ -383,7 +383,7 @@ async function runDoctor(cwd: string): Promise<number> {
     const gitHead = (await getGitHead(cwd)) ?? 'unknown';
     const validation = validateBaseline(baselineCache, configHash, gitHead);
     if (validation.valid) {
-      logger.error('Baseline cache is structurally valid and matches config/git state.');
+      logger.info('Baseline cache is structurally valid and matches config/git state.');
     } else {
       logger.warn(`Warning: baseline cache invalid: ${validation.reason}`);
     }
@@ -651,7 +651,7 @@ function renderOutput(report: ProjectReport, options: CliGlobalOptions, cwd: str
     if (typeof options.json === 'string') {
       writeFileSync(resolve(options.json), json);
       if (!options.quiet) {
-        logger.error(`Wrote JSON report to ${options.json}`);
+        logger.info(`Wrote JSON report to ${options.json}`);
       }
     } else {
       logger.info(json);
@@ -782,14 +782,14 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
 
       if (!options.quiet) {
         if (report.baseline) {
-          logger.error(baselineStatusMessage(report.baseline));
+          logger.info(baselineStatusMessage(report.baseline));
         }
         if (configChanged) {
-          logger.error('Config changed; reloaded.');
+          logger.info('Config changed; reloaded.');
         } else if (baselineChanged) {
-          logger.error('Baseline changed; reloaded.');
+          logger.info('Baseline changed; reloaded.');
         }
-        logger.error('Watching for changes... (press Ctrl+C to stop)');
+        logger.info('Watching for changes... (press Ctrl+C to stop)');
       }
     } catch (err) {
       logger.error(`Scan failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -834,7 +834,7 @@ async function watchProject(options: CliGlobalOptions, cwd: string, paths: strin
             const report = buildReport();
             await outputScanResults(report, options, cwd);
             if (!options.quiet) {
-              logger.error(`Rescanned ${changedPath}. Watching for changes... (press Ctrl+C to stop)`);
+              logger.info(`Rescanned ${changedPath}. Watching for changes... (press Ctrl+C to stop)`);
             }
           } catch (err) {
             logger.error(`Incremental scan failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -1049,6 +1049,8 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       const { report, scores, config, noIncreaseFailure, baseline } = await runScan(options, paths);
       const scanElapsed = Math.round(performance.now() - scanStart);
       const totalElapsed = Math.round(performance.now() - start);
+      const machineReadableStdout =
+        options.json === true || options.format === 'json' || options.format === 'sarif';
 
       if (options.baseline) {
         const cwd = resolve(options.workspace ?? process.cwd());
@@ -1064,24 +1066,24 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       if (options.tighten && baseline) {
         saveBaseline(cwd, baseline);
         if (!options.quiet) {
-          logger.error(`Tightened baseline saved (revision ${baseline.baseline_revision}).`);
+          logger.info(`Tightened baseline saved (revision ${baseline.baseline_revision}).`);
         }
       }
 
       if (options.doctor && !options.quiet) {
-        logger.error(`Doctor: bootstrap ${totalElapsed - scanElapsed}ms, scan ${scanElapsed}ms`);
+        logger.info(`Doctor: bootstrap ${totalElapsed - scanElapsed}ms, scan ${scanElapsed}ms`);
       }
 
       if (report.baseline && !options.quiet) {
-        logger.error(baselineStatusMessage(report.baseline));
+        logger.info(baselineStatusMessage(report.baseline));
       }
 
       if (options.fix) {
         const fixResults = await applyFixes(report, config);
         const { totalApplied, totalSkipped, hasErrors } = printFixSummary(fixResults, options.quiet ?? false);
 
-        if (!options.quiet) {
-          logger.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
+        if (!options.quiet && !machineReadableStdout) {
+          logger.info(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
         }
 
         process.exit(hasErrors ? 1 : 0);
@@ -1090,8 +1092,8 @@ export async function runCli({ start }: { start: number }): Promise<void> {
       if (options.heatmap) {
         const entries = await buildHeatmap(report, cwd);
         logger.info(formatHeatmap(entries, { json: options.format === 'json' }));
-        if (!options.quiet) {
-          logger.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
+        if (!options.quiet && !machineReadableStdout) {
+          logger.info(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
         }
         process.exit(0);
       }
@@ -1120,8 +1122,8 @@ export async function runCli({ start }: { start: number }): Promise<void> {
           logger.error('Slop thresholds exceeded.');
         }
       }
-      if (!options.quiet) {
-        logger.error(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
+      if (!options.quiet && !machineReadableStdout) {
+        logger.info(`(scan took ${scanElapsed}ms, total ${totalElapsed}ms)`);
       }
       process.exit(exitCode);
     };

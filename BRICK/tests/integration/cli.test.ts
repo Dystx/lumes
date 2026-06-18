@@ -433,9 +433,9 @@ describe('doctor command', () => {
   });
 
   it('exits 0 when parser bindings are functional', async () => {
-    const { exitCode, stderr } = await run(['--doctor', '--workspace', dir]);
+    const { exitCode, stdout } = await run(['--doctor', '--workspace', dir]);
     expect(exitCode).toBe(0);
-    expect(stderr).toContain('Platform:');
-    expect(stderr).toContain('Parser bindings are functional.');
+    expect(stdout).toContain('Platform:');
+    expect(stdout).toContain('Parser bindings are functional.');
   });
 });
