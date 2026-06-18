@@ -148,4 +148,30 @@ describe('formatPretty', () => {
     expect(output).toContain('src/bad.tsx');
     expect(output).toContain('Unexpected token');
   });
+
+  it('prints threshold status with plain labels', () => {
+    const output = formatPretty(makeReport({
+      slopIndex: 31.1,
+      p90Score: 100,
+      peakScore: 100,
+      thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
+    }));
+    const thresholdLine = (label: string, value: number, limit: number) =>
+      `  ${label.padEnd(30, ' ')}${`${value.toFixed(1)} / ${limit}`.padStart(12, ' ')}  fail`;
+
+    expect(output).toContain(thresholdLine('Project average', 31.1, 25));
+    expect(output).toContain(thresholdLine('Worst 10% of files', 100, 50));
+    expect(output).toContain(thresholdLine('Highest single file', 100, 50));
+    expect(output).toContain('Next step: run `slop-audit scan --suggest`');
+  });
+
+  it('prints all-passed message when thresholds pass', () => {
+    const output = formatPretty(makeReport({
+      slopIndex: 10,
+      p90Score: 20,
+      peakScore: 30,
+      thresholds: { meanSlop: 25, p90Slop: 50, individualSlopThreshold: 50 },
+    }));
+    expect(output).toContain('All thresholds passed.');
+  });
 });

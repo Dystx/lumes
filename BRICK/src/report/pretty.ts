@@ -60,6 +60,43 @@ function formatCategoryTable(categoryScores: Record<Category, number>): string {
   return ['Category breakdown', ...rows].join('\n');
 }
 
+const thresholdLabels: Record<keyof NonNullable<ProjectReport['thresholds']>, string> = {
+  meanSlop: 'Project average',
+  p90Slop: 'Worst 10% of files',
+  individualSlopThreshold: 'Highest single file',
+};
+
+function formatThresholds(report: ProjectReport): string[] {
+  const thresholds = report.thresholds ?? { meanSlop: 0, p90Slop: 0, individualSlopThreshold: 0 };
+  const rows: string[] = [];
+  const checks: Array<{ key: keyof typeof thresholds; value: number }> = [
+    { key: 'meanSlop', value: report.slopIndex },
+    { key: 'p90Slop', value: report.p90Score },
+    { key: 'individualSlopThreshold', value: report.peakScore },
+  ];
+
+  let failedCount = 0;
+  for (const { key, value } of checks) {
+    const limit = thresholds[key];
+    const failed = value > limit;
+    if (failed) failedCount += 1;
+    const label = thresholdLabels[key].padEnd(30, ' ');
+    const valueText = `${value.toFixed(1)} / ${limit}`.padStart(12, ' ');
+    const status = failed ? 'fail' : 'pass';
+    rows.push(`  ${label}${valueText}  ${status}`);
+  }
+
+  const result: string[] = ['Thresholds', ...rows];
+  if (failedCount > 0) {
+    result.push('');
+    result.push('Next step: run `slop-audit scan --suggest` to see fixes, or `slop-audit scan --baseline` to accept today\'s scores as the new baseline.');
+  } else {
+    result.push('');
+    result.push('All thresholds passed.');
+  }
+  return result;
+}
+
 function formatTopComponents(components: ComponentScore[]): string {
   const offenders = [...components]
     .sort((a, b) => b.adjustedScore - a.adjustedScore)
@@ -120,6 +157,8 @@ export function formatPretty(report: ProjectReport): string {
   if (componentsSection) {
     sections.push(componentsSection);
   }
+
+  sections.push(...formatThresholds(report));
 
   if (report.parseErrors && report.parseErrors.length > 0) {
     sections.push(
