@@ -148,6 +148,14 @@ export function thresholdExceeded(report: ProjectReport, config: ResolvedConfig)
   );
 }
 
+function failedThresholdCount(report: ProjectReport, config: ResolvedConfig): number {
+  let count = 0;
+  if (report.slopIndex > config.thresholds.meanSlop) count += 1;
+  if (report.p90Score > config.thresholds.p90Slop) count += 1;
+  if (report.peakScore > config.thresholds.individualSlopThreshold) count += 1;
+  return count;
+}
+
 function baselineStatusMessage(baseline: BaselineMeta): string {
   const date = new Date(baseline.createdAt).toLocaleString();
   return `Baseline active since ${date} (Revision ${baseline.baselineRevision}). Run \`slop-audit --tighten\` to reduce baseline forgiveness by 10%.`;
@@ -1119,7 +1127,8 @@ export async function runCli({ start }: { start: number }): Promise<void> {
         if (options.staged && stagedGatingResult.reason) {
           logger.error(`Gating failure: ${stagedGatingResult.reason}`);
         } else {
-          logger.error('Slop thresholds exceeded.');
+          const failed = failedThresholdCount(report, config);
+          logger.error(`${failed} threshold${failed === 1 ? '' : 's'} failed. See details above.`);
         }
       }
       if (!options.quiet && !machineReadableStdout) {

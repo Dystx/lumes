@@ -225,7 +225,7 @@ describe('scan-based commands', () => {
     const { exitCode, stdout, stderr } = await run(['--workspace', dir]);
     expect(exitCode).toBe(1);
     const output = `${stdout}\n${stderr}`;
-    expect(output).toContain('Slop thresholds exceeded.');
+    expect(output).toMatch(/\d+ thresholds? failed\. See details above\./);
     // Assert on stable category labels and issue presence rather than exact rule IDs.
     expect(output).toContain('Accessibility');
     expect(output).toMatch(/Issues \(\d+\)/);

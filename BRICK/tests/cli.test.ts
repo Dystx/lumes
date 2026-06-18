@@ -362,6 +362,25 @@ describe('--strict', () => {
   });
 });
 
+describe('threshold failure wording', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = createTmpDir();
+    writeSloppyProject(dir);
+  });
+
+  afterEach(() => {
+    cleanupTempDir(dir);
+  });
+
+  it('reports how many thresholds failed', async () => {
+    const { exitCode, stderr } = await run(['--workspace', dir]);
+    expect(exitCode).toBe(1);
+    expect(stderr).toMatch(/\d+ thresholds? failed\. See details above\./);
+  });
+});
+
 describe('--include / --exclude', () => {
   let dir: string;
 
