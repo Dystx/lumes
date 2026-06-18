@@ -98,8 +98,8 @@ describe('formatPretty', () => {
   it('warns about micro-repos', () => {
     const output = formatPretty(makeReport({ componentCount: 8 }));
 
-    expect(output).toContain('Small project detected (<=10 components)');
-    expect(output).toContain('Scores are not normalized');
+    expect(output).toContain('Small project (10 or fewer components)');
+    expect(output).toContain('Averages can be jumpy at this size—focus on individual file scores.');
   });
 
   it('does not warn for larger repos', () => {

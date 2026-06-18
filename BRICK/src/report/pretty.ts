@@ -146,7 +146,7 @@ export function formatPretty(report: ProjectReport): string {
   if (report.componentCount <= 10) {
     sections.push(
       chalk.yellow(
-        'Small project detected (<=10 components). Scores are not normalized. Focus on keeping individual component scores low.',
+        'Small project (10 or fewer components). Averages can be jumpy at this size—focus on individual file scores.',
       ),
     );
   }
