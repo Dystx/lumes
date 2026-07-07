@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Snapshot cleanup
     const snapshotResult = await db.incidentSnapshot.deleteMany({
-      where: { createdAt: { lt: snapshotCutoff } },
+      where: { timestamp: { lt: snapshotCutoff } },
     });
 
     // 3. Final cleanup: delete incidents last seen 30+ days ago
