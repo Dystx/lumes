@@ -6,8 +6,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+  --font-serif: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,20 +128,22 @@
 /* Forest Mint (FG-1) palette, consistent with brand docs     */
 /* ========================================================== */
 :root {
-  /* Light theme — citizen-friendly */
-  --ember-bg: #f7faf9;
-  --ember-surface: #ffffff;
-  --ember-surface-2: #eef4f2;
-  --ember-border: #d5e0dc;
-  --ember-border-strong: #b4c5be;
-  --ember-text: #0c1f1a;
-  --ember-text-muted: #4f6a62;
-  --ember-text-faint: #5a6b62;
-  --ember-accent: #2a7a65;
-  --ember-accent-hover: #1f5b4b;
-  --ember-accent-subtle: #e6f0ec;
-  --ember-critical: #c0392b;
-  --ember-critical-subtle: #fcebe9;
+  /* Light theme — citizen-friendly
+   * Anti-AI palette: burnt-sienna accent (semantically apt for wildfire) +
+   * warm parchment bg + ink text (replaces generic emerald-green AI look) */
+  --ember-bg: #faf6f0;             /* warm parchment */
+  --ember-surface: #fffdf7;         /* cream */
+  --ember-surface-2: #f0e9de;       /* sand */
+  --ember-border: #d8cdb6;          /* muted tan */
+  --ember-border-strong: #b39e7a;   /* warm gray-brown */
+  --ember-text: #1a1410;             /* ink, not green-black */
+  --ember-text-muted: #4a3f33;
+  --ember-text-faint: #6b5e4f;
+  --ember-accent: #b8421a;          /* burnt sienna — distinct, on-topic */
+  --ember-accent-hover: #8e3010;
+  --ember-accent-subtle: #f6e0d3;
+  --ember-critical: #8e1d10;         /* deeper crimson */
+  --ember-critical-subtle: #f9d8d2;
   --ember-warning: #d4875a;
   --ember-warning-subtle: #fbf0e8;
   --ember-info: #2e86c1;
@@ -174,23 +178,24 @@
 }
 
 .dark {
-  /* Dark theme — tactical but approachable (citizen-friendly dark, not operator-dense) */
-  --ember-bg: #0c1f1a;
-  --ember-surface: #122a23;
-  --ember-surface-2: #1a3830;
-  --ember-border: #2a4a40;
-  --ember-border-strong: #3d6356;
-  --ember-text: #e8f0ed;
-  --ember-text-muted: #9bb0a8;
-  --ember-text-faint: #aab8b2;
-  --ember-accent: #3ddb95;
-  --ember-accent-hover: #5fe9aa;
-  --ember-accent-subtle: rgba(61, 219, 149, 0.12);
-  --ember-critical: #ff6b5b;
-  --ember-critical-subtle: rgba(255, 107, 91, 0.15);
-  --ember-warning: #ffb786;
-  --ember-warning-subtle: rgba(255, 183, 134, 0.15);
-  --ember-info: #5dade2;
+  /* Dark theme — burnt-amber on charcoal (replaces generic green-on-black AI look)
+   * Warm fire-glow accent, paper-tan text, ember-red critical, ink-black bg */
+  --ember-bg: #13100d;             /* ink-black with warm undertone */
+  --ember-surface: #1c1814;          /* charcoal */
+  --ember-surface-2: #2a241d;       /* dark coffee */
+  --ember-border: #3d342a;          /* warm gray */
+  --ember-border-strong: #5c4f3f;   /* warm tan */
+  --ember-text: #f4ecdc;             /* parchment */
+  --ember-text-muted: #b8a890;
+  --ember-text-faint: #b8a890;
+  --ember-accent: #e87b3a;          /* fire-glow orange — visually hot */
+  --ember-accent-hover: #f59254;
+  --ember-accent-subtle: rgba(232, 123, 58, 0.15);
+  --ember-critical: #ff5a3a;
+  --ember-critical-subtle: rgba(255, 90, 58, 0.15);
+  --ember-warning: #f5b041;
+  --ember-warning-subtle: rgba(245, 176, 65, 0.15);
+  --ember-info: #7fb8d4;             /* muted sky, less AI-blue */
   --ember-info-subtle: rgba(93, 173, 226, 0.15);
   --ember-success: #58d68d;
   --ember-success-subtle: rgba(88, 214, 141, 0.15);

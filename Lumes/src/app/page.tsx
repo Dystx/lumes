@@ -822,10 +822,13 @@ export default function Home() {
                 <Flame className="w-4 h-4 text-[var(--ember-bg)]" strokeWidth={2.5} />
               </div>
               <div className="flex flex-col">
-                <span className="text-base font-bold tracking-tight leading-none">
+                <span
+                  className="text-base font-bold tracking-tight leading-none font-display"
+                  style={{ fontVariationSettings: "'opsz' 14, 'SOFT' 100" }}
+                >
                   Lumes
                 </span>
-                <span className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] leading-none mt-0.5">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ember-text-faint)] leading-none mt-0.5 font-medium">
                   {t(lang, "app.tagline")}
                 </span>
               </div>
@@ -1019,7 +1022,7 @@ export default function Home() {
 
           {/* Legend — collapsible (desktop) + compact (mobile) */}
           <div className="hidden lg:block">
-            <CollapsibleLegend />
+            <CollapsibleLegend lang={lang} />
           </div>
           {/* Mobile mini-legend — inline severity dots */}
           <div className="lg:hidden absolute bottom-20 left-3 z-10 bg-[var(--ember-surface)]/90 backdrop-blur-md border border-[var(--ember-border-strong)] rounded-md px-2.5 py-1.5 shadow-[var(--ember-shadow-sm)] pointer-events-auto">
@@ -2858,12 +2861,15 @@ function DashboardPanel({
       {/* Header — section title + live status (brand is in the top header) */}
       <div className="px-5 py-3 border-b border-[var(--ember-border)] flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-md bg-[var(--ember-accent-subtle)] flex items-center justify-center">
               <TrendingUp className="w-3.5 h-3.5 text-[var(--ember-accent)]" />
             </div>
             <div>
-              <h2 className="text-[14px] font-semibold text-[var(--ember-text)] leading-none">
+              <h2
+                className="text-[15px] font-semibold text-[var(--ember-text)] leading-none font-display tracking-tight"
+                style={{ fontVariationSettings: "'opsz' 14" }}
+              >
                 {t(lang, "dashboard.title")}
               </h2>
               <p className="text-[10px] text-[var(--ember-text-faint)] leading-none mt-1">
