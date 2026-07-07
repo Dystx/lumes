@@ -135,6 +135,9 @@ export const translations = {
     clickToFilter: { pt: "Clique num nível para filtrar o mapa", en: "Click a level to filter the map" },
     showAll: { pt: "← Mostrar todos os níveis", en: "← Show all risk levels" },
     weatherWarnings: { pt: "Avisos Meteorológicos", en: "Weather Warnings" },
+    title: { pt: "Painel de filtros", en: "Filters panel" },
+    sidePanel: { pt: "Painel Lateral", en: "Side Panel" },
+    clear: { pt: "Limpar", en: "Clear" },
   },
 
   // Risk levels
@@ -315,6 +318,7 @@ export const translations = {
   // Toast messages
   toast: {
     newIncident: { pt: "Novo incidente detetado", en: "New incident detected" },
+    newIncidentDesc: { pt: "Nova ocorrência de incêndio", en: "New fire occurrence" },
     refreshing: { pt: "A atualizar incidentes…", en: "Refreshing incidents…" },
     refreshed: { pt: "Incidentes atualizados", en: "Incidents refreshed" },
     refreshFailed: { pt: "Falha ao atualizar", en: "Refresh failed" },
@@ -365,6 +369,22 @@ export const translations = {
     satellite: { pt: "Deteção satélite", en: "Satellite detection" },
     community: { pt: "Comunicação cidadão", en: "Community report" },
     evacuation: { pt: "Zona de evacuação", en: "Evacuation zone" },
+  },
+
+  // Advanced layer labels
+  aerial: {
+    response: { pt: "Resposta aérea", en: "Aerial response" },
+  },
+  biomass: {
+    fuel: { pt: "Biomassa", en: "Biomass" },
+    combustion: { pt: "combustível", en: "fuel" },
+    biomassMeteo: { pt: "biomassa × meteo", en: "biomass × meteo" },
+  },
+  composite: {
+    label: { pt: "Risco composto", en: "Composite risk" },
+  },
+  advanced: {
+    title: { pt: "Avançadas", en: "Advanced" },
   },
 
   // Time

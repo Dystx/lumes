@@ -319,7 +319,7 @@ export default function Home() {
   const satellite = useSatelliteNew(showSatellite);
   const realtime = useRealtimeIncidents((newIncident) => {
     toast.success(t(lang, "toast.newIncident"), {
-      description: newIncident.displayName || (lang === "pt" ? "Nova ocorrência de incêndio" : "New fire occurrence"),
+      description: newIncident.displayName || t(lang, "toast.newIncidentDesc"),
       duration: 6000,
     });
     liveIncidents.refetch();
@@ -674,9 +674,9 @@ export default function Home() {
     toast.promise(
       new Promise((resolve) => setTimeout(resolve, 600)),
       {
-        loading: lang === "pt" ? "A atualizar incêndios…" : "Refreshing incidents…",
-        success: lang === "pt" ? "Incêndios atualizados" : "Incidents refreshed",
-        error: lang === "pt" ? "Falha ao atualizar" : "Refresh failed",
+        loading: t(lang, "toast.refreshing"),
+        success: t(lang, "toast.refreshed"),
+        error: t(lang, "toast.refreshFailed"),
       }
     );
     liveIncidents.refetch();
@@ -1368,7 +1368,7 @@ export default function Home() {
                 <Bell className="w-5 h-5 text-[var(--ember-accent)]" aria-hidden="true" />
                 <div className="flex-1">
                   <div className="text-sm font-medium">{t(lang, "header.viewNotifications")}</div>
-                  <div className="text-[11px] text-[var(--ember-text-faint)]">{unreadCount} {lang === "pt" ? "não lidas" : "unread"}</div>
+                  <div className="text-[11px] text-[var(--ember-text-faint)]">{unreadCount} {t(lang, "mobile.unread")}</div>
                 </div>
                 {unreadCount > 0 && (
                   <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--ember-critical)] text-white text-[10px] font-bold flex items-center justify-center">
@@ -1383,8 +1383,8 @@ export default function Home() {
               >
                 <HistoryIcon className="w-5 h-5 text-[var(--ember-accent)]" />
                 <div className="flex-1">
-                  <div className="text-sm font-medium">{lang === "pt" ? "Histórico" : "History"}</div>
-                  <div className="text-[11px] text-[var(--ember-text-faint)]">{persistenceStats.data?.total ?? 0} {lang === "pt" ? "incidentes registados" : "tracked"}</div>
+                  <div className="text-sm font-medium">{t(lang, "mobile.history")}</div>
+                  <div className="text-[11px] text-[var(--ember-text-faint)]">{persistenceStats.data?.total ?? 0} {t(lang, "mobile.historyDesc")}</div>
                 </div>
               </button>
               <button
@@ -1394,8 +1394,8 @@ export default function Home() {
               >
                 <Flame className="w-5 h-5 text-[var(--ember-critical)]" />
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-[var(--ember-critical)]">{lang === "pt" ? "Comunicar Incêndio" : "Report Fire"}</div>
-                  <div className="text-[11px] text-[var(--ember-text-faint)]">{lang === "pt" ? "Para emergências, ligue 117" : "For emergencies, call 117"}</div>
+                  <div className="text-sm font-medium text-[var(--ember-critical)]">{t(lang, "mobile.reportFire")}</div>
+                  <div className="text-[11px] text-[var(--ember-text-faint)]">{t(lang, "mobile.reportFireDesc")}</div>
                 </div>
               </button>
               <div className="pt-2 border-t border-[var(--ember-border)] mt-4 space-y-2">
@@ -1408,8 +1408,8 @@ export default function Home() {
                   >
                     {theme === "dark" ? <Sun className="w-5 h-5 text-[var(--ember-accent)]" /> : <Moon className="w-5 h-5 text-[var(--ember-accent)]" />}
                     <div className="flex-1">
-                      <div className="text-sm font-medium">{lang === "pt" ? "Tema" : "Theme"}</div>
-                      <div className="text-[11px] text-[var(--ember-text-faint)]">{theme === "dark" ? (lang === "pt" ? "Escuro" : "Dark") : (lang === "pt" ? "Claro" : "Light")}</div>
+                      <div className="text-sm font-medium">{t(lang, "mobile.theme")}</div>
+                      <div className="text-[11px] text-[var(--ember-text-faint)]">{theme === "dark" ? t(lang, "mobile.themeDark") : t(lang, "mobile.themeLight")}</div>
                     </div>
                   </button>
                 )}
@@ -1420,8 +1420,8 @@ export default function Home() {
                 >
                   <Activity className="w-5 h-5 text-[var(--ember-accent)]" />
                   <div className="flex-1">
-                    <div className="text-sm font-medium">{lang === "pt" ? "Estado do sistema" : "System status"}</div>
-                    <div className="text-[11px] text-[var(--ember-text-faint)]">{lang === "pt" ? "Saúde das fontes de dados" : "Data source health"}</div>
+                    <div className="text-sm font-medium">{t(lang, "mobile.systemStatus")}</div>
+                    <div className="text-[11px] text-[var(--ember-text-faint)]">{t(lang, "mobile.systemStatusDesc")}</div>
                   </div>
                 </a>
                 {/* Share */}
@@ -1431,12 +1431,12 @@ export default function Home() {
                     if (navigator.share) {
                       navigator.share({
                         title: "Lumes",
-                        text: lang === "pt" ? "Mapa de incêndios em Portugal" : "Portugal wildfire map",
+                        text: t(lang, "mobile.shareText"),
                         url: window.location.origin,
                       }).catch(() => {});
                     } else {
                       navigator.clipboard.writeText(window.location.origin).then(() => {
-                        toast.success(lang === "pt" ? "Link copiado" : "Link copied");
+                        toast.success(t(lang, "mobile.linkCopied"));
                       }).catch(() => {});
                     }
                   }}
@@ -2113,7 +2113,7 @@ function Sidebar({
   const maxRiskCount = riskEntries.length > 0 ? Math.max(...riskEntries.map(([, v]) => v)) : 1;
 
   return (
-    <aside className="flex flex-col h-full bg-[var(--ember-bg)] border-l border-[var(--ember-border)] w-72 flex-shrink-0 z-20" role="complementary" aria-label={lang === "pt" ? "Painel de filtros" : "Filters panel"}>
+    <aside className="flex flex-col h-full bg-[var(--ember-bg)] border-l border-[var(--ember-border)] w-72 flex-shrink-0 z-20" role="complementary" aria-label={t(lang, "sidebar.title")}>
       {/* Header — mirrors DashboardPanel header (unified sidebar design) */}
       <div className="px-5 py-3 border-b border-[var(--ember-border)] flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -2123,7 +2123,7 @@ function Sidebar({
             </div>
             <div>
               <h2 className="text-[14px] font-semibold text-[var(--ember-text)] leading-none">
-                {lang === "pt" ? "Painel Lateral" : "Side Panel"}
+                {t(lang, "sidebar.sidePanel")}
               </h2>
               <p className="text-[10px] text-[var(--ember-text-faint)] leading-none mt-1 tabular-nums">
                 {dataFetchedAt
@@ -2161,7 +2161,7 @@ function Sidebar({
               onClick={() => setSearchQuery("")}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)]"
               aria-label={t(lang, "a11y.clearSearch")}
-              title={lang === "pt" ? "Limpar" : "Clear"}
+              title={t(lang, "common.clear")}
             >
               <X className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
@@ -2380,7 +2380,7 @@ function Sidebar({
             />
             <ToggleRow
               icon={Satellite}
-              label={lang === "pt" ? "Deteções Satélite" : "Satellite Detections"}
+              label={t(lang, "dataSources.nasa-firms-viirs")}
               sublabel={satelliteReady ? (satelliteCount > 0 ? `${satelliteCount} ${lang === "pt" ? "focos (48h)" : "detections (48h)"}` : (lang === "pt" ? "Ativar para carregar" : "Enable to load")) : t(lang, "common.loading")}
               active={showSatellite}
               disabled={!satelliteReady}
@@ -2391,11 +2391,11 @@ function Sidebar({
           {/* Advanced overlays — lazy-loaded map layers */}
           <div className="mt-2 pt-2 border-t border-[var(--ember-border)] space-y-1">
             <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1">
-              {lang === "pt" ? "Avançadas" : "Advanced"}
+              {t(lang, "advanced.title")}
             </div>
             <ToggleRow
               icon={Plane}
-              label={lang === "pt" ? "Resposta aérea" : "Aerial response"}
+              label={t(lang, "aerial.response")}
               sublabel="ADS-B"
               active={showAerial}
               disabled={false}
@@ -2404,8 +2404,8 @@ function Sidebar({
             />
             <ToggleRow
               icon={Trees}
-              label={lang === "pt" ? "Biomassa" : "Biomass"}
-              sublabel={lang === "pt" ? "combustível" : "fuel"}
+              label={t(lang, "biomass.fuel")}
+              sublabel={t(lang, "biomass.combustion")}
               active={showBiomass}
               disabled={false}
               onToggle={() => setShowBiomass((v) => !v)}
@@ -2413,7 +2413,7 @@ function Sidebar({
             />
             <ToggleRow
               icon={AlertTriangle}
-              label={lang === "pt" ? "Risco composto" : "Composite risk"}
+              label={t(lang, "composite.label")}
               sublabel={lang === "pt" ? "biomassa × meteo" : "biomass × weather"}
               active={showCompositeRisk}
               disabled={false}
@@ -2698,7 +2698,7 @@ function PlaybackBar({
         <button
           onClick={onSkipBack}
           className="text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] transition-colors"
-          aria-label={lang === "pt" ? "Recuar 2 horas" : "Skip back 2 hours"}
+          aria-label={t(lang, "playback.skipBack")}
         >
           <SkipBack className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
@@ -2716,7 +2716,7 @@ function PlaybackBar({
         <button
           onClick={onSkipForward}
           className="text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] transition-colors"
-          aria-label={lang === "pt" ? "Avançar 2 horas" : "Skip forward 2 hours"}
+          aria-label={t(lang, "playback.skipForward")}
         >
           <SkipForward className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
