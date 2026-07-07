@@ -767,6 +767,7 @@ export default function Home() {
             onClose={() => setSelectedIncidentId(null)}
             isFollowed={followedIncidents.has(selectedIncident.id)}
             onToggleFollow={() => toggleFollow(selectedIncident.id)}
+            lang={lang}
           />
         ) : (
           <DashboardPanel
@@ -3499,11 +3500,13 @@ function IncidentDetailPanel({
   onClose,
   isFollowed,
   onToggleFollow,
+  lang,
 }: {
   incident: Incident;
   onClose: () => void;
   isFollowed: boolean;
   onToggleFollow: () => void;
+  lang: Language;
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "timeline" | "sources">(
     "overview"
