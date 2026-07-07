@@ -805,6 +805,8 @@ export default function Home() {
             loading={dashboard.loading}
             lang={lang}
             dataFetchedAt={liveIncidents.refetchedAt}
+            dashboardError={!!dashboard.error}
+            onRetryDashboard={() => dashboard.refetch?.()}
           />
         )}
       </AnimatePresence>
@@ -1254,6 +1256,8 @@ export default function Home() {
               loading={dashboard.loading}
               lang={lang}
               dataFetchedAt={liveIncidents.refetchedAt}
+              dashboardError={!!dashboard.error}
+              onRetryDashboard={() => dashboard.refetch?.()}
             />
           }
           sidebar={
@@ -2750,6 +2754,8 @@ function DashboardPanel({
   loading,
   lang,
   dataFetchedAt,
+  dashboardError,
+  onRetryDashboard,
 }: {
   metrics: {
     total: number;
@@ -2779,6 +2785,10 @@ function DashboardPanel({
   selectedIncidentId: string | null;
   followedIncidentIds: Set<string>;
   loading: boolean;
+  dashboardError?: boolean;
+  onRetryDashboard?: () => void;
+  dashboardError?: boolean;
+  onRetryDashboard?: () => void;
   phaseFilter: string | null;
   setPhaseFilter: (p: string | null) => void;
   resourceFilter: "personnel" | "engines" | "aircraft" | null;
@@ -3055,10 +3065,10 @@ function DashboardPanel({
         </div>
 
         {/* Operational phases (EstadoAgrupado) — all raw ANEPC statuses */}
-        {(dashboard.error && !dashboard.data) ? (
+        {(dashboardError && metrics.total === 0) ? (
           <SectionError
             title={lang === "pt" ? "Fases indisponíveis" : "Phases unavailable"}
-            onRetry={() => dashboard.refetch?.()}
+            onRetry={onRetryDashboard}
           />
         ) : (
           <OperationalPhases
