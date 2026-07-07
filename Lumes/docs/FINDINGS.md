@@ -209,7 +209,7 @@ Each finding has:
 - **Where**: Right sidebar top
 - **Issue**: After typing, only way to clear is backspace
 - **Fix**: Add an X clear button when text is present (mobile pattern)
-- **Status**: open
+- **Status**: ✅ fixed — X clear button added with `aria-label={t(lang, "a11y.clearSearch")}`
 
 ### L-20 🟢 Map zoom controls overlap fire markers (mobile)
 - **Where**: Map tab on iPhone SE
@@ -592,7 +592,7 @@ Each finding has:
 | 🟠 Medium | 36 |
 | 🟡 Low    | 24 |
 | 🟢 Polish | 14 |
-| **Total** | **88** (30 done) |
+| **Total** | **88** (31 done) |
 
 | Category | Count |
 |----------|-------|

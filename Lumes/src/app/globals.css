@@ -273,6 +273,15 @@
   animation: ember-critical-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Subtle pulse for active filter chips */
+@keyframes ember-pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+.animate-pulse-subtle {
+  animation: ember-pulse-subtle 2.5s ease-in-out infinite;
+}
+
 /* Smooth theme transitions on chrome elements */
 .ember-surface,
 .ember-panel {
