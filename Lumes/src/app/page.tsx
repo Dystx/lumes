@@ -11,6 +11,7 @@ import { DashStat, ResourceStat } from "@/components/dashboard/stat-card";
 import { HeroCounter } from "@/components/dashboard/hero-counter";
 import { OperationalPhases } from "@/components/dashboard/operational-phases";
 import { CollapsibleLegend } from "@/components/overlays/legend";
+import { FiltersPanel } from "@/components/filters/filters-panel";
 import { MobileView, type MobileTab } from "@/components/mobile/mobile-view";
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
 import { LongPressActions } from "@/components/mobile/long-press-actions";
@@ -793,6 +794,45 @@ export default function Home() {
   return (
     <div className="h-screen w-full flex lg:overflow-hidden overflow-hidden flex-col lg:flex-row bg-[var(--ember-bg)] text-[var(--ember-text)] font-sans relative">
       {skipLink}
+
+      {/* ===== MOBILE INCIDENT DETAIL (bottom sheet overlay) ===== */}
+      <AnimatePresence>
+        {selectedIncident && (
+          <motion.div
+            key={`mobile-detail-${selectedIncident.id}`}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:hidden fixed inset-x-0 bottom-0 top-12 z-40 bg-[var(--ember-bg)] border-t border-[var(--ember-border)] rounded-t-xl shadow-[0_-8px_24px_rgba(0,0,0,0.3)] flex flex-col"
+            role="dialog"
+            aria-label={lang === "pt" ? "Detalhes do incêndio" : "Incident details"}
+          >
+            <div className="flex-shrink-0 px-4 pt-2 pb-1 flex items-center justify-between border-b border-[var(--ember-border)]">
+              <div className="w-12 h-1 rounded-full bg-[var(--ember-border-strong)] mx-auto" />
+              <button
+                onClick={() => setSelectedIncidentId(null)}
+                className="absolute right-3 top-2 w-8 h-8 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
+                aria-label={t(lang, "a11y.closePanel")}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <IncidentDetailPanel
+                key={selectedIncident.id}
+                incident={enrichIncidentWithLiveContext(selectedIncident, weather.data, fireRisk.data)}
+                onClose={() => setSelectedIncidentId(null)}
+                isFollowed={followedIncidents.has(selectedIncident.id)}
+                onToggleFollow={() => toggleFollow(selectedIncident.id)}
+                lang={lang}
+                isMobile
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ===== LEFT: SITUATIONAL DASHBOARD (desktop only — mobile uses MobileView's Live tab) ===== */}
       <div className="hidden lg:block">
       <AnimatePresence mode="wait">
@@ -1097,29 +1137,24 @@ export default function Home() {
         />
       </main>
 
-      {/* ===== RIGHT: SIDEBAR (desktop only — mobile uses MobileView's Layers tab) ===== */}
-      <div className="hidden lg:block h-full flex-shrink-0" role="complementary" aria-label={lang === "pt" ? "Painel de filtros" : "Filters panel"}>
-        <Sidebar
-          followedCount={followedIncidents.size}
-          unreadCount={unreadCount}
-          onOpenNotifs={() => setNotifOpen(true)}
-          sourceHealth={sourceHealth.data?.sources ?? []}
-          liveIncidentCount={liveIncidents.liveCount}
-          usingFallback={liveIncidents.usingFallback}
-          loadingIncidents={liveIncidents.loading}
-          onRefreshIncidents={handleRefresh}
-          followedIncidentIds={followedIncidents}
-          incidents={liveIncidents.incidents}
-          dataFetchedAt={liveIncidents.refetchedAt}
-          realtimeConnected={realtime.connected}
-          persistenceStats={persistenceStats.data}
-          onReportFire={() => setShowReportModal(true)}
-          onOpenHistory={() => setShowHistoryModal(true)}
+      {/* ===== RIGHT: FILTERS PANEL (desktop only — mobile uses MobileView's Layers tab) ===== */}
+      <div className="hidden lg:block h-full flex-shrink-0 w-[320px] border-l border-[var(--ember-border)]" role="complementary" aria-label={lang === "pt" ? "Painel de filtros" : "Filters panel"}>
+        <FiltersPanel
+          lang={lang}
+          variant="desktop"
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           searchInputRef={searchInputRef}
-          basemap={basemap}
-          setBasemap={setBasemap}
+          quickFilter={quickFilter}
+          setQuickFilter={setQuickFilter}
+          severityFilter={severityFilter}
+          toggleSeverity={toggleSeverity}
+          criticalOnly={criticalOnly}
+          setCriticalOnly={setCriticalOnly}
+          hideResolved={hideResolved}
+          setHideResolved={setHideResolved}
+          visibleSources={visibleSources}
+          toggleSource={toggleSource}
           showFireRisk={showFireRisk}
           setShowFireRisk={setShowFireRisk}
           showFireStations={showFireStations}
@@ -1132,27 +1167,36 @@ export default function Home() {
           setShowBiomass={setShowBiomass}
           showCompositeRisk={showCompositeRisk}
           setShowCompositeRisk={setShowCompositeRisk}
-          fireRiskFilter={fireRiskFilter}
-          setFireRiskFilter={setFireRiskFilter}
+          basemap={basemap}
+          setBasemap={setBasemap}
           fireRiskReady={!!fireRisk.data}
           fireRiskCount={fireRisk.data?.count ?? 0}
           fireStationsReady={!!fireStations.data}
           fireStationsCount={fireStations.data?.count ?? 0}
-          satelliteReady={true}
+          satelliteReady={!!satellite.data}
           satelliteCount={satellite.data?.count ?? 0}
-          visibleSources={visibleSources}
-          toggleSource={toggleSource}
-          severityFilter={severityFilter}
-          toggleSeverity={toggleSeverity}
-          criticalOnly={criticalOnly}
-          setCriticalOnly={setCriticalOnly}
-          hideResolved={hideResolved}
-          setHideResolved={setHideResolved}
-          selectedIncidentId={selectedIncidentId}
-          onSelectIncident={handleSelectIncident}
-          fireRiskDistribution={fireRiskDistribution}
-          weatherSummary={weatherSummary}
-          lang={lang}
+          sourceHealth={sourceHealth.data?.sources ?? []}
+          liveCount={visibleIncidents.length}
+          activeFilters={[
+            ...(quickFilter !== "all" ? [{
+              id: `quick-${quickFilter}`,
+              label: quickFilter === "active" ? t(lang, "dashboard.active") : quickFilter === "critical" ? t(lang, "dashboard.critical") : t(lang, "dashboard.high"),
+              onClear: () => setQuickFilter("all"),
+            }] : []),
+            ...(severityFilter.size > 0 ? Array.from(severityFilter).map((s) => ({
+              id: `sev-${s}`,
+              label: t(lang, `severity.${s}`),
+              onClear: () => toggleSeverity(s),
+            })) : []),
+            ...(searchQuery ? [{
+              id: "search",
+              label: `"${searchQuery}"`,
+              onClear: () => setSearchQuery(""),
+            }] : []),
+            ...(showFireRisk ? [{ id: "risk", label: t(lang, "sidebar.fireRiskLayer"), onClear: () => setShowFireRisk(false) }] : []),
+            ...(showFireStations ? [{ id: "stations", label: t(lang, "sidebar.fireStations"), onClear: () => setShowFireStations(false) }] : []),
+            ...(showSatellite ? [{ id: "sat", label: t(lang, "dataSources.nasa-firms-viirs"), onClear: () => setShowSatellite(false) }] : []),
+          ]}
         />
       </div>
 
@@ -1301,27 +1345,21 @@ export default function Home() {
             />
           }
           sidebar={
-            <Sidebar
-              followedCount={followedIncidents.size}
-              unreadCount={unreadCount}
-              onOpenNotifs={() => setNotifOpen(true)}
-              sourceHealth={sourceHealth.data?.sources ?? []}
-              liveIncidentCount={liveIncidents.liveCount}
-              usingFallback={liveIncidents.usingFallback}
-              loadingIncidents={liveIncidents.loading}
-              onRefreshIncidents={handleRefresh}
-              followedIncidentIds={followedIncidents}
-              incidents={liveIncidents.incidents}
-              dataFetchedAt={liveIncidents.refetchedAt}
-              realtimeConnected={realtime.connected}
-              persistenceStats={persistenceStats.data}
-              onReportFire={() => setShowReportModal(true)}
-              onOpenHistory={() => setShowHistoryModal(true)}
+            <FiltersPanel
+              lang={lang}
+              variant="mobile"
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              searchInputRef={searchInputRef}
-              basemap={basemap}
-              setBasemap={setBasemap}
+              quickFilter={quickFilter}
+              setQuickFilter={setQuickFilter}
+              severityFilter={severityFilter}
+              toggleSeverity={toggleSeverity}
+              criticalOnly={criticalOnly}
+              setCriticalOnly={setCriticalOnly}
+              hideResolved={hideResolved}
+              setHideResolved={setHideResolved}
+              visibleSources={visibleSources}
+              toggleSource={toggleSource}
               showFireRisk={showFireRisk}
               setShowFireRisk={setShowFireRisk}
               showFireStations={showFireStations}
@@ -1334,27 +1372,36 @@ export default function Home() {
               setShowBiomass={setShowBiomass}
               showCompositeRisk={showCompositeRisk}
               setShowCompositeRisk={setShowCompositeRisk}
-              fireRiskFilter={fireRiskFilter}
-              setFireRiskFilter={setFireRiskFilter}
+              basemap={basemap}
+              setBasemap={setBasemap}
               fireRiskReady={!!fireRisk.data}
               fireRiskCount={fireRisk.data?.count ?? 0}
               fireStationsReady={!!fireStations.data}
               fireStationsCount={fireStations.data?.count ?? 0}
-              satelliteReady={true}
+              satelliteReady={!!satellite.data}
               satelliteCount={satellite.data?.count ?? 0}
-              visibleSources={visibleSources}
-              toggleSource={toggleSource}
-              severityFilter={severityFilter}
-              toggleSeverity={toggleSeverity}
-              criticalOnly={criticalOnly}
-              setCriticalOnly={setCriticalOnly}
-              hideResolved={hideResolved}
-              setHideResolved={setHideResolved}
-              selectedIncidentId={selectedIncidentId}
-              onSelectIncident={(id) => { setSelectedIncidentId(id); setFlyToIncidentId(id); }}
-              fireRiskDistribution={fireRiskDistribution}
-              weatherSummary={weatherSummary}
-              lang={lang}
+              sourceHealth={sourceHealth.data?.sources ?? []}
+              liveCount={visibleIncidents.length}
+              activeFilters={[
+                ...(quickFilter !== "all" ? [{
+                  id: `quick-${quickFilter}`,
+                  label: quickFilter === "active" ? t(lang, "dashboard.active") : quickFilter === "critical" ? t(lang, "dashboard.critical") : t(lang, "dashboard.high"),
+                  onClear: () => setQuickFilter("all"),
+                }] : []),
+                ...(severityFilter.size > 0 ? Array.from(severityFilter).map((s) => ({
+                  id: `sev-${s}`,
+                  label: t(lang, `severity.${s}`),
+                  onClear: () => toggleSeverity(s),
+                })) : []),
+                ...(searchQuery ? [{
+                  id: "search",
+                  label: `"${searchQuery}"`,
+                  onClear: () => setSearchQuery(""),
+                }] : []),
+                ...(showFireRisk ? [{ id: "risk", label: t(lang, "sidebar.fireRiskLayer"), onClear: () => setShowFireRisk(false) }] : []),
+                ...(showFireStations ? [{ id: "stations", label: t(lang, "sidebar.fireStations"), onClear: () => setShowFireStations(false) }] : []),
+                ...(showSatellite ? [{ id: "sat", label: t(lang, "dataSources.nasa-firms-viirs"), onClear: () => setShowSatellite(false) }] : []),
+              ]}
             />
           }
           more={
@@ -3546,12 +3593,14 @@ function IncidentDetailPanel({
   isFollowed,
   onToggleFollow,
   lang,
+  isMobile = false,
 }: {
   incident: Incident;
   onClose: () => void;
   isFollowed: boolean;
   onToggleFollow: () => void;
   lang: Language;
+  isMobile?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "timeline" | "sources">(
     "overview"
@@ -3563,7 +3612,7 @@ function IncidentDetailPanel({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: "-100%", opacity: 0 }}
       transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full md:w-[360px] h-full flex flex-col bg-[var(--ember-bg)] border-r border-[var(--ember-border)] flex-shrink-0 z-30 absolute md:relative left-0 top-0"
+      className="w-full md:w-[360px] h-full flex flex-col bg-[var(--ember-bg)] border-r border-[var(--ember-border)] flex-shrink-0 z-30 md:relative absolute left-0 top-0"
     >
       {/* Header */}
       <div className="px-4 md:px-5 pt-4 md:pt-5 pb-3 md:pb-4 border-b border-[var(--ember-border)] flex-shrink-0">
@@ -3595,7 +3644,7 @@ function IncidentDetailPanel({
             </button>
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
+              className={`${isMobile ? "hidden " : ""}w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors`}
               aria-label={t(lang, "a11y.closePanel")}
             >
               <X className="w-4 h-4" />
