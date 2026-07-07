@@ -17,6 +17,7 @@ import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
 import { LongPressActions } from "@/components/mobile/long-press-actions";
 import { BottomSheet } from "@/components/mobile/bottom-sheet";
 import { SectionError } from "@/components/ui/section-error";
+import { EmptyState } from "@/components/ui/empty/empty-state";
 import { useUIStore } from "@/store/ui-store";
 import {
   Flame,
@@ -1935,8 +1936,22 @@ function HistoryModal({ onClose, onSelectIncident, lang }: { onClose: () => void
           )}
 
           {!loading && filtered.length === 0 && (
-            <div className="text-center py-8 text-xs text-[var(--ember-text-faint)]">
-              {lang === "pt" ? "Sem resultados para os filtros atuais." : "No incidents match the current filters."}
+            <div className="px-4 py-4">
+              <EmptyState
+                variant="no-results"
+                lang={lang}
+                compact
+                action={{
+                  label: lang === "pt" ? "Limpar filtros" : "Clear filters",
+                  onClick: () => {
+                    setQuickFilter("all");
+                    setCriticalOnly(false);
+                    setHideResolved(false);
+                    severityFilter.forEach((s) => toggleSeverity(s));
+                    setSearchQuery("");
+                  },
+                }}
+              />
             </div>
           )}
 
@@ -3407,8 +3422,8 @@ function DashboardPanel({
               </div>
               {/* List */}
               {sortedAllIncidents.length === 0 ? (
-                <div className="text-[11px] text-[var(--ember-text-faint)] text-center py-4">
-                  No incidents match this filter.
+                <div className="px-2 py-3">
+                  <EmptyState variant="no-results" lang={lang} compact />
                 </div>
               ) : (
                 <StaggerChildren stagger={0.012} className="space-y-0.5">
