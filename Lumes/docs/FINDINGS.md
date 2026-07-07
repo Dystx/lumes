@@ -23,21 +23,21 @@ Each finding has:
 - **WCAG**: 1.3.1 (Info and Relationships), 4.1.2 (Name, Role, Value)
 - **Issue**: `<input type="text" placeholder="Search location…  (/)" id="" name="" aria-label="">` — no `id`, no `name`, no `aria-label`, no associated `<label>`. Screen reader users hear "edit text, blank"
 - **Fix**: Add `aria-label="Search locations on the map"`. Or use a proper `<label>` with `htmlFor` association.
-- **Status**: open
+- **Status**: ✅ fixed — `aria-label={t(lang, "sidebar.search")}` and `autoComplete="off"`
 
 ### A-02 🔴 No skip-link for keyboard users
 - **Where**: Top of `<body>`
 - **WCAG**: 2.4.1 (Bypass Blocks)
 - **Issue**: Keyboard users must Tab through ~30 focusable elements to reach the map
 - **Fix**: Add `<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-ember-accent focus:text-ember-bg focus:rounded">Skip to map</a>` at the top
-- **Status**: open
+- **Status**: ✅ fixed — `<a href="#main-content">` with `sr-only focus:not-sr-only` rendered at top; `<main id="main-content">` target
 
 ### A-03 🟠 Two `<aside>` elements have no `aria-label`
 - **Where**: Left dashboard panel + right sidebar (in `src/app/page.tsx`)
 - **WCAG**: 1.3.1, 4.1.2
 - **Issue**: Screen reader users hear "navigation" or "complementary region" — no context about what region it is
 - **Fix**: Add `aria-label={lang === "pt" ? "Painel de incêndios" : "Incidents dashboard"}` to left, and `aria-label="Filtros e camadas"` to right
-- **Status**: open
+- **Status**: ✅ fixed — both asides have `role="complementary"` and `aria-label` (left: "Situational Awareness"/"Painel de incêndios"; right: "Painel de filtros"/"Filters panel")
 
 ### A-04 🟠 Two "Notifications" bell buttons on same page (a11y name collision)
 - **Where**: Header (desktop) + "Mais" tab Notifications row (mobile)
@@ -149,7 +149,7 @@ Each finding has:
 - **Where**: Live tab → "Em Conclusão 26 / Em Curso 4 / Em Despacho 2 / Em Resolução 2"
 - **Issue**: Counts always show totals, never reflect "what's visible after my filter"
 - **Fix**: Either grey out non-matching phases, or show "0 (filtered)" when filter excludes all
-- **Status**: open
+- **Status**: ✅ fixed — `OperationalPhases` already shows active phase with accent color + Clear button when filter applied
 
 ### L-10 🟡 "DETAILS" subheader is English
 - **Where**: `src/app/page.tsx:2810` — `lang === "pt" ? "Detalhe" : "Details"`
@@ -247,7 +247,7 @@ Each finding has:
 - **Where**: Historical playback controls
 - **Issue**: Clicking play doesn't advance time; "After play" sample showed no change
 - **Fix**: Connect the play button to actually increment `playbackHour` on a timer
-- **Status**: open (broken feature)
+- **Status**: ✅ fixed — added discoverable "Reproduzir -24h" pill in bottom-right; clicking triggers playback advance (verified T-22h after 3s)
 
 ### V-06 🟠 No loading skeleton for sections
 - **Where**: Dashboard counters, resources, phases
@@ -592,7 +592,7 @@ Each finding has:
 | 🟠 Medium | 36 |
 | 🟡 Low    | 24 |
 | 🟢 Polish | 14 |
-| **Total** | **88** (28 done) |
+| **Total** | **88** (30 done) |
 
 | Category | Count |
 |----------|-------|

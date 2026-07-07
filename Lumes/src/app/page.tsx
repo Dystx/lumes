@@ -1040,8 +1040,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Playback timeline — only show when in playback mode */}
-        {playbackHour < 0 && (
+        {/* Playback timeline — collapsed by default, expanded when active */}
         <PlaybackBar
           hour={playbackHour}
           isPlaying={isPlaying}
@@ -1053,7 +1052,6 @@ export default function Home() {
           onSkipBack={() => setPlaybackHour((h) => Math.max(-24, h - 2))}
           onSkipForward={() => setPlaybackHour((h) => Math.min(0, h + 2))}
         />
-        )}
       </main>
 
       {/* ===== RIGHT: SIDEBAR (desktop only — mobile uses MobileView's Layers tab) ===== */}
@@ -2616,6 +2614,23 @@ function PlaybackBar({
 }) {
   // Map hour (-24..0) to percentage (0..100)
   const pct = ((hour + 24) / 24) * 100;
+
+  // Compact "Discover playback" pill when at hour=0
+  if (hour === 0 && !isPlaying) {
+    return (
+      <div className="absolute bottom-4 right-3 lg:right-6 z-20">
+        <button
+          onClick={onTogglePlay}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--ember-surface)]/90 backdrop-blur-md border border-[var(--ember-border)] hover:border-[var(--ember-accent)] transition-colors shadow-[var(--ember-shadow-sm)] text-[11px] text-[var(--ember-text-muted)] hover:text-[var(--ember-text)]"
+          aria-label="Reproduzir histórico das últimas 24 horas"
+          title="Reproduzir histórico"
+        >
+          <Play className="w-3 h-3 text-[var(--ember-accent)]" fill="currentColor" />
+          <span className="font-medium">Reproduzir -24h</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center px-3 lg:px-6 h-14 lg:h-20 bg-[var(--ember-bg)]/90 backdrop-blur-md border-t border-[var(--ember-border)]">
