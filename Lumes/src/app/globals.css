@@ -1,0 +1,513 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ========================================================== */
+/* Ember platform — domain-specific theme tokens              */
+/* Forest Mint (FG-1) palette, consistent with brand docs     */
+/* ========================================================== */
+:root {
+  /* Light theme — citizen-friendly */
+  --ember-bg: #f7faf9;
+  --ember-surface: #ffffff;
+  --ember-surface-2: #eef4f2;
+  --ember-border: #d5e0dc;
+  --ember-border-strong: #b4c5be;
+  --ember-text: #0c1f1a;
+  --ember-text-muted: #4f6a62;
+  --ember-text-faint: #5a6b62;
+  --ember-accent: #2a7a65;
+  --ember-accent-hover: #1f5b4b;
+  --ember-accent-subtle: #e6f0ec;
+  --ember-critical: #c0392b;
+  --ember-critical-subtle: #fcebe9;
+  --ember-warning: #d4875a;
+  --ember-warning-subtle: #fbf0e8;
+  --ember-info: #2e86c1;
+  --ember-info-subtle: #e8f1f8;
+  --ember-success: #27ae60;
+  --ember-success-subtle: #e6f5ec;
+  --ember-shadow-sm: 0 1px 2px rgba(12, 31, 26, 0.05);
+  --ember-shadow-md: 0 4px 12px rgba(12, 31, 26, 0.08);
+  --ember-shadow-lg: 0 12px 32px rgba(12, 31, 26, 0.12);
+
+  /* Map-specific */
+  --ember-map-bg: #f0f3f1;
+  --ember-map-land: #e8ece9;
+  --ember-map-water: #c4d7d1;
+  --ember-map-road: #ffffff;
+  --ember-map-border: #c5d0cc;
+
+  /* Source colors (consistent across themes — semantic) */
+  --ember-source-satellite: #ff6a3b;
+  --ember-source-official: #c0392b;
+  --ember-source-community: #2e86c1;
+  --ember-source-news: #8e44ad;
+  --ember-source-weather: #27ae60;
+  --ember-source-evacuation: #c0392b;
+
+  /* IPMA fire risk levels (RCM 1-5) — light theme */
+  --ember-risk-maximum: #922b21;
+  --ember-risk-very-high: #e74c3c;
+  --ember-risk-high: #f39c12;
+  --ember-risk-moderate: #f4d03f;
+  --ember-risk-reduced: #229954;
+}
+
+.dark {
+  /* Dark theme — tactical but approachable (citizen-friendly dark, not operator-dense) */
+  --ember-bg: #0c1f1a;
+  --ember-surface: #122a23;
+  --ember-surface-2: #1a3830;
+  --ember-border: #2a4a40;
+  --ember-border-strong: #3d6356;
+  --ember-text: #e8f0ed;
+  --ember-text-muted: #9bb0a8;
+  --ember-text-faint: #85958e;
+  --ember-accent: #3ddb95;
+  --ember-accent-hover: #5fe9aa;
+  --ember-accent-subtle: rgba(61, 219, 149, 0.12);
+  --ember-critical: #ff6b5b;
+  --ember-critical-subtle: rgba(255, 107, 91, 0.15);
+  --ember-warning: #ffb786;
+  --ember-warning-subtle: rgba(255, 183, 134, 0.15);
+  --ember-info: #5dade2;
+  --ember-info-subtle: rgba(93, 173, 226, 0.15);
+  --ember-success: #58d68d;
+  --ember-success-subtle: rgba(88, 214, 141, 0.15);
+  --ember-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ember-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --ember-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  --ember-map-bg: #0c1f1a;
+  --ember-map-land: #122a23;
+  --ember-map-water: #0d2520;
+  --ember-map-road: #2a4a40;
+  --ember-map-border: #1f3830;
+
+  /* Source colors (kept bright on dark bg for visibility) */
+  --ember-source-satellite: #ff8a5b;
+  --ember-source-official: #ff6b5b;
+  --ember-source-community: #5dade2;
+  --ember-source-news: #c39bd3;
+  --ember-source-weather: #58d68d;
+  --ember-source-evacuation: #ff6b5b;
+
+  /* IPMA fire risk levels (RCM 1-5) — dark theme (brightened for contrast) */
+  --ember-risk-maximum: #c0392b;
+  --ember-risk-very-high: #e74c3c;
+  --ember-risk-high: #f39c12;
+  --ember-risk-moderate: #f4d03f;
+  --ember-risk-reduced: #2ecc71;
+}
+
+/* MapLibre container — must be explicit */
+.ember-map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.ember-map-container .maplibregl-ctrl-attrib {
+  font-size: 10px;
+  background: transparent !important;
+}
+.ember-map-container .maplibregl-ctrl-attrib a {
+  color: var(--ember-text-faint);
+}
+
+.dark .ember-map-container .maplibregl-ctrl-attrib {
+  background: rgba(12, 31, 26, 0.6) !important;
+}
+
+/* MapLibre popup — remove default white box, use our themed HTML instead */
+.maplibregl-popup {
+  z-index: 40;
+}
+.maplibregl-popup-content {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+.maplibregl-popup-tip {
+  display: none !important;
+}
+.maplibregl-popup-close-button {
+  display: none !important;
+}
+
+/* Pulsing animation for critical incidents */
+@keyframes ember-critical-pulse {
+  0%, 100% {
+    stroke-opacity: 0.7;
+    stroke-width: 2;
+  }
+  50% {
+    stroke-opacity: 0.2;
+    stroke-width: 5;
+  }
+}
+
+.ember-critical-pulse {
+  animation: ember-critical-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Smooth theme transitions on chrome elements */
+.ember-surface,
+.ember-panel {
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+
+/* Custom scrollbar (subtle, theme-aware) */
+.ember-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.ember-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ember-scroll::-webkit-scrollbar-thumb {
+  background: var(--ember-border-strong);
+  border-radius: 3px;
+}
+.ember-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ember-text-faint);
+}
+
+/* Hide scrollbar utility */
+.ember-scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+.ember-scroll-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Horizontal scrollbar (for chip rows) — slim, almost invisible */
+.ember-scroll-x::-webkit-scrollbar {
+  width: 0;
+  height: 3px;
+}
+.ember-scroll-x::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ember-scroll-x::-webkit-scrollbar-thumb {
+  background: var(--ember-border);
+  border-radius: 2px;
+}
+.ember-scroll-x {
+  scrollbar-width: thin;
+}
+
+/* ========================================================== */
+/* ANIMATIONS — micro-interactions and feedback               */
+/* ========================================================== */
+
+/* Fade + slide in (for panels, drawers, dropdowns) */
+@keyframes ember-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ember-slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes ember-slide-in-left {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes ember-slide-down {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes ember-scale-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Stagger helper — children animate in sequence */
+@keyframes ember-stagger-in {
+  from { transform: translateY(6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.ember-animate-fade-in { animation: ember-fade-in 200ms ease-out; }
+.ember-animate-slide-right { animation: ember-slide-in-right 280ms cubic-bezier(0.16, 1, 0.3, 1); }
+.ember-animate-slide-left { animation: ember-slide-in-left 280ms cubic-bezier(0.16, 1, 0.3, 1); }
+.ember-animate-slide-down { animation: ember-slide-down 200ms ease-out; }
+.ember-animate-scale-in { animation: ember-scale-in 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Stagger children — apply to parent */
+.ember-stagger > * {
+  animation: ember-stagger-in 240ms ease-out backwards;
+}
+.ember-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.ember-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.ember-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.ember-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.ember-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.ember-stagger > *:nth-child(6) { animation-delay: 200ms; }
+.ember-stagger > *:nth-child(7) { animation-delay: 240ms; }
+.ember-stagger > *:nth-child(8) { animation-delay: 280ms; }
+.ember-stagger > *:nth-child(n+9) { animation-delay: 320ms; }
+
+/* Pulse glow for critical incidents */
+@keyframes ember-glow-critical {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 91, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(255, 107, 91, 0); }
+}
+.ember-glow-critical {
+  animation: ember-glow-critical 2s ease-in-out infinite;
+}
+
+/* Shimmer for loading skeletons */
+@keyframes ember-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.ember-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--ember-surface-2) 0%,
+    var(--ember-border) 50%,
+    var(--ember-surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: ember-shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* Spin for refresh */
+@keyframes ember-spin {
+  to { transform: rotate(360deg); }
+}
+.ember-spin { animation: ember-spin 1s linear infinite; }
+
+/* Smooth transitions for interactive elements */
+.ember-transition {
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ember-transition-fast {
+  transition: all 120ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Button press feedback */
+.ember-press {
+  transition: transform 100ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+.ember-press:hover {
+  transform: translateY(-1px);
+}
+.ember-press:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+/* Map marker hover (via maplibre canvas cursor) */
+.ember-map-container canvas {
+  cursor: grab;
+}
+.ember-map-container canvas:active {
+  cursor: grabbing;
+}
+
+/* Focus ring for accessibility */
+.ember-focus:focus-visible {
+  outline: 2px solid var(--ember-accent);
+  outline-offset: 2px;
+}
+
+/* Global focus-visible for all interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--ember-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Tooltip */
+.ember-tooltip {
+  position: relative;
+}
+.ember-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--ember-text);
+  color: var(--ember-bg);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease, transform 150ms ease;
+  z-index: 50;
+}
+.ember-tooltip:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Reduce motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* iOS safe area support */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent text selection on touch interactions (maps, buttons) */
+.ember-map-container, .ember-map-container * {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Prevent overscroll bounce on iOS */
+body {
+  overscroll-behavior: none;
+}
+
+/* Larger touch targets on mobile */
+@media (max-width: 768px) {
+  button {
+    min-height: 36px;
+  }
+}
+
