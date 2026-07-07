@@ -92,6 +92,17 @@ export const translations = {
     primary: { pt: "Principal", en: "Primary" },
   },
 
+  // Common shared strings
+  common: {
+    loading: { pt: "A carregar…", en: "Loading…" },
+    clear: { pt: "Limpar", en: "Clear" },
+    close: { pt: "Fechar", en: "Close" },
+    cancel: { pt: "Cancelar", en: "Cancel" },
+    save: { pt: "Guardar", en: "Save" },
+    edit: { pt: "Editar", en: "Edit" },
+    delete: { pt: "Eliminar", en: "Delete" },
+  },
+
   // Sidebar — brand
   sidebar: {
     quickStats: { pt: "Estatísticas", en: "Quick Stats" },
@@ -200,13 +211,29 @@ export const translations = {
     wind: { pt: "Vento", en: "Wind" },
     humidity: { pt: "Humidade", en: "Humidity" },
     temp: { pt: "Temp", en: "Temp" },
+    aircraft: { pt: "Aeronaves", en: "Aircraft" },
+    aircraftActive: { pt: "ativas", en: "active" },
+    engines: { pt: "Veículos", en: "Engines" },
+    enginesDeployed: { pt: "destacados", en: "deployed" },
+    personnel: { pt: "Operacionais", en: "Personnel" },
+    personnelOnScene: { pt: "em cena", en: "on scene" },
     resources: { pt: "Meios empenhados", en: "Resources deployed" },
+    areaBurned: { pt: "Área ardida", en: "Area burned" },
+    notEstimated: { pt: "Não estimada", en: "Not estimated" },
+    fireRisk: { pt: "Risco de Incêndio", en: "Fire risk" },
+    sourceIPMA: { pt: "Fonte: IPMA", en: "Source: IPMA" },
     firstDetected: { pt: "Primeira deteção", en: "First detected" },
     roadClosures: { pt: "Encerramentos de estradas", en: "Road closures" },
     followIncident: { pt: "Seguir este incidente", en: "Follow this incident" },
     following: { pt: "A seguir — clique para deixar de seguir", en: "Following — click to unfollow" },
     confidence: { pt: "confiança", en: "confidence" },
     live: { pt: "Em direto", en: "Live" },
+    details: { pt: "Detalhes", en: "Details" },
+    close: { pt: "Fechar", en: "Close" },
+    copyShareLink: { pt: "Copiar link de partilha", en: "Copy share link" },
+    shareTitle: { pt: "Incêndio — Lumes", en: "Incident — Lumes" },
+    shareDescription: { pt: "Veja este incêndio em lumes.pt", en: "View this incident on lumes.pt" },
+    shareCopied: { pt: "Link copiado", en: "Link copied" },
   },
 
   // Map controls
@@ -267,6 +294,14 @@ export const translations = {
     update: { pt: "Atualizar", en: "Update" },
     moderationNote: { pt: "As comunicações são revistas por moderadores antes de serem publicadas.", en: "Reports are reviewed by moderators before display." },
     reviewed: { pt: "As comunicações são revistas por moderadores antes da exibição.", en: "Reports are reviewed by moderators before display." },
+    geoNotSupported: { pt: "Geolocalização não suportada pelo seu navegador", en: "Geolocation not supported by your browser" },
+    geoFailed: { pt: "Não foi possível obter a localização", en: "Could not get location" },
+    geoPermissionDenied: { pt: "Permissão de localização negada", en: "Permission denied" },
+    geoPositionUnavailable: { pt: "Localização indisponível", en: "Position unavailable" },
+    geoTimeout: { pt: "Tempo esgotado ao obter localização", en: "Location request timed out" },
+    locationCaptured: { pt: "Localização capturada", en: "Location captured" },
+    captureLocationFirst: { pt: "Capture primeiro a sua localização", en: "Please capture your location first" },
+    submissionFailed: { pt: "Falha ao enviar comunicação", en: "Submission failed" },
   },
 
   // Notifications

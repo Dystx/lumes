@@ -164,16 +164,16 @@ function enrichIncidentWithLiveContext(
   return enriched;
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, lang: Language = "en"): string {
   const now = Date.now();
   const then = new Date(iso).getTime();
   const diffMin = Math.max(0, Math.round((now - then) / 60000));
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1) return lang === "pt" ? "agora" : "just now";
+  if (diffMin < 60) return lang === "pt" ? `há ${diffMin} min` : `${diffMin}m ago`;
   const diffHr = Math.round(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffHr < 24) return lang === "pt" ? `há ${diffHr} h` : `${diffHr}h ago`;
   const diffDay = Math.round(diffHr / 24);
-  return `${diffDay}d ago`;
+  return lang === "pt" ? `há ${diffDay} d` : `${diffDay}d ago`;
 }
 
 function formatTime(iso: string): string {
@@ -222,13 +222,47 @@ const VERIFICATION_LABEL: Record<VerificationStatus, string> = {
   "officially-verified": "Officially verified",
 };
 
-const SOURCE_LABEL: Record<SourceType, string> = {
-  satellite: "Satellite",
-  official: "Official",
-  community: "Community",
-  news: "News",
-  weather: "Weather",
-};
+// Localized source labels (PT/EN)
+function sourceLabel(st: SourceType, lang: Language): string {
+  if (lang === "pt") {
+    const map: Record<SourceType, string> = {
+      satellite: "Satélite",
+      official: "Oficial",
+      community: "Comunidade",
+      news: "Notícias",
+      weather: "Meteorologia",
+    };
+    return map[st] || st;
+  }
+  const map: Record<SourceType, string> = {
+    satellite: "Satellite",
+    official: "Official",
+    community: "Community",
+    news: "News",
+    weather: "Weather",
+  };
+  return map[st] || st;
+}
+
+// Localized verification labels (PT/EN)
+function verificationLabel(v: VerificationStatus, lang: Language): string {
+  if (lang === "pt") {
+    const map: Record<VerificationStatus, string> = {
+      unverified: "Não verificado",
+      "single-source": "Fonte única",
+      corroborated: "Confirmado",
+      "officially-verified": "Oficialmente verificado",
+    };
+    return map[v] || v;
+  }
+  const map: Record<VerificationStatus, string> = {
+    unverified: "Unverified",
+    "single-source": "Single source",
+    corroborated: "Corroborated",
+    "officially-verified": "Officially verified",
+  };
+  return map[v] || v;
+}
 
 const SOURCE_ICON: Record<SourceType, typeof Satellite> = {
   satellite: Satellite,
@@ -284,8 +318,8 @@ export default function Home() {
 
   const satellite = useSatelliteNew(showSatellite);
   const realtime = useRealtimeIncidents((newIncident) => {
-    toast.success("New incident detected", {
-      description: newIncident.displayName || "New fire occurrence",
+    toast.success(t(lang, "toast.newIncident"), {
+      description: newIncident.displayName || (lang === "pt" ? "Nova ocorrência de incêndio" : "New fire occurrence"),
       duration: 6000,
     });
     liveIncidents.refetch();
@@ -662,18 +696,18 @@ export default function Home() {
 
   const handleResetView = useCallback(() => {
     mapRef.current?.resetView();
-    toast("Reset view to Portugal", { description: "Showing all incidents" });
-  }, []);
+    toast(t(lang, "toast.resetView"), { description: t(lang, "toast.showingAll") });
+  }, [lang]);
 
   const handleToggleFollow = useCallback(async (id: string) => {
     const wasFollowing = followedIncidents.has(id);
     const incident = liveIncidents.incidents.find((i: any) => i.id === id);
     const name = incident?.displayName || "incident";
     if (wasFollowing) {
-      toast("Unfollowed", { description: name });
+      toast(t(lang, "toast.unfollowed"), { description: name });
     } else {
-      toast.success("Following incident", {
-        description: `${name} — you'll get updates`,
+      toast.success(t(lang, "toast.followed"), {
+        description: lang === "pt" ? `${name} — receberá atualizações` : `${name} — you'll get updates`,
       });
     }
     await toggleFollowPersisted(id);
@@ -683,17 +717,19 @@ export default function Home() {
   const prevFallbackRef = useRef(false);
   useEffect(() => {
     if (liveIncidents.usingFallback && !prevFallbackRef.current) {
-      toast.error("Live data unavailable", {
-        description: "Falling back to sample data. Check source health.",
+      toast.error(t(lang, "toast.liveUnavailable"), {
+        description: t(lang, "toast.fallbackDesc"),
       });
     }
     if (!liveIncidents.usingFallback && prevFallbackRef.current && liveIncidents.liveCount > 0) {
-      toast.success("Live data restored", {
-        description: `${liveIncidents.liveCount} incidents from ANEPC`,
+      toast.success(t(lang, "toast.liveRestored"), {
+        description: lang === "pt"
+          ? `${liveIncidents.liveCount} incidentes da ANEPC`
+          : `${liveIncidents.liveCount} incidents from ANEPC`,
       });
     }
     prevFallbackRef.current = liveIncidents.usingFallback;
-  }, [liveIncidents.usingFallback, liveIncidents.liveCount]);
+  }, [liveIncidents.usingFallback, liveIncidents.liveCount, lang]);
 
   const toggleFollow = (id: string) => {
     handleToggleFollow(id);
@@ -1477,7 +1513,7 @@ export default function Home() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-[var(--ember-text)]">Keyboard shortcuts</h2>
+                <h2 className="text-base font-semibold text-[var(--ember-text)]">{t(lang, "shortcuts.title")}</h2>
                 <button
                   onClick={() => setShowShortcuts(false)}
                   className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
@@ -1527,17 +1563,17 @@ function ReportFireModal({ onClose, lang }: { onClose: () => void; lang: Languag
   const [locating, setLocating] = useState(false);
 
   const reportTypes = [
-    { value: "smoke", label: "Smoke Sighting", icon: Wind, color: "var(--ember-warning)" },
-    { value: "flame", label: "Active Flame", icon: Flame, color: "var(--ember-critical)" },
-    { value: "road_closure", label: "Road Closure", icon: AlertTriangle, color: "var(--ember-info)" },
-    { value: "evacuation", label: "Evacuation Notice", icon: Users, color: "var(--ember-critical)" },
-    { value: "contained", label: "Fire Contained", icon: CheckCircle2, color: "var(--ember-success)" },
+    { value: "smoke", label: t(lang, "report.smoke"), icon: Wind, color: "var(--ember-warning)" },
+    { value: "flame", label: t(lang, "report.flame"), icon: Flame, color: "var(--ember-critical)" },
+    { value: "road_closure", label: t(lang, "report.roadClosure"), icon: AlertTriangle, color: "var(--ember-info)" },
+    { value: "evacuation", label: t(lang, "report.evacuation"), icon: Users, color: "var(--ember-critical)" },
+    { value: "contained", label: t(lang, "report.contained"), icon: CheckCircle2, color: "var(--ember-success)" },
   ] as const;
 
   const handleGetLocation = () => {
     setLocating(true);
     if (!navigator.geolocation) {
-      toast.error("Geolocation not supported by your browser");
+      toast.error(t(lang, "report.geoNotSupported"));
       setLocating(false);
       return;
     }
@@ -1545,10 +1581,17 @@ function ReportFireModal({ onClose, lang }: { onClose: () => void; lang: Languag
       (pos) => {
         setLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
         setLocating(false);
-        toast.success("Location captured");
+        toast.success(t(lang, "report.locationCaptured"));
       },
       (err) => {
-        toast.error("Could not get location: " + err.message);
+        // Translate common geolocation errors
+        const errKey: Record<number, string> = {
+          1: "report.geoPermissionDenied",
+          2: "report.geoPositionUnavailable",
+          3: "report.geoTimeout",
+        };
+        const msg = errKey[err.code] ? t(lang, errKey[err.code]) : err.message;
+        toast.error(t(lang, "report.geoFailed") + ": " + msg);
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -1557,7 +1600,7 @@ function ReportFireModal({ onClose, lang }: { onClose: () => void; lang: Languag
 
   const handleSubmit = async () => {
     if (!location) {
-      toast.error("Please capture your location first");
+      toast.error(t(lang, "report.captureLocationFirst"));
       return;
     }
     setSubmitting(true);
@@ -1576,16 +1619,16 @@ function ReportFireModal({ onClose, lang }: { onClose: () => void; lang: Languag
       });
       const data = await res.json();
       if (data.ok) {
-        toast.success("Report submitted", {
-          description: "Your report has been received and will be reviewed by moderators.",
+        toast.success(t(lang, "toast.reportSubmitted"), {
+          description: t(lang, "toast.reportDesc"),
           duration: 6000,
         });
         onClose();
       } else {
-        toast.error("Submission failed", { description: data.error });
+        toast.error(t(lang, "report.submissionFailed"), { description: data.error });
       }
     } catch (err) {
-      toast.error("Failed to submit report");
+      toast.error(t(lang, "toast.reportFailed"));
     }
     setSubmitting(false);
   };
@@ -1614,8 +1657,8 @@ function ReportFireModal({ onClose, lang }: { onClose: () => void; lang: Languag
               <AlertTriangle className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-[var(--ember-text)]">Report Fire</h2>
-              <p className="text-[10px] text-[var(--ember-text-faint)]">Community Report · Phase 2</p>
+              <h2 className="text-base font-semibold text-[var(--ember-text)]">{t(lang, "report.title")}</h2>
+              <p className="text-[10px] text-[var(--ember-text-faint)]">{t(lang, "report.subtitle")}</p>
             </div>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors" aria-label={t(lang, "a11y.closePanel")}>
@@ -1629,7 +1672,7 @@ function ReportFireModal({ onClose, lang }: { onClose: () => void; lang: Languag
           <div className="px-3 py-2 rounded-md bg-[var(--ember-critical-subtle)] border border-[var(--ember-critical)]/30 text-xs text-[var(--ember-critical)] flex items-start gap-2">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold">For emergencies, call 117.</span> This form is for community awareness, not emergency response.
+              <span className="font-semibold">{t(lang, "report.emergency")}.</span> {t(lang, "report.emergencyDesc")}
             </div>
           </div>
 
@@ -1790,8 +1833,10 @@ function HistoryModal({ onClose, onSelectIncident, lang }: { onClose: () => void
               <Clock className="w-4 h-4 text-[var(--ember-accent)]" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-[var(--ember-text)]">Incident History</h2>
-              <p className="text-[10px] text-[var(--ember-text-faint)]">{total} incidents tracked · sorted by most recent</p>
+              <h2 className="text-base font-semibold text-[var(--ember-text)]">{t(lang, "history.title")}</h2>
+              <p className="text-[10px] text-[var(--ember-text-faint)]">
+                {total} {t(lang, "history.subtitle")}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors" aria-label={t(lang, "a11y.closeHistory")}>
@@ -1902,10 +1947,10 @@ function HistoryModal({ onClose, onSelectIncident, lang }: { onClose: () => void
         {/* Footer */}
         <div className="px-5 py-3 border-t border-[var(--ember-border)] flex items-center justify-between flex-shrink-0">
           <span className="text-[10px] text-[var(--ember-text-faint)]">
-            Showing {filtered.length} of {total} incidents
+            {lang === "pt" ? `A mostrar ${filtered.length} de ${total} incêndios` : `Showing ${filtered.length} of ${total} incidents`}
           </span>
           <span className="text-[10px] text-[var(--ember-text-faint)]">
-            Click an incident to view details
+            {lang === "pt" ? "Toque num incêndio para ver detalhes" : "Click an incident to view details"}
           </span>
         </div>
       </motion.div>
@@ -3308,10 +3353,10 @@ function DashboardPanel({
                     onChange={(e) => setSortMode(e.target.value as IncidentSort)}
                     className="w-full appearance-none bg-[var(--ember-surface-2)] border border-[var(--ember-border)] rounded px-2 py-1 text-[10px] text-[var(--ember-text)] focus:border-[var(--ember-accent)] focus:outline-none cursor-pointer pr-5"
                   >
-                    <option value="recent">Most recent</option>
-                    <option value="severity">Severity</option>
-                    <option value="area">Largest area</option>
-                    <option value="personnel">Most personnel</option>
+                    <option value="recent">{lang === "pt" ? "Mais recentes" : "Most recent"}</option>
+                    <option value="severity">{lang === "pt" ? "Severidade" : "Severity"}</option>
+                    <option value="area">{lang === "pt" ? "Maior área" : "Largest area"}</option>
+                    <option value="personnel">{lang === "pt" ? "Mais operacionais" : "Most personnel"}</option>
                   </select>
                   <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--ember-text-faint)] pointer-events-none" />
                 </div>
@@ -3537,9 +3582,9 @@ function IncidentDetailPanel({
               onClick={() => {
                 const url = `${window.location.origin}/?incident=${encodeURIComponent(incident.id)}`;
                 navigator.clipboard.writeText(url).then(() => {
-                  toast.success("Link copied", { description: "Share this URL to link directly to this incident" });
+                  toast.success(t(lang, "incident.shareCopied"), { description: t(lang, "incident.shareDescription") });
                 }).catch(() => {
-                  toast("Share URL: " + url);
+                  toast(t(lang, "incident.shareTitle") + ": " + url);
                 });
               }}
               className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-accent)] hover:bg-[var(--ember-surface-2)] transition-colors"
@@ -3588,14 +3633,14 @@ function IncidentDetailPanel({
           )}
           <span className="w-px h-3 bg-[var(--ember-border)]" />
           <span className="text-[var(--ember-text-muted)]">
-            Severity:{" "}
+            {lang === "pt" ? "Severidade" : "Severity"}:{" "}
             <span className="text-[var(--ember-text)] font-medium">
               {SEVERITY_LABEL[incident.severity]}
             </span>
           </span>
           <span className="w-px h-3 bg-[var(--ember-border)]" />
           <span className="text-[var(--ember-text-muted)]">
-            {timeAgo(incident.lastUpdated)}
+            {timeAgo(incident.lastUpdated, lang)}
           </span>
         </div>
 
@@ -3603,15 +3648,15 @@ function IncidentDetailPanel({
         <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-wider">
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)] font-medium">
             <ShieldCheck className="w-3 h-3" />
-            {VERIFICATION_LABEL[incident.verification]}
+            {verificationLabel(incident.verification, lang)}
           </span>
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--ember-surface-2)] text-[var(--ember-text-muted)] font-medium">
             <TrendingUp className="w-3 h-3" />
-            {Math.round(incident.confidence * 100)}% confidence
+            {Math.round(incident.confidence * 100)}% {t(lang, "incident.confidence")}
           </span>
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--ember-surface-2)] text-[var(--ember-text-muted)] font-medium">
             <Radio className="w-3 h-3" />
-            {incident.sourceCount} sources
+            {incident.sourceCount} {lang === "pt" ? "fontes" : "sources"}
           </span>
         </div>
 
@@ -3639,7 +3684,7 @@ function IncidentDetailPanel({
                         : "var(--ember-source-weather)",
                   }}
                 />
-                {SOURCE_LABEL[st]}
+                {sourceLabel(st, lang)}
               </span>
             );
           })}
@@ -3650,17 +3695,17 @@ function IncidentDetailPanel({
       <div className="flex-1 overflow-y-auto ember-scroll">
         {/* Tabs */}
         <div className="flex gap-4 px-4 md:px-5 pt-3 md:pt-4 border-b border-[var(--ember-border)] sticky top-0 bg-[var(--ember-bg)] z-10">
-          {(["overview", "timeline", "sources"] as const).map((t) => (
+          {(["overview", "timeline", "sources"] as const).map((tab) => (
             <button
-              key={t}
-              onClick={() => setActiveTab(t)}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
               className={`pb-2 text-[11px] uppercase tracking-wider font-medium border-b-2 transition-colors ${
-                activeTab === t
+                activeTab === tab
                   ? "border-[var(--ember-accent)] text-[var(--ember-text)]"
                   : "border-transparent text-[var(--ember-text-faint)] hover:text-[var(--ember-text-muted)]"
               }`}
             >
-              {t}
+              {t(lang, tab === "overview" ? "incident.overview" : tab === "timeline" ? "incident.timeline" : "incident.sources")}
             </button>
           ))}
         </div>
@@ -3675,7 +3720,7 @@ function IncidentDetailPanel({
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
             >
               {activeTab === "overview" && (
-                <OverviewTab incident={incident} />
+                <OverviewTab incident={incident} lang={lang} />
               )}
               {activeTab === "timeline" && (
                 <TimelineTab incident={incident} />
@@ -3692,10 +3737,10 @@ function IncidentDetailPanel({
           <div className="px-3 py-2 rounded-md bg-[var(--ember-critical-subtle)] border border-[var(--ember-critical)]/30 text-xs text-[var(--ember-critical)] flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold mb-0.5">Evacuation order active</div>
+              <div className="font-semibold mb-0.5">{lang === "pt" ? "Ordem de evacuação ativa" : "Evacuation order active"}</div>
               <div className="text-[var(--ember-critical)]/80 normal-case tracking-normal">
-                Follow official civil protection instructions. Shelter:{" "}
-                {incident.municipality} pavilion.
+                {lang === "pt" ? "Siga as instruções oficiais da proteção civil. Abrigo:" : "Follow official civil protection instructions. Shelter:"}{" "}
+                {incident.municipality} {lang === "pt" ? "pavilhão" : "pavilion"}.
               </div>
             </div>
           </div>
@@ -3708,7 +3753,7 @@ function IncidentDetailPanel({
           onClick={onToggleFollow}
         >
           <Bell className="w-3.5 h-3.5" />
-          {isFollowed ? "Following — click to unfollow" : "Follow this incident"}
+          {isFollowed ? t(lang, "incident.following") : t(lang, "incident.followIncident")}
         </AnimatedButton>
       </div>
     </motion.aside>
@@ -3718,7 +3763,7 @@ function IncidentDetailPanel({
 // ============================================================
 // Overview tab
 // ============================================================
-function OverviewTab({ incident }: { incident: Incident }) {
+function OverviewTab({ incident, lang }: { incident: Incident; lang: Language }) {
   const sevColor =
     incident.severity === "critical" ? "var(--ember-critical)"
     : incident.severity === "high" ? "var(--ember-warning)"
@@ -3735,25 +3780,25 @@ function OverviewTab({ incident }: { incident: Incident }) {
       {/* Conditions — metric cards */}
       <div className="space-y-2">
         <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
-          Conditions
+          {t(lang, "incident.conditions")}
         </div>
         <div className="grid grid-cols-3 gap-2">
           <MetricCard
             icon={Wind}
-            label="Wind"
+            label={t(lang, "incident.wind")}
             value={incident.windKmh > 0 ? `${incident.windKmh}` : "—"}
             unit={incident.windKmh > 0 ? `km/h ${incident.windDirection}` : ""}
           />
           <MetricCard
             icon={Droplets}
-            label="Humidity"
+            label={t(lang, "incident.humidity")}
             value={incident.humidity > 0 ? `${incident.humidity}` : "—"}
             unit={incident.humidity > 0 ? "%" : ""}
             danger={incident.humidity > 0 && incident.humidity < 20}
           />
           <MetricCard
             icon={Thermometer}
-            label="Temp"
+            label={t(lang, "incident.temp")}
             value={incident.temperatureC > 0 ? `${incident.temperatureC}` : "—"}
             unit={incident.temperatureC > 0 ? "°C" : ""}
             danger={incident.temperatureC > 32}
@@ -3764,12 +3809,12 @@ function OverviewTab({ incident }: { incident: Incident }) {
       {/* Resources deployed */}
       <div className="space-y-2">
         <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
-          Resources deployed
+          {t(lang, "incident.resources")}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <MetricCard icon={Plane} label="Aircraft" value={`${incident.aircraft}`} unit="active" accent={incident.aircraft > 0} />
-          <MetricCard icon={Truck} label="Engines" value={`${incident.engines}`} unit="deployed" accent={incident.engines > 0} />
-          <MetricCard icon={Users} label="Personnel" value={`${incident.personnel}`} unit="on scene" accent={incident.personnel > 0} />
+          <MetricCard icon={Plane} label={t(lang, "incident.aircraft")} value={`${incident.aircraft}`} unit={t(lang, "incident.aircraftActive")} accent={incident.aircraft > 0} />
+          <MetricCard icon={Truck} label={t(lang, "incident.engines")} value={`${incident.engines}`} unit={t(lang, "incident.enginesDeployed")} accent={incident.engines > 0} />
+          <MetricCard icon={Users} label={t(lang, "incident.personnel")} value={`${incident.personnel}`} unit={t(lang, "incident.personnelOnScene")} accent={incident.personnel > 0} />
         </div>
       </div>
 
@@ -3778,7 +3823,7 @@ function OverviewTab({ incident }: { incident: Incident }) {
         {/* Area */}
         <div className="bg-[var(--ember-surface-2)] rounded-lg p-3 border border-[var(--ember-border)]">
           <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] mb-1.5 font-medium">
-            Area burned
+            {t(lang, "incident.areaBurned")}
           </div>
           {incident.estimatedAreaHa > 0 ? (
             <>
@@ -3794,7 +3839,7 @@ function OverviewTab({ incident }: { incident: Incident }) {
             </>
           ) : (
             <div className="text-sm text-[var(--ember-text-muted)] italic">
-              Not estimated
+              {t(lang, "incident.notEstimated")}
             </div>
           )}
         </div>
@@ -3802,7 +3847,7 @@ function OverviewTab({ incident }: { incident: Incident }) {
         {/* IPMA Risk */}
         <div className="bg-[var(--ember-surface-2)] rounded-lg p-3 border border-[var(--ember-border)]">
           <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] mb-1.5 font-medium">
-            Fire risk
+            {t(lang, "incident.fireRisk")}
           </div>
           <div className="flex items-center gap-2">
             <span
@@ -3816,24 +3861,24 @@ function OverviewTab({ incident }: { incident: Incident }) {
                 color: incident.ipmaRisk === "maximum" || incident.ipmaRisk === "very_high" ? "white" : "var(--ember-text)",
               }}
             >
-              {incident.ipmaRisk.replace("_", " ")}
+              {t(lang, `risk.${incident.ipmaRisk === "very_high" ? "veryHigh" : incident.ipmaRisk}`)}
             </span>
           </div>
-          <div className="text-[10px] text-[var(--ember-text-faint)] mt-1 truncate">Source: IPMA</div>
+          <div className="text-[10px] text-[var(--ember-text-faint)] mt-1 truncate">{t(lang, "incident.sourceIPMA")}</div>
         </div>
       </div>
 
       {/* First detected */}
       <div className="flex items-center gap-2 text-[10px] text-[var(--ember-text-faint)]">
         <Clock className="w-3 h-3" />
-        First detected {formatDate(incident.firstDetected)} {formatTime(incident.firstDetected)} UTC
+        {t(lang, "incident.firstDetected")} {formatDate(incident.firstDetected)} {formatTime(incident.firstDetected)} UTC
       </div>
 
       {/* Road closures */}
       {incident.roadClosures && incident.roadClosures.length > 0 && (
         <div>
           <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] mb-2 font-medium">
-            Road closures
+            {t(lang, "incident.roadClosures")}
           </div>
           <div className="space-y-1.5">
             {incident.roadClosures.map((road) => (
@@ -4028,7 +4073,7 @@ function TimelineTab({ incident }: { incident: Incident }) {
                       {formatDate(evt.timestamp)} {formatTime(evt.timestamp)} UTC
                     </span>
                     <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-[var(--ember-border)] font-medium" style={{ color: dotColor }}>
-                      {SOURCE_LABEL[evt.sourceType] || evt.sourceType}
+                      {sourceLabel(evt.sourceType, lang) || evt.sourceType}
                     </span>
                   </div>
 
@@ -4091,7 +4136,7 @@ function SourcesTab({ incident }: { incident: Incident }) {
                   style={{ background: color }}
                 />
                 <span className="text-sm font-medium text-[var(--ember-text)]">
-                  {SOURCE_LABEL[type]}
+                  {sourceLabel(type, lang)}
                 </span>
               </div>
               <span className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)]">
@@ -4128,7 +4173,7 @@ function SourcesTab({ incident }: { incident: Incident }) {
         </span>
         . Verification status:{" "}
         <span className="text-[var(--ember-text)]">
-          {VERIFICATION_LABEL[incident.verification]}
+          {verificationLabel(incident.verification, lang)}
         </span>
         . Trust engine v1.0 — confidence computed from source reputation,
         corroboration count, and freshness decay.
