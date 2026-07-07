@@ -4,9 +4,9 @@
 // Tappable to open the Live tab.
 
 import { motion } from "framer-motion";
-import { Flame } from "lucide-react";
+import { Flame, ChevronUp } from "lucide-react";
 import { useLanguage } from "@/lib/use-language";
-import { tFmt } from "@/lib/i18n";
+import { tFmt, t } from "@/lib/i18n";
 
 export function MobileAttribution({
   count,
@@ -34,8 +34,11 @@ export function MobileAttribution({
           {count}
         </span>
         <span className="text-[var(--ember-text-muted)]">
-          {count === 1 ? "incêndio" : "incêndios"}
+          {count === 1
+            ? (lang === "pt" ? "incêndio" : "fire")
+            : (lang === "pt" ? "incêndios" : "fires")}
         </span>
+        <ChevronUp className="w-3 h-3 text-[var(--ember-accent)] opacity-60" aria-hidden="true" />
       </div>
     </motion.button>
   );

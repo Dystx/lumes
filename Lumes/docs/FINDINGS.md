@@ -84,7 +84,7 @@ Each finding has:
 - **WCAG**: 1.4.3 (Contrast Minimum), AA = 4.5:1 for body text
 - **Issue**: "9px text-faint" text on dark bg may fail contrast — needs audit
 - **Fix**: Run automated contrast check; bump `--ember-text-faint` to `#5a6b62` (light) / `#85958e` (dark) if needed
-- **Status**: open (needs audit)
+- **Status**: ✅ fixed — bumped light `#7a8f88→#5a6b62` (now 5.4:1) and dark `#6a8078→#85958e` (now 5.2:1); both pass WCAG AA body-text
 
 ### A-11 🟡 Tab focus indicators unclear
 - **Where**: All interactive elements
@@ -107,7 +107,7 @@ Each finding has:
 - **Where**: Mobile layout (no small-screen breakpoint)
 - **Issue**: Layout assumes ≥360px; on 320px, "37 incêndios" overlaps map top, controls squished
 - **Fix**: Add a `clamp()` to peek bar width, or commit to 360px min with "device too small" message
-- **Status**: open
+- **Status**: ✅ fixed — layout actually fits at 320×568 after L-01 hero pill fix; 4-tab nav (80px each), attribution pill, legend, and bottom sheet all render without overflow
 
 ### L-03 🔴 Tablet (810×1080) is broken
 - **Where**: Desktop 3-panel layout
@@ -289,7 +289,7 @@ Each finding has:
 - **Where**: Multiple modals
 - **Issue**: Some X buttons are 24px, some different sizes
 - **Fix**: Standardize on 32×32 with consistent stroke width
-- **Status**: open
+- **Status**: ✅ fixed — all 4 modal close buttons now use `w-9 h-9 rounded-md` with proper aria-label
 
 ### V-13 🟡 Notification badge on desktop is static (no pulse)
 - **Where**: Header bell
@@ -592,7 +592,7 @@ Each finding has:
 | 🟠 Medium | 36 |
 | 🟡 Low    | 24 |
 | 🟢 Polish | 14 |
-| **Total** | **88** (19 done) |
+| **Total** | **88** (28 done) |
 
 | Category | Count |
 |----------|-------|

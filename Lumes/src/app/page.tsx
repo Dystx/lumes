@@ -13,6 +13,7 @@ import { OperationalPhases } from "@/components/dashboard/operational-phases";
 import { CollapsibleLegend } from "@/components/overlays/legend";
 import { MobileView, type MobileTab } from "@/components/mobile/mobile-view";
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
+import { LongPressActions } from "@/components/mobile/long-press-actions";
 import { useUIStore } from "@/store/ui-store";
 import {
   Flame,
@@ -266,11 +267,14 @@ export default function Home() {
       href="#main-content"
       className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-[var(--ember-accent)] focus:text-[var(--ember-bg)] focus:rounded-md focus:shadow-lg focus:outline-none"
     >
-      {lang === "pt" ? "Saltar para o mapa" : "Skip to map"}
+      {t(lang, "a11y.skipToMap")}
     </a>
   );
 
   const fireStations = useFireStationsNew(showFireStations);
+
+  // Long-press marker menu state (mobile)
+  const [markerMenu, setMarkerMenu] = useState<{ x: number; y: number; incidentId: string } | null>(null);
   const sourceHealth = useSourceHealthNew();
   const persistenceStats = usePersistenceStatsNew();
   const history = useHistoryNew(undefined, showHistoryModal);
@@ -635,13 +639,13 @@ export default function Home() {
     toast.promise(
       new Promise((resolve) => setTimeout(resolve, 600)),
       {
-        loading: "Refreshing incidents…",
-        success: "Incidents refreshed",
-        error: "Refresh failed",
+        loading: lang === "pt" ? "A atualizar incêndios…" : "Refreshing incidents…",
+        success: lang === "pt" ? "Incêndios atualizados" : "Incidents refreshed",
+        error: lang === "pt" ? "Falha ao atualizar" : "Refresh failed",
       }
     );
     liveIncidents.refetch();
-  }, [liveIncidents]);
+  }, [liveIncidents, lang]);
 
   const handleLocate = useCallback(() => {
     if (selectedIncidentId) {
@@ -799,6 +803,7 @@ export default function Home() {
             followedIncidentIds={followedIncidents}
             loading={dashboard.loading}
             lang={lang}
+            dataFetchedAt={liveIncidents.refetchedAt}
           />
         )}
       </AnimatePresence>
@@ -838,7 +843,7 @@ export default function Home() {
               <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
                 <span
-                  className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--ember-critical)] text-white text-[10px] font-bold flex items-center justify-center"
+                  className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--ember-critical)] text-white text-[10px] font-bold flex items-center justify-center animate-pulse tabular-nums"
                   aria-hidden="true"
                 >
                   {unreadCount}
@@ -917,6 +922,7 @@ export default function Home() {
               basemap={basemap}
               visibleSources={visibleSources}
               onSelectIncident={handleSelectIncidentFromMap}
+              onMarkerLongPress={(x, y, id) => setMarkerMenu({ x, y, incidentId: id })}
               flyToIncidentId={flyToIncidentId}
               onFlyToCleared={() => setFlyToIncidentId(null)}
               fireRiskFeatures={fireRiskFeatures}
@@ -1121,6 +1127,7 @@ export default function Home() {
               setSelectedIncidentId(id);
               setNotifOpen(false);
             }}
+            lang={lang}
           />
         )}
       </AnimatePresence>
@@ -1130,14 +1137,14 @@ export default function Home() {
       {/* ===== HISTORY MODAL ===== */}
       <AnimatePresence>
         {showHistoryModal && (
-          <HistoryModal onClose={() => setShowHistoryModal(false)} onSelectIncident={(id) => { setSelectedIncidentId(id); setShowHistoryModal(false); }} />
+          <HistoryModal onClose={() => setShowHistoryModal(false)} onSelectIncident={(id) => { setSelectedIncidentId(id); setShowHistoryModal(false); }} lang={lang} />
         )}
       </AnimatePresence>
 
       {/* ===== REPORT FIRE MODAL (Phase 2 — Community Reports) ===== */}
       <AnimatePresence>
         {showReportModal && (
-          <ReportFireModal onClose={() => setShowReportModal(false)} />
+          <ReportFireModal onClose={() => setShowReportModal(false)} lang={lang} />
         )}
       </AnimatePresence>
 
@@ -1210,6 +1217,7 @@ export default function Home() {
                 fireRiskFeatures={fireRiskFeatures}
                 weather={weather.data}
                 onSelectIncident={handleSelectIncidentFromMap}
+                onMarkerLongPress={(x, y, id) => setMarkerMenu({ x, y, incidentId: id })}
                 lang={lang}
               />
             </div>
@@ -1246,6 +1254,7 @@ export default function Home() {
               followedIncidentIds={followedIncidents}
               loading={dashboard.loading}
               lang={lang}
+              dataFetchedAt={liveIncidents.refetchedAt}
             />
           }
           sidebar={
@@ -1402,6 +1411,44 @@ export default function Home() {
         />
       </div>
 
+      {/* ===== LONG-PRESS MARKER MENU (mobile) ===== */}
+      {markerMenu && (() => {
+        const target = liveIncidents.incidents.find((i) => i.id === markerMenu.incidentId)
+          ?? liveIncidents.incidents[0];
+        return (
+          <LongPressActions
+            x={markerMenu.x}
+            y={markerMenu.y}
+            onClose={() => setMarkerMenu(null)}
+            isFollowed={followedIncidents.has(markerMenu.incidentId)}
+            onFollow={async () => {
+              await toggleFollow(markerMenu.incidentId);
+            }}
+            onShare={() => {
+              const url = `${window.location.origin}/?incident=${encodeURIComponent(markerMenu.incidentId)}`;
+              if (navigator.share) {
+                navigator.share({ title: "Lumes", url }).catch(() => {});
+              } else {
+                navigator.clipboard.writeText(url).then(() => toast.success(lang === "pt" ? "Link copiado" : "Link copied")).catch(() => {});
+              }
+            }}
+            onLocate={() => {
+              setFlyToIncidentId(markerMenu.incidentId);
+              setMarkerMenu(null);
+            }}
+            onAlert={() => {
+              // Set an alert by following + notifying — for now reuse follow
+              toggleFollow(markerMenu.incidentId);
+            }}
+            onOpenDetail={() => {
+              setSelectedIncidentId(markerMenu.incidentId);
+              setFlyToIncidentId(markerMenu.incidentId);
+              setMarkerMenu(null);
+            }}
+          />
+        );
+      })()}
+
       {/* ===== KEYBOARD SHORTCUTS OVERLAY ===== */}
       <AnimatePresence>
         {showShortcuts && (
@@ -1425,9 +1472,10 @@ export default function Home() {
                 <h2 className="text-base font-semibold text-[var(--ember-text)]">Keyboard shortcuts</h2>
                 <button
                   onClick={() => setShowShortcuts(false)}
-                  className="text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] transition-colors"
+                  className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
+                  aria-label={t(lang, "a11y.closeShortcuts")}
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
               <div className="space-y-2.5">
@@ -1462,7 +1510,7 @@ export default function Home() {
 // ============================================================
 // Report Fire Modal — Phase 2 Community Reports
 // ============================================================
-function ReportFireModal({ onClose }: { onClose: () => void }) {
+function ReportFireModal({ onClose, lang }: { onClose: () => void; lang: Language }) {
   const [reportType, setReportType] = useState<"smoke" | "flame" | "road_closure" | "evacuation" | "contained">("smoke");
   const [description, setDescription] = useState("");
   const [reporterName, setReporterName] = useState("");
@@ -1562,8 +1610,8 @@ function ReportFireModal({ onClose }: { onClose: () => void }) {
               <p className="text-[10px] text-[var(--ember-text-faint)]">Community Report · Phase 2</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] transition-colors">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors" aria-label={t(lang, "a11y.closePanel")}>
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -1579,7 +1627,7 @@ function ReportFireModal({ onClose }: { onClose: () => void }) {
 
           {/* Report type */}
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">Report Type</label>
+            <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">{t(lang, "report.reportType")}</label>
             <div className="grid grid-cols-1 gap-1.5">
               {reportTypes.map((rt) => (
                 <motion.button
@@ -1605,31 +1653,31 @@ function ReportFireModal({ onClose }: { onClose: () => void }) {
 
           {/* Location */}
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">Location</label>
+            <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">{t(lang, "report.location")}</label>
             {location ? (
               <div className="flex items-center justify-between px-3 py-2.5 rounded-md bg-[var(--ember-accent-subtle)] border border-[var(--ember-accent)]/30">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-[var(--ember-accent)]" />
                   <span className="text-sm font-mono text-[var(--ember-text)]">{location.lat.toFixed(4)}, {location.lon.toFixed(4)}</span>
                 </div>
-                <button onClick={handleGetLocation} className="text-xs text-[var(--ember-accent)] hover:underline">Update</button>
+                <button onClick={handleGetLocation} className="text-xs text-[var(--ember-accent)] hover:underline">{t(lang, "report.update")}</button>
               </div>
             ) : (
               <AnimatedButton variant="default" className="w-full" onClick={handleGetLocation} loading={locating}>
                 <MapPin className="w-3.5 h-3.5" />
-                {locating ? "Getting location…" : "Capture my location"}
+                {locating ? t(lang, "report.gettingLocation") : t(lang, "report.captureLocation")}
               </AnimatedButton>
             )}
           </div>
 
           {/* Description */}
           <div>
-            <label htmlFor="report-description" className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">Description (optional)</label>
+            <label htmlFor="report-description" className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">{t(lang, "report.description")}</label>
             <textarea
               id="report-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe what you see (smoke direction, fire size, road conditions, etc.)"
+              placeholder={t(lang, "report.descriptionPlaceholder")}
               rows={3}
               aria-describedby="report-description-help"
               className="w-full bg-[var(--ember-surface-2)] border border-[var(--ember-border)] rounded-md px-3 py-2 text-sm text-[var(--ember-text)] placeholder:text-[var(--ember-text-faint)] focus:border-[var(--ember-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--ember-accent)]/20 transition-all resize-none"
@@ -1641,13 +1689,13 @@ function ReportFireModal({ onClose }: { onClose: () => void }) {
 
           {/* Name */}
           <div>
-            <label htmlFor="report-name" className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">Your name (optional)</label>
+            <label htmlFor="report-name" className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">{t(lang, "report.yourName")}</label>
             <input
               id="report-name"
               type="text"
               value={reporterName}
               onChange={(e) => setReporterName(e.target.value)}
-              placeholder="Anonymous"
+              placeholder={t(lang, "report.anonymous")}
               autoComplete="name"
               className="w-full bg-[var(--ember-surface-2)] border border-[var(--ember-border)] rounded-md px-3 py-2 text-sm text-[var(--ember-text)] placeholder:text-[var(--ember-text-faint)] focus:border-[var(--ember-accent)] focus:outline-none transition-colors h-9"
             />
@@ -1657,12 +1705,12 @@ function ReportFireModal({ onClose }: { onClose: () => void }) {
         {/* Footer */}
         <div className="px-5 py-4 border-t border-[var(--ember-border)] flex items-center justify-between">
           <span className="text-[10px] text-[var(--ember-text-faint)]">
-            Reports are reviewed by moderators before display.
+            {t(lang, "report.moderationNote")}
           </span>
           <div className="flex gap-2">
-            <AnimatedButton variant="ghost" size="sm" onClick={onClose}>Cancel</AnimatedButton>
+            <AnimatedButton variant="ghost" size="sm" onClick={onClose}>{t(lang, "report.cancel")}</AnimatedButton>
             <AnimatedButton variant="critical" size="sm" onClick={handleSubmit} loading={submitting} disabled={!location}>
-              Submit Report
+              {t(lang, "report.submit")}
             </AnimatedButton>
           </div>
         </div>
@@ -1674,7 +1722,7 @@ function ReportFireModal({ onClose }: { onClose: () => void }) {
 // ============================================================
 // History Modal — full incident history with date filter
 // ============================================================
-function HistoryModal({ onClose, onSelectIncident }: { onClose: () => void; onSelectIncident: (id: string) => void }) {
+function HistoryModal({ onClose, onSelectIncident, lang }: { onClose: () => void; onSelectIncident: (id: string) => void; lang: Language }) {
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -1738,8 +1786,8 @@ function HistoryModal({ onClose, onSelectIncident }: { onClose: () => void; onSe
               <p className="text-[10px] text-[var(--ember-text-faint)]">{total} incidents tracked · sorted by most recent</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors" aria-label={t(lang, "a11y.closeHistory")}>
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -2059,9 +2107,10 @@ function Sidebar({
             <button
               onClick={() => setSearchQuery("")}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)]"
-              aria-label="Clear"
+              aria-label={t(lang, "a11y.clearSearch")}
+              title={lang === "pt" ? "Limpar" : "Clear"}
             >
-              <X className="w-2.5 h-2.5" />
+              <X className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -2080,15 +2129,15 @@ function Sidebar({
               className="rounded-md bg-[var(--ember-surface-2)] border border-[var(--ember-border)] p-2 transition-colors hover:border-[var(--ember-accent)]/40 cursor-default"
               title="Incidents you're following (receiving realtime updates)"
             >
-              <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-0.5">Following</div>
-              <div className="text-base font-mono font-bold text-[var(--ember-accent)]">{followedCount}</div>
+              <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-0.5">{t(lang, "sidebar.following")}</div>
+              <div className="text-base font-mono font-bold tabular-nums text-[var(--ember-accent)]">{followedCount}</div>
             </div>
             <div
               className="rounded-md bg-[var(--ember-surface-2)] border border-[var(--ember-border)] p-2 transition-colors hover:border-[var(--ember-accent)]/40 cursor-default"
               title="Total incidents persisted in the database (all time)"
             >
-              <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-0.5">Tracked</div>
-              <div className="text-base font-mono font-bold text-[var(--ember-text)]">
+              <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-0.5">{t(lang, "sidebar.tracked")}</div>
+              <div className="text-base font-mono font-bold tabular-nums text-[var(--ember-text)]">
                 {persistenceStats?.total ? persistenceStats.total.toLocaleString() : "—"}
               </div>
             </div>
@@ -2096,8 +2145,8 @@ function Sidebar({
               className="rounded-md bg-[var(--ember-surface-2)] border border-[var(--ember-border)] p-2 transition-colors hover:border-[var(--ember-accent)]/40 cursor-default"
               title="State snapshots recorded (status/severity changes over time)"
             >
-              <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-0.5">Snapshots</div>
-              <div className="text-base font-mono font-bold text-[var(--ember-text)]">
+              <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-0.5">{t(lang, "sidebar.snapshots")}</div>
+              <div className="text-base font-mono font-bold tabular-nums text-[var(--ember-text)]">
                 {persistenceStats?.snapshots ?? 0}
               </div>
             </div>
@@ -2105,8 +2154,8 @@ function Sidebar({
               className="rounded-md bg-[var(--ember-surface-2)] border border-[var(--ember-border)] p-2 transition-colors hover:border-[var(--ember-accent)]/40 cursor-default"
               title="Data sources operational (ANEPC, IPMA, OSM, etc.)"
             >
-              <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-0.5">Sources</div>
-              <div className="text-base font-mono font-bold text-[var(--ember-success)]">
+              <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-0.5">{t(lang, "sidebar.sources")}</div>
+              <div className="text-base font-mono font-bold tabular-nums text-[var(--ember-success)]">
                 {sourceHealth.filter((s) => s.status === "ok").length}/{sourceHealth.length || 0}
               </div>
             </div>
@@ -2479,14 +2528,13 @@ function Sidebar({
             </span>
           )}
         </button>
-        <AnimatedButton
-          variant="critical"
-          className="w-full text-[11px] uppercase tracking-wider font-medium py-2"
+        <button
           onClick={onReportFire}
+          className="w-full flex items-center justify-center gap-1.5 text-[11px] text-[var(--ember-critical)] hover:bg-[var(--ember-critical-subtle)] transition-colors py-2 rounded-md border border-[var(--ember-critical)]/30"
         >
-          <AlertTriangle className="w-3.5 h-3.5" />
+          <AlertTriangle className="w-3 h-3" />
           {t(lang, "sidebar.reportFire")}
-        </AnimatedButton>
+        </button>
       </div>
     </aside>
   );
@@ -3348,10 +3396,10 @@ function DashboardPanel({
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center gap-1">
               <ShieldCheck className="w-2.5 h-2.5" />
-              System Health
+              {t(lang, "dashboard.systemHealth")}
             </span>
-            <span className="text-[10px] font-mono text-[var(--ember-text-muted)]">
-              {okSources}/{totalSources} sources
+            <span className="text-[10px] font-mono tabular-nums text-[var(--ember-text-muted)]">
+              {okSources}/{totalSources} {t(lang, "sidebar.sources").toLowerCase()}
             </span>
           </div>
           <div className="h-1 bg-[var(--ember-surface-2)] rounded-full overflow-hidden">
@@ -3359,6 +3407,11 @@ function DashboardPanel({
               initial={{ width: 0 }}
               animate={{ width: `${healthPct}%` }}
               transition={{ duration: 0.5, ease: "easeOut" }}
+              role="progressbar"
+              aria-valuenow={healthPct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${okSources} ${lang === "pt" ? "de" : "of"} ${totalSources} ${t(lang, "sidebar.sources").toLowerCase()} ${lang === "pt" ? "operacionais" : "operational"} (${healthPct}%)`}
               className={`h-full rounded-full ${
                 healthPct >= 75 ? "bg-[var(--ember-success)]"
                 : healthPct >= 50 ? "bg-[var(--ember-warning)]"
@@ -3452,7 +3505,7 @@ function IncidentDetailPanel({
             <button
               onClick={onClose}
               className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
-              aria-label="Close panel"
+              aria-label={t(lang, "a11y.closePanel")}
             >
               <X className="w-4 h-4" />
             </button>
@@ -4046,11 +4099,13 @@ function NotificationsDrawer({
   onClose,
   onMarkAllRead,
   onSelectIncident,
+  lang,
 }: {
-  notifications: typeof NOTIFICATIONS_MOCK;
+  notifications: any[];
   onClose: () => void;
   onMarkAllRead: () => void;
   onSelectIncident: (id: string) => void;
+  lang: Language;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -4082,14 +4137,16 @@ function NotificationsDrawer({
             <button
               onClick={onMarkAllRead}
               className="text-xs text-[var(--ember-accent)] hover:underline"
+              aria-label={t(lang, "a11y.markAllRead")}
             >
-              Mark all read
+              {t(lang, "a11y.markAllRead")}
             </button>
             <button
               onClick={onClose}
-              className="text-[var(--ember-text-faint)] hover:text-[var(--ember-text)]"
+              className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
+              aria-label={t(lang, "a11y.closeNotifications")}
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>

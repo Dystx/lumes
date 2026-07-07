@@ -35,6 +35,15 @@ export const translations = {
   },
 
   // Top-bar / header common actions
+  a11y: {
+    skipToMap: { pt: "Saltar para o mapa", en: "Skip to map" },
+    closePanel: { pt: "Fechar painel", en: "Close panel" },
+    closeNotifications: { pt: "Fechar notificações", en: "Close notifications" },
+    closeHistory: { pt: "Fechar histórico", en: "Close history" },
+    closeShortcuts: { pt: "Fechar atalhos", en: "Close shortcuts" },
+    markAllRead: { pt: "Marcar tudo como lido", en: "Mark all read" },
+    clearSearch: { pt: "Limpar pesquisa", en: "Clear search" },
+  },
   header: {
     cancel: { pt: "Cancelar", en: "Cancel" },
     submit: { pt: "Submeter", en: "Submit" },
@@ -218,6 +227,8 @@ export const translations = {
     anonymous: { pt: "Anónimo", en: "Anonymous" },
     submit: { pt: "Enviar Comunicação", en: "Submit Report" },
     cancel: { pt: "Cancelar", en: "Cancel" },
+    update: { pt: "Atualizar", en: "Update" },
+    moderationNote: { pt: "As comunicações são revistas por moderadores antes de serem publicadas.", en: "Reports are reviewed by moderators before display." },
     reviewed: { pt: "As comunicações são revistas por moderadores antes da exibição.", en: "Reports are reviewed by moderators before display." },
   },
 
