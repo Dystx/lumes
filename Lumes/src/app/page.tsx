@@ -14,6 +14,7 @@ import { CollapsibleLegend } from "@/components/overlays/legend";
 import { MobileView, type MobileTab } from "@/components/mobile/mobile-view";
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
 import { LongPressActions } from "@/components/mobile/long-press-actions";
+import { SectionError } from "@/components/ui/section-error";
 import { useUIStore } from "@/store/ui-store";
 import {
   Flame,
@@ -1186,7 +1187,7 @@ export default function Home() {
           activeFilters={[
             ...(quickFilter !== "all" ? [{
               id: `quick-${quickFilter}`,
-              label: quickFilter === "active" ? "Ativos" : quickFilter === "critical" ? "Críticos" : "Elevados",
+              label: quickFilter === "active" ? t(lang, "dashboard.active") : quickFilter === "critical" ? t(lang, "dashboard.critical") : t(lang, "dashboard.high"),
               onClear: () => setQuickFilter("all"),
             }] : []),
             ...(phaseFilter ? [{
@@ -1317,11 +1318,12 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setNotifOpen(true)}
+                aria-label={tFmt(lang, "header.notificationsWithUnread", { count: unreadCount })}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-lg bg-[var(--ember-surface-2)] border border-[var(--ember-border)] hover:border-[var(--ember-border-strong)] text-left"
               >
-                <Bell className="w-5 h-5 text-[var(--ember-accent)]" />
+                <Bell className="w-5 h-5 text-[var(--ember-accent)]" aria-hidden="true" />
                 <div className="flex-1">
-                  <div className="text-sm font-medium">{lang === "pt" ? "Notificações" : "Notifications"}</div>
+                  <div className="text-sm font-medium">{t(lang, "header.viewNotifications")}</div>
                   <div className="text-[11px] text-[var(--ember-text-faint)]">{unreadCount} {lang === "pt" ? "não lidas" : "unread"}</div>
                 </div>
                 {unreadCount > 0 && (
@@ -1399,7 +1401,7 @@ export default function Home() {
                   <Share2 className="w-5 h-5 text-[var(--ember-accent)]" />
                   <div className="flex-1">
                     <div className="text-sm font-medium">{lang === "pt" ? "Partilhar Lumes" : "Share Lumes"}</div>
-                    <div className="text-[11px] text-[var(--ember-text-faint)]">{lang === "pt" ? "Partilhe com a sua comunidade" : "Share with your community"}</div>
+                    <div className="text-[11px] text-[var(--ember-text-faint)]">{t(lang, "mobile.shareDesc")}</div>
                   </div>
                 </button>
                 <p className="text-[10px] text-[var(--ember-text-faint)] text-center pt-2">Lumes · v0.2.0</p>
@@ -1837,7 +1839,7 @@ function HistoryModal({ onClose, onSelectIncident, lang }: { onClose: () => void
 
           {!loading && filtered.length === 0 && (
             <div className="text-center py-8 text-xs text-[var(--ember-text-faint)]">
-              No incidents found matching your filters.
+              {lang === "pt" ? "Sem resultados para os filtros atuais." : "No incidents match the current filters."}
             </div>
           )}
 
@@ -2516,15 +2518,20 @@ function Sidebar({
           onClick={onOpenNotifs}
           className="flex items-center justify-between text-sm text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] transition-colors px-1"
         >
-          <span className="flex items-center gap-2">
-            <Bell className="w-4 h-4" strokeWidth={1.75} />
-            {t(lang, "sidebar.notifications")}
+          <span className="flex items-center gap-2 min-w-0">
+            <Bell className="w-4 h-4 flex-shrink-0" strokeWidth={1.75} aria-hidden="true" />
+            <span className="truncate">{t(lang, "sidebar.notifications")}</span>
           </span>
-          {unreadCount > 0 && (
-            <span className="text-[10px] font-semibold bg-[var(--ember-critical)] text-white px-1.5 py-0.5 rounded">
-              {unreadCount}
-            </span>
-          )}
+          <span
+            className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded flex-shrink-0 ${
+              unreadCount > 0
+                ? "bg-[var(--ember-critical)] text-white"
+                : "bg-[var(--ember-surface-2)] text-[var(--ember-text-faint)]"
+            }`}
+            aria-label={unreadCount > 0 ? `${unreadCount} ${lang === "pt" ? "não lidas" : "unread"}` : t(lang, "header.notifications")}
+          >
+            {unreadCount}
+          </span>
         </button>
         <button
           onClick={onReportFire}
@@ -2638,14 +2645,14 @@ function PlaybackBar({
         <button
           onClick={onSkipBack}
           className="text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] transition-colors"
-          aria-label="Skip back"
+          aria-label={lang === "pt" ? "Recuar 2 horas" : "Skip back 2 hours"}
         >
           <SkipBack className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
         <button
           onClick={onTogglePlay}
           className="w-7 h-7 md:w-8 md:h-8 rounded-md border border-[var(--ember-border)] bg-[var(--ember-surface)] text-[var(--ember-text)] flex items-center justify-center hover:bg-[var(--ember-surface-2)] transition-colors flex-shrink-0"
-          aria-label={isPlaying ? "Pause" : "Play"}
+          aria-label={isPlaying ? (lang === "pt" ? "Pausar" : "Pause") : (lang === "pt" ? "Reproduzir" : "Play")}
         >
           {isPlaying ? (
             <Pause className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -2656,7 +2663,7 @@ function PlaybackBar({
         <button
           onClick={onSkipForward}
           className="text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] transition-colors"
-          aria-label="Skip forward"
+          aria-label={lang === "pt" ? "Avançar 2 horas" : "Skip forward 2 hours"}
         >
           <SkipForward className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
@@ -2666,14 +2673,14 @@ function PlaybackBar({
         <div className="flex justify-between text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)]">
           <span className="hidden lg:flex items-center gap-1 font-medium">
             <Clock className="w-3 h-3" />
-            Historical Playback
+            {lang === "pt" ? "Reprodução Histórica" : "Historical Playback"}
           </span>
           <span className="lg:hidden font-medium flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            T{hour === 0 ? "0" : hour}h
+            {hour === 0 ? t(lang, "playback.now") : `T${hour}h`}
           </span>
-          <span className="hidden md:inline font-mono text-[var(--ember-text-muted)]">
-            {hour === 0 ? "NOW" : `T${hour}h`}
+          <span className="hidden md:inline font-mono text-[var(--ember-text-muted)]" aria-label={hour === 0 ? t(lang, "playback.nowLabel") : `${hour} horas atrás`}>
+            {hour === 0 ? t(lang, "playback.now") : `T${hour}h`}
           </span>
         </div>
         <div
@@ -2913,12 +2920,10 @@ function DashboardPanel({
                 <Flame className="w-6 h-6 text-[var(--ember-text-faint)]" />
               </div>
               <h3 className="text-sm font-semibold text-[var(--ember-text)]">
-                {lang === "pt" ? "Sem incêndios ativos" : "No active fires"}
+                {t(lang, "error.noIncidents")}
               </h3>
               <p className="text-xs text-[var(--ember-text-muted)] leading-relaxed max-w-xs">
-                {lang === "pt"
-                  ? "Não há incêndios ativos no momento. Boa notícia."
-                  : "There are no active fires right now. Good news."}
+                {t(lang, "error.noIncidentsDesc")}
               </p>
             </div>
           </div>
@@ -2932,7 +2937,7 @@ function DashboardPanel({
               value={metrics.total}
               icon={Flame}
               color="var(--ember-text)"
-              hint={lang === "pt" ? "incêndios" : "fires"}
+              hint={t(lang, "map.totalLabel")}
               caption={dataFetchedAt ? `${lang === "pt" ? "Atualizado" : "Updated"} ${timeAgo(typeof dataFetchedAt === "string" ? dataFetchedAt : dataFetchedAt.toISOString())}` : undefined}
             />
             <div className="flex-1 grid grid-cols-2 gap-1.5">
@@ -2944,7 +2949,7 @@ function DashboardPanel({
                 pulse={metrics.activeCount > 0}
               />
               <HeroCounter
-                label={lang === "pt" ? "Críticos" : "Critical"}
+                label={t(lang, "dashboard.critical")}
                 value={metrics.criticalCount}
                 icon={AlertTriangle}
                 color="var(--ember-critical)"
@@ -2977,7 +2982,7 @@ function DashboardPanel({
               onClick={() => { setQuickFilter("active"); setPhaseFilter(null); }}
             />
             <DashStat
-              label={lang === "pt" ? "Críticos" : "Critical"}
+              label={t(lang, "dashboard.critical")}
               value={metrics.criticalCount}
               icon={AlertTriangle}
               color="var(--ember-critical)"
@@ -3050,12 +3055,19 @@ function DashboardPanel({
         </div>
 
         {/* Operational phases (EstadoAgrupado) — all raw ANEPC statuses */}
-        <OperationalPhases
-          byStatusGroup={metrics.byStatusGroup ?? {}}
-          phaseFilter={phaseFilter}
-          setPhaseFilter={setPhaseFilter}
-          lang={lang}
-        />
+        {(dashboard.error && !dashboard.data) ? (
+          <SectionError
+            title={lang === "pt" ? "Fases indisponíveis" : "Phases unavailable"}
+            onRetry={() => dashboard.refetch?.()}
+          />
+        ) : (
+          <OperationalPhases
+            byStatusGroup={metrics.byStatusGroup ?? {}}
+            phaseFilter={phaseFilter}
+            setPhaseFilter={setPhaseFilter}
+            lang={lang}
+          />
+        )}
 
         {/* Tabs — Priority / Recent / All */}
         <div className="px-4 pt-3 border-b border-[var(--ember-border)]">
@@ -3104,7 +3116,7 @@ function DashboardPanel({
               </div>
               {topIncidents.length === 0 ? (
                 <div className="text-[11px] text-[var(--ember-text-faint)] text-center py-4">
-                  No live incidents available.
+                  {t(lang, "error.noPriorityDesc")}
                 </div>
               ) : (
                 <StaggerChildren stagger={0.04} className="space-y-1">

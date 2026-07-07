@@ -1,0 +1,19 @@
+[Unit]
+Description=Daily DB prune for lumes.pt
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/apps/lumes
+Environment=NODE_ENV=production
+Environment=PORT=3001
+EnvironmentFile=/opt/apps/lumes/.env
+ExecStart=/usr/local/bin/bun /opt/apps/lumes/.next/standalone/scripts/prune-runner.js
+# Fallback: use curl against the live endpoint with x-cron-secret header (avoids secret in proxy logs)
+ExecStart=/usr/bin/curl -fsS -H "User-Agent: lumes-cron/1.0" -H "x-cron-secret: ${CRON_SECRET}" "http://127.0.0.1:3001/api/cron/prune"
+TimeoutSec=600
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

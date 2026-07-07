@@ -35,6 +35,40 @@ export const translations = {
   },
 
   // Top-bar / header common actions
+  playback: {
+    now: { pt: "AGORA", en: "NOW" },
+    nowLabel: { pt: "Saltar para o presente", en: "Jump to present" },
+    past: { pt: "{n} horas atrás", en: "{n} hours ago" },
+  },
+  error: {
+    sectionTitle: { pt: "Não foi possível carregar", en: "Could not load" },
+    sectionMessage: { pt: "Verifique a sua ligação e tente novamente.", en: "Check your connection and try again." },
+    retry: { pt: "Tentar novamente", en: "Retry" },
+    noIncidents: { pt: "Sem incêndios ativos", en: "No active fires" },
+    noIncidentsDesc: { pt: "Não há incêndios ativos no momento. Boa notícia.", en: "There are no active fires right now. Good news." },
+    noPriority: { pt: "Sem incêndios prioritários", en: "No priority incidents" },
+    noPriorityDesc: { pt: "Nenhum incêndio crítico ou elevado no momento.", en: "No critical or high-severity incidents at the moment." },
+    noFollowed: { pt: "Não segue nenhum incêndio", en: "Not following any incidents" },
+    noFollowedDesc: { pt: "Toque em \"Seguir\" num incêndio para receber atualizações em tempo real.", en: "Tap \"Follow\" on an incident to get realtime updates." },
+    noSources: { pt: "A verificar fontes de dados…", en: "Checking data sources…" },
+  },
+  mobile: {
+    notifications: { pt: "Notificações", en: "Notifications" },
+    history: { pt: "Histórico", en: "History" },
+    historyDesc: { pt: "incidentes registados", en: "tracked" },
+    reportFire: { pt: "Comunicar Incêndio", en: "Report Fire" },
+    reportFireDesc: { pt: "Para emergências, ligue 117", en: "For emergencies, call 117" },
+    theme: { pt: "Tema", en: "Theme" },
+    themeDark: { pt: "Escuro", en: "Dark" },
+    themeLight: { pt: "Claro", en: "Light" },
+    systemStatus: { pt: "Estado do sistema", en: "System status" },
+    systemStatusDesc: { pt: "Saúde das fontes de dados", en: "Data source health" },
+    share: { pt: "Partilhar Lumes", en: "Share Lumes" },
+    shareDesc: { pt: "Partilhe com a sua comunidade", en: "Share with your community" },
+    shareText: { pt: "Mapa de incêndios em Portugal", en: "Portugal wildfire map" },
+    linkCopied: { pt: "Link copiado", en: "Link copied" },
+    unread: { pt: "não lidas", en: "unread" },
+  },
   a11y: {
     skipToMap: { pt: "Saltar para o mapa", en: "Skip to map" },
     closePanel: { pt: "Fechar painel", en: "Close panel" },
@@ -51,6 +85,7 @@ export const translations = {
     save: { pt: "Guardar", en: "Save" },
     markAllRead: { pt: "Marcar tudo como lido", en: "Mark all read" },
     notifications: { pt: "Notificações", en: "Notifications" },
+    viewNotifications: { pt: "Ver notificações", en: "View notifications" },
     notificationsWithUnread: { pt: "Notificações, {count} não lidas", en: "Notifications, {count} unread" },
     switchToPortuguese: { pt: "Mudar para Português", en: "Switch to Portuguese" },
     switchToEnglish: { pt: "Switch to English", en: "Switch to English" },
@@ -183,6 +218,8 @@ export const translations = {
     locate: { pt: "Centrar no incidente selecionado", en: "Center map on selected incident" },
     total: { pt: "Total: {count} incêndios", en: "Total: {count} fires" },
     activeTap: { pt: "{count} incêndios ativos — toque para abrir o painel", en: "{count} active fires — tap to open dashboard" },
+    totalLabel: { pt: "incêndios", en: "fires" },
+    totalLabelCompact: { pt: "", en: "" },
   },
 
   // Playback

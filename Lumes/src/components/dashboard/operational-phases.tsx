@@ -51,7 +51,7 @@ export function OperationalPhases({
       </div>
       <div className="space-y-1.5">
         {entries.map(([phase, count]) => {
-          const color = PHASE_COLOR[phase] ?? "var(--ember-text-muted)";
+          const color = PHASE_COLOR[phase] ?? "var(--ember-text-faint)";
           const pct = max > 0 ? (count / max) * 100 : 0;
           const isActive = phaseFilter === phase;
           return (
