@@ -194,7 +194,7 @@ export function FiltersPanel({
           {hasActiveFilters && (
             <button
               onClick={resetAll}
-              className="text-[10px] text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] px-2 py-1 rounded hover:bg-[var(--ember-surface-2)] transition-colors flex items-center gap-1"
+              className="text-[10px] font-medium uppercase tracking-wider text-[var(--ember-text)] bg-[var(--ember-accent-subtle)] hover:bg-[var(--ember-accent)] hover:text-white border border-[var(--ember-accent)]/30 hover:border-[var(--ember-accent)] px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5"
               aria-label={lang === "pt" ? "Limpar todos os filtros" : "Reset all filters"}
             >
               <RotateCcw className="w-2.5 h-2.5" />
@@ -229,15 +229,21 @@ export function FiltersPanel({
       {activeFilters.length > 0 && (
         <div className="px-4 py-2 border-b border-[var(--ember-border)] flex items-center gap-1.5 flex-wrap">
           {activeFilters.map((f) => (
-            <button
+            <motion.button
               key={f.id}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.15 }}
               onClick={f.onClear}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--ember-accent)]/15 text-[var(--ember-accent)] text-[10px] font-semibold uppercase tracking-wider hover:bg-[var(--ember-accent)]/25 transition-colors"
+              className="group flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-[var(--ember-accent)] text-[#1a1410] text-[10px] font-bold uppercase tracking-wider hover:bg-[var(--ember-accent-hover)] hover:shadow-[0_0_0_3px_var(--ember-accent-subtle)] transition-all"
               aria-label={`${f.label} — ${lang === "pt" ? "remover" : "remove"}`}
             >
-              <span>{f.label}</span>
-              <X className="w-2.5 h-2.5" />
-            </button>
+              <span className="leading-none">{f.label}</span>
+              <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center group-hover:bg-black/30 transition-colors">
+                <X className="w-2 h-2" />
+              </span>
+            </motion.button>
           ))}
         </div>
       )}

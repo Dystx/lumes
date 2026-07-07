@@ -15,6 +15,7 @@ import { FiltersPanel } from "@/components/filters/filters-panel";
 import { MobileView, type MobileTab } from "@/components/mobile/mobile-view";
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
 import { LongPressActions } from "@/components/mobile/long-press-actions";
+import { BottomSheet } from "@/components/mobile/bottom-sheet";
 import { SectionError } from "@/components/ui/section-error";
 import { useUIStore } from "@/store/ui-store";
 import {
@@ -795,43 +796,39 @@ export default function Home() {
     <div className="h-screen w-full flex lg:overflow-hidden overflow-hidden flex-col lg:flex-row bg-[var(--ember-bg)] text-[var(--ember-text)] font-sans relative">
       {skipLink}
 
-      {/* ===== MOBILE INCIDENT DETAIL (bottom sheet overlay) ===== */}
-      <AnimatePresence>
+      {/* ===== MOBILE INCIDENT DETAIL (bottom sheet with drag-to-dismiss) ===== */}
+      <BottomSheet
+        open={!!selectedIncident}
+        onClose={() => setSelectedIncidentId(null)}
+        ariaLabel={lang === "pt" ? "Detalhes do incêndio" : "Incident details"}
+        snapVh={92}
+        zIndex={40}
+        header={
+          <div className="flex-shrink-0 px-4 pt-2 pb-2 flex items-center justify-between border-b border-[var(--ember-border)] relative">
+            <div className="w-12 h-1.5 rounded-full bg-[var(--ember-border-strong)] mx-auto absolute left-1/2 -translate-x-1/2 top-1.5" />
+            <div className="flex-1" />
+            <button
+              onClick={() => setSelectedIncidentId(null)}
+              className="ml-auto w-8 h-8 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
+              aria-label={t(lang, "a11y.closePanel")}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        }
+      >
         {selectedIncident && (
-          <motion.div
-            key={`mobile-detail-${selectedIncident.id}`}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:hidden fixed inset-x-0 bottom-0 top-12 z-40 bg-[var(--ember-bg)] border-t border-[var(--ember-border)] rounded-t-xl shadow-[0_-8px_24px_rgba(0,0,0,0.3)] flex flex-col"
-            role="dialog"
-            aria-label={lang === "pt" ? "Detalhes do incêndio" : "Incident details"}
-          >
-            <div className="flex-shrink-0 px-4 pt-2 pb-1 flex items-center justify-between border-b border-[var(--ember-border)]">
-              <div className="w-12 h-1 rounded-full bg-[var(--ember-border-strong)] mx-auto" />
-              <button
-                onClick={() => setSelectedIncidentId(null)}
-                className="absolute right-3 top-2 w-8 h-8 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
-                aria-label={t(lang, "a11y.closePanel")}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <IncidentDetailPanel
-                key={selectedIncident.id}
-                incident={enrichIncidentWithLiveContext(selectedIncident, weather.data, fireRisk.data)}
-                onClose={() => setSelectedIncidentId(null)}
-                isFollowed={followedIncidents.has(selectedIncident.id)}
-                onToggleFollow={() => toggleFollow(selectedIncident.id)}
-                lang={lang}
-                isMobile
-              />
-            </div>
-          </motion.div>
+          <IncidentDetailPanel
+            key={selectedIncident.id}
+            incident={enrichIncidentWithLiveContext(selectedIncident, weather.data, fireRisk.data)}
+            onClose={() => setSelectedIncidentId(null)}
+            isFollowed={followedIncidents.has(selectedIncident.id)}
+            onToggleFollow={() => toggleFollow(selectedIncident.id)}
+            lang={lang}
+            isMobile
+          />
         )}
-      </AnimatePresence>
+      </BottomSheet>
 
       {/* ===== LEFT: SITUATIONAL DASHBOARD (desktop only — mobile uses MobileView's Live tab) ===== */}
       <div className="hidden lg:block">
@@ -3616,6 +3613,12 @@ function IncidentDetailPanel({
     >
       {/* Header */}
       <div className="px-4 md:px-5 pt-4 md:pt-5 pb-3 md:pb-4 border-b border-[var(--ember-border)] flex-shrink-0">
+        {isFollowed && (
+          <div className="mb-2 flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)] text-[10px] font-medium uppercase tracking-wider w-fit">
+            <Bell className="w-3 h-3 fill-current" />
+            <span>{t(lang, "incident.followingBadge")}</span>
+          </div>
+        )}
         <div className="flex justify-between items-start gap-2 mb-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-sm md:text-base font-semibold text-[var(--ember-text)] leading-tight truncate">
