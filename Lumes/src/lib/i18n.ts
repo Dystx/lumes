@@ -15,6 +15,12 @@ export const translations = {
     defaultLocale: { pt: "Português (Portugal)", en: "Portuguese (Portugal)" },
   },
 
+  // Tab labels
+  tabs: {
+    filters: { pt: "Filtros", en: "Filters" },
+    detail: { pt: "Detalhe", en: "Detail" },
+  },
+
   // Live data connection state (badge in left sidebar)
   // Portuguese uses full words; English uses short labels.
   live: {

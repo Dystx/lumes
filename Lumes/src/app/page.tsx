@@ -12,6 +12,7 @@ import { HeroCounter } from "@/components/dashboard/hero-counter";
 import { OperationalPhases } from "@/components/dashboard/operational-phases";
 import { CollapsibleLegend } from "@/components/overlays/legend";
 import { FiltersPanel } from "@/components/filters/filters-panel";
+import { RightSidebar } from "@/components/layout/right-sidebar";
 import { MobileView, type MobileTab } from "@/components/mobile/mobile-view";
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
 import { LongPressActions } from "@/components/mobile/long-press-actions";
@@ -846,60 +847,47 @@ export default function Home() {
         )}
       </BottomSheet>
 
-      {/* ===== LEFT: SITUATIONAL DASHBOARD (desktop only — mobile uses MobileView's Live tab) ===== */}
-      <div className="hidden lg:block">
-      <AnimatePresence mode="wait">
-        {selectedIncident ? (
-          <IncidentDetailPanel
-            key={selectedIncident.id}
-            incident={enrichIncidentWithLiveContext(selectedIncident, weather.data, fireRisk.data)}
-            onClose={() => setSelectedIncidentId(null)}
-            isFollowed={followedIncidents.has(selectedIncident.id)}
-            onToggleFollow={() => toggleFollow(selectedIncident.id)}
-            lang={lang}
-          />
-        ) : (
-          <DashboardPanel
-            key="dashboard"
-            metrics={dashboardMetrics}
-            topIncidents={topCriticalIncidents}
-            recentHistory={history.data?.incidents ?? []}
-            onSelectIncident={(id) => {
-              setSelectedIncidentId(id);
-              setFlyToIncidentId(id);
-            }}
-            onOpenHistory={() => setShowHistoryModal(true)}
-            sourceHealth={sourceHealth.data?.sources ?? []}
-            realtimeConnected={realtime.connected}
-            persistenceStats={persistenceStats.data}
-            usingFallback={liveIncidents.usingFallback}
-            allIncidents={visibleIncidents}
-            sortMode={sortMode}
-            setSortMode={setSortMode}
-            quickFilter={quickFilter}
-            setQuickFilter={setQuickFilter}
-            phaseFilter={phaseFilter}
-            setPhaseFilter={setPhaseFilter}
-            resourceFilter={resourceFilter}
-            setResourceFilter={setResourceFilter}
-            criticalOnly={criticalOnly}
-            setCriticalOnly={setCriticalOnly}
-            hideResolved={hideResolved}
-            setHideResolved={setHideResolved}
-            severityFilter={severityFilter}
-            toggleSeverity={toggleSeverity}
-            visibleSources={visibleSources}
-            toggleSource={toggleSource}
-            selectedIncidentId={selectedIncidentId}
-            followedIncidentIds={followedIncidents}
-            loading={dashboard.loading}
-            lang={lang}
-            dataFetchedAt={liveIncidents.refetchedAt}
-            dashboardError={!!dashboard.error}
-            onRetryDashboard={() => dashboard.refetch?.()}
-          />
-        )}
-      </AnimatePresence>
+      {/* ===== LEFT: SITUATIONAL DASHBOARD (always visible on desktop) ===== */}
+      <div className="hidden lg:block h-full flex-shrink-0 w-[320px] border-r border-[var(--ember-border)]">
+        <DashboardPanel
+          key="dashboard"
+          metrics={dashboardMetrics}
+          topIncidents={topCriticalIncidents}
+          recentHistory={history.data?.incidents ?? []}
+          onSelectIncident={(id) => {
+            setSelectedIncidentId(id);
+            setFlyToIncidentId(id);
+          }}
+          onOpenHistory={() => setShowHistoryModal(true)}
+          sourceHealth={sourceHealth.data?.sources ?? []}
+          realtimeConnected={realtime.connected}
+          persistenceStats={persistenceStats.data}
+          usingFallback={liveIncidents.usingFallback}
+          allIncidents={visibleIncidents}
+          sortMode={sortMode}
+          setSortMode={setSortMode}
+          quickFilter={quickFilter}
+          setQuickFilter={setQuickFilter}
+          phaseFilter={phaseFilter}
+          setPhaseFilter={setPhaseFilter}
+          resourceFilter={resourceFilter}
+          setResourceFilter={setResourceFilter}
+          criticalOnly={criticalOnly}
+          setCriticalOnly={setCriticalOnly}
+          hideResolved={hideResolved}
+          setHideResolved={setHideResolved}
+          severityFilter={severityFilter}
+          toggleSeverity={toggleSeverity}
+          visibleSources={visibleSources}
+          toggleSource={toggleSource}
+          selectedIncidentId={selectedIncidentId}
+          followedIncidentIds={followedIncidents}
+          loading={dashboard.loading}
+          lang={lang}
+          dataFetchedAt={liveIncidents.refetchedAt}
+          dashboardError={!!dashboard.error}
+          onRetryDashboard={() => dashboard.refetch?.()}
+        />
       </div>
 
       {/* ===== CENTER: MAP (desktop only — mobile uses MobileView's Map tab) ===== */}
@@ -1150,68 +1138,86 @@ export default function Home() {
         />
       </main>
 
-      {/* ===== RIGHT: FILTERS PANEL (desktop only — mobile uses MobileView's Layers tab) ===== */}
-      <div className="hidden lg:block h-full flex-shrink-0 w-[320px] border-l border-[var(--ember-border)]" role="complementary" aria-label={lang === "pt" ? "Painel de filtros" : "Filters panel"}>
-        <FiltersPanel
-          lang={lang}
-          variant="desktop"
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          searchInputRef={searchInputRef}
-          quickFilter={quickFilter}
-          setQuickFilter={setQuickFilter}
-          severityFilter={severityFilter}
-          toggleSeverity={toggleSeverity}
-          criticalOnly={criticalOnly}
-          setCriticalOnly={setCriticalOnly}
-          hideResolved={hideResolved}
-          setHideResolved={setHideResolved}
-          visibleSources={visibleSources}
-          toggleSource={toggleSource}
-          showFireRisk={showFireRisk}
-          setShowFireRisk={setShowFireRisk}
-          showFireStations={showFireStations}
-          setShowFireStations={setShowFireStations}
-          showSatellite={showSatellite}
-          setShowSatellite={setShowSatellite}
-          showAerial={showAerial}
-          setShowAerial={setShowAerial}
-          showBiomass={showBiomass}
-          setShowBiomass={setShowBiomass}
-          showCompositeRisk={showCompositeRisk}
-          setShowCompositeRisk={setShowCompositeRisk}
-          basemap={basemap}
-          setBasemap={setBasemap}
-          fireRiskReady={!!fireRisk.data}
-          fireRiskCount={fireRisk.data?.count ?? 0}
-          fireStationsReady={!!fireStations.data}
-          fireStationsCount={fireStations.data?.count ?? 0}
-          satelliteReady={!!satellite.data}
-          satelliteCount={satellite.data?.count ?? 0}
-          sourceHealth={sourceHealth.data?.sources ?? []}
-          liveCount={visibleIncidents.length}
-          activeFilters={[
-            ...(quickFilter !== "all" ? [{
-              id: `quick-${quickFilter}`,
-              label: quickFilter === "active" ? t(lang, "dashboard.active") : quickFilter === "critical" ? t(lang, "dashboard.critical") : t(lang, "dashboard.high"),
-              onClear: () => setQuickFilter("all"),
-            }] : []),
-            ...(severityFilter.size > 0 ? Array.from(severityFilter).map((s) => ({
-              id: `sev-${s}`,
-              label: t(lang, `severity.${s}`),
-              onClear: () => toggleSeverity(s),
-            })) : []),
-            ...(searchQuery ? [{
-              id: "search",
-              label: `"${searchQuery}"`,
-              onClear: () => setSearchQuery(""),
-            }] : []),
-            ...(showFireRisk ? [{ id: "risk", label: t(lang, "sidebar.fireRiskLayer"), onClear: () => setShowFireRisk(false) }] : []),
-            ...(showFireStations ? [{ id: "stations", label: t(lang, "sidebar.fireStations"), onClear: () => setShowFireStations(false) }] : []),
-            ...(showSatellite ? [{ id: "sat", label: t(lang, "dataSources.nasa-firms-viirs"), onClear: () => setShowSatellite(false) }] : []),
-          ]}
-        />
-      </div>
+      {/* ===== RIGHT: SMART SIDEBAR (Filters + Detail tabs) ===== */}
+      <RightSidebar
+        selectedIncidentId={selectedIncidentId}
+        onCloseDetail={() => setSelectedIncidentId(null)}
+        width={340}
+        filters={
+          <FiltersPanel
+            lang={lang}
+            variant="desktop"
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            searchInputRef={searchInputRef}
+            quickFilter={quickFilter}
+            setQuickFilter={setQuickFilter}
+            severityFilter={severityFilter}
+            toggleSeverity={toggleSeverity}
+            criticalOnly={criticalOnly}
+            setCriticalOnly={setCriticalOnly}
+            hideResolved={hideResolved}
+            setHideResolved={setHideResolved}
+            visibleSources={visibleSources}
+            toggleSource={toggleSource}
+            showFireRisk={showFireRisk}
+            setShowFireRisk={setShowFireRisk}
+            showFireStations={showFireStations}
+            setShowFireStations={setShowFireStations}
+            showSatellite={showSatellite}
+            setShowSatellite={setShowSatellite}
+            showAerial={showAerial}
+            setShowAerial={setShowAerial}
+            showBiomass={showBiomass}
+            setShowBiomass={setShowBiomass}
+            showCompositeRisk={showCompositeRisk}
+            setShowCompositeRisk={setShowCompositeRisk}
+            basemap={basemap}
+            setBasemap={setBasemap}
+            fireRiskReady={!!fireRisk.data}
+            fireRiskCount={fireRisk.data?.count ?? 0}
+            fireStationsReady={!!fireStations.data}
+            fireStationsCount={fireStations.data?.count ?? 0}
+            satelliteReady={!!satellite.data}
+            satelliteCount={satellite.data?.count ?? 0}
+            sourceHealth={sourceHealth.data?.sources ?? []}
+            liveCount={visibleIncidents.length}
+            activeFilters={[
+              ...(quickFilter !== "all" ? [{
+                id: `quick-${quickFilter}`,
+                label: quickFilter === "active" ? t(lang, "dashboard.active") : quickFilter === "critical" ? t(lang, "dashboard.critical") : t(lang, "dashboard.high"),
+                onClear: () => setQuickFilter("all"),
+              }] : []),
+              ...(severityFilter.size > 0 ? Array.from(severityFilter).map((s) => ({
+                id: `sev-${s}`,
+                label: t(lang, `severity.${s}`),
+                onClear: () => toggleSeverity(s),
+              })) : []),
+              ...(searchQuery ? [{
+                id: "search",
+                label: `"${searchQuery}"`,
+                onClear: () => setSearchQuery(""),
+              }] : []),
+              ...(showFireRisk ? [{ id: "risk", label: t(lang, "sidebar.fireRiskLayer"), onClear: () => setShowFireRisk(false) }] : []),
+              ...(showFireStations ? [{ id: "stations", label: t(lang, "sidebar.fireStations"), onClear: () => setShowFireStations(false) }] : []),
+              ...(showSatellite ? [{ id: "sat", label: t(lang, "dataSources.nasa-firms-viirs"), onClear: () => setShowSatellite(false) }] : []),
+            ]}
+          />
+        }
+        detail={
+          selectedIncident ? (
+            <IncidentDetailPanel
+              key={selectedIncident.id}
+              incident={enrichIncidentWithLiveContext(selectedIncident, weather.data, fireRisk.data)}
+              onClose={() => setSelectedIncidentId(null)}
+              isFollowed={followedIncidents.has(selectedIncident.id)}
+              onToggleFollow={() => toggleFollow(selectedIncident.id)}
+              lang={lang}
+              hideHeader
+            />
+          ) : null
+        }
+      />
 
       {/* ===== NOTIFICATIONS DRAWER ===== */}
       <AnimatePresence>
@@ -3630,6 +3636,7 @@ function IncidentDetailPanel({
   onToggleFollow,
   lang,
   isMobile = false,
+  hideHeader = false,
 }: {
   incident: Incident;
   onClose: () => void;
@@ -3637,19 +3644,25 @@ function IncidentDetailPanel({
   onToggleFollow: () => void;
   lang: Language;
   isMobile?: boolean;
+  hideHeader?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "timeline" | "sources">(
     "overview"
   );
 
+  const Wrapper = hideHeader ? "div" : motion.aside;
+  const wrapperProps = hideHeader
+    ? { className: "h-full flex flex-col bg-transparent" }
+    : {
+        initial: { x: "-100%", opacity: 0.6 },
+        animate: { x: 0, opacity: 1 },
+        exit: { x: "-100%", opacity: 0 },
+        transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+        className: "w-full md:w-[360px] h-full flex flex-col bg-[var(--ember-bg)] border-r border-[var(--ember-border)] flex-shrink-0 z-30 md:relative absolute left-0 top-0",
+      };
+
   return (
-    <motion.aside
-      initial={{ x: "-100%", opacity: 0.6 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: "-100%", opacity: 0 }}
-      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full md:w-[360px] h-full flex flex-col bg-[var(--ember-bg)] border-r border-[var(--ember-border)] flex-shrink-0 z-30 md:relative absolute left-0 top-0"
-    >
+    <Wrapper {...(wrapperProps as any)}>
       {/* Header */}
       <div className="px-4 md:px-5 pt-4 md:pt-5 pb-3 md:pb-4 border-b border-[var(--ember-border)] flex-shrink-0">
         {isFollowed && (
@@ -3847,7 +3860,7 @@ function IncidentDetailPanel({
           {isFollowed ? t(lang, "incident.following") : t(lang, "incident.followIncident")}
         </AnimatedButton>
       </div>
-    </motion.aside>
+    </Wrapper>
   );
 }
 
