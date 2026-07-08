@@ -125,7 +125,7 @@ export function MobileView({
     activeTab === "map" ? "h-24" : "h-[calc(100vh-3.5rem-3.5rem)]";
 
   return (
-    <div className="md:hidden fixed inset-0 flex flex-col bg-[var(--ember-bg)] text-[var(--ember-text)]">
+    <div className="lg:hidden fixed inset-0 flex flex-col bg-[var(--ember-bg)] text-[var(--ember-text)]">
       {/* Map area (always rendered, opacity controlled by tab) */}
       <div
         className="absolute inset-0 z-0"
