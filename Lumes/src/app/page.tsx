@@ -793,6 +793,21 @@ export default function Home() {
   // Render
   // ============================================================
 
+  // Active filter count for mobile FILTROS tab badge
+  const activeFilterCount = (
+    (quickFilter !== "all" ? 1 : 0) +
+    severityFilter.size +
+    (showFireRisk ? 1 : 0) +
+    (showFireStations ? 1 : 0) +
+    (showSatellite ? 1 : 0) +
+    (showAerial ? 1 : 0) +
+    (showBiomass ? 1 : 0) +
+    (showCompositeRisk ? 1 : 0) +
+    (searchQuery ? 1 : 0) +
+    (criticalOnly ? 1 : 0) +
+    (hideResolved ? 1 : 0)
+  );
+
   return (
     <div className="h-screen w-full flex lg:overflow-hidden overflow-hidden flex-col lg:flex-row bg-[var(--ember-bg)] text-[var(--ember-text)] font-sans relative">
       {skipLink}
@@ -1242,6 +1257,7 @@ export default function Home() {
           onTabChange={setMobileTab}
           incidentCount={visibleIncidents.length}
           criticalCount={visibleIncidents.filter((i) => i.severity === "critical").length}
+          filterCount={activeFilterCount}
           onZoomIn={() => mapRef.current?.zoomIn()}
           onZoomOut={() => mapRef.current?.zoomOut()}
           onLocate={() => mapRef.current?.resetView()}

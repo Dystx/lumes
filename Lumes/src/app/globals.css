@@ -287,6 +287,23 @@
   animation: ember-pulse-subtle 2.5s ease-in-out infinite;
 }
 
+@keyframes ember-pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+.animate-pulse-ring {
+  animation: ember-pulse-ring 2s ease-out infinite;
+}
+
+@keyframes ember-skeleton {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+  100% { opacity: 0.4; }
+}
+.ember-skeleton {
+  animation: ember-skeleton 1.6s ease-in-out infinite;
+}
+
 /* Smooth theme transitions on chrome elements */
 .ember-surface,
 .ember-panel {
