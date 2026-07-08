@@ -30,6 +30,7 @@ import {
   Zap,
   MapPin,
   Radio,
+  AlertTriangle,
   Plane,
   Trees,
   TrendingUp,
@@ -38,6 +39,7 @@ import {
   ChevronDown,
   RotateCcw,
   Moon,
+  Eye,
 } from "lucide-react";
 import { t, type Language } from "@/lib/i18n";
 import type { Severity, SourceType } from "@/lib/incident-types";
@@ -202,6 +204,28 @@ export function FiltersPanel({
               {lang === "pt" ? "Limpar" : "Reset"}
             </button>
           )}
+        </div>
+
+        {/* Quick filter presets — one-tap common combinations */}
+        <div className="flex flex-wrap gap-1.5 mt-2.5">
+          {[
+            { id: "critical", label: lang === "pt" ? "Só críticos" : "Critical only", icon: AlertTriangle,
+              apply: () => { setQuickFilter("critical"); setCriticalOnly(true); } },
+            { id: "active", label: lang === "pt" ? "Em curso" : "Active", icon: Radio,
+              apply: () => { setQuickFilter("active"); setHideResolved(false); } },
+            { id: "hideresolved", label: lang === "pt" ? "Esconder resolvidos" : "Hide resolved", icon: Eye,
+              apply: () => { setHideResolved(true); } },
+          ].map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={preset.apply}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--ember-surface-2)] hover:bg-[var(--ember-accent-subtle)] border border-[var(--ember-border)] hover:border-[var(--ember-accent)] text-[10px] font-medium text-[var(--ember-text-muted)] hover:text-[var(--ember-accent)] transition-colors"
+            >
+              <preset.icon className="w-2.5 h-2.5" />
+              {preset.label}
+            </button>
+          ))}
         </div>
 
         {/* Tab switcher */}

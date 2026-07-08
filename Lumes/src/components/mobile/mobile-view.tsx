@@ -18,6 +18,7 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence, useMotionValue, type PanInfo } from "framer-motion";
 import { Activity, Filter as FilterIcon, Flame, Layers as LayersIcon, Map as MapIcon, MoreHorizontal, X } from "lucide-react";
+import { EmberMapIcon, EmberFilterIcon, EmberMoreIcon, EmberFlameIcon, EmberCloseIcon } from "@/components/icons/brand-icons";
 import { MobileMapControls } from "./mobile-map-controls";
 import { MobileLegend } from "./mobile-legend";
 import { MobileAttribution } from "./mobile-attribution";
@@ -80,10 +81,10 @@ const TAB_LABELS: Record<MobileTab, string> = {
 };
 
 const TAB_ICONS: Record<MobileTab, typeof MapIcon> = {
-  map: MapIcon,
-  live: Flame,
-  layers: FilterIcon,
-  more: MoreHorizontal,
+  map: EmberMapIcon,
+  live: EmberFlameIcon,
+  layers: EmberFilterIcon,
+  more: EmberMoreIcon,
 };
 
 export function MobileView({

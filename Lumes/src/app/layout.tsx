@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
-// Anti-AI typography:
-// - Fraunces (variable serif, optical sizing) for display — gives the site
-//   editorial character and breaks the "all sans-serif tech site" pattern
-// - Onest (humanist sans, less common than Inter/Geist) for body — softer,
-//   more human than the Vercel-default Geist
-// - JetBrains Mono for data/code — more personality than Geist Mono
-import { Fraunces, Onest, JetBrains_Mono } from "next/font/google";
+// Anti-AI typography (2026 hand-picked, less common than Geist/Inter):
+// - Fraunces (variable serif, optical sizing) for display — editorial character
+// - Bricolage Grotesque for body sans — distinctive variable grotesque with
+//   character, not the Vercel-default Geist/Inter
+// - JetBrains Mono for data/code — personality over Geist Mono
+import { Fraunces, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -18,10 +17,11 @@ const fraunces = Fraunces({
   axes: ["opsz", "SOFT", "WONK"],
 });
 
-const onest = Onest({
+const bricolage = Bricolage_Grotesque({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
+  axes: ["opsz", "wdth"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -77,7 +77,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${fraunces.variable} ${onest.variable} ${jetbrainsMono.variable} font-sans antialiased bg-background text-foreground`}
+        className={`${fraunces.variable} ${bricolage.variable} ${jetbrainsMono.variable} font-sans antialiased bg-background text-foreground`}
       >
         <ThemeProvider
           attribute="class"
