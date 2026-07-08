@@ -892,27 +892,8 @@ export default function Home() {
 
       {/* ===== CENTER: MAP (desktop only — mobile uses MobileView's Map tab) ===== */}
       <main id="main-content" className="hidden lg:flex flex-1 relative flex-col min-w-0">
-        {/* Top app bar */}
-        <header className="hidden lg:flex sticky md:absolute top-0 left-0 right-0 z-30 justify-between items-center h-14 lg:h-16 px-3 lg:px-6 pointer-events-none select-none bg-[var(--ember-bg)]/95 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border-b border-[var(--ember-border)] lg:border-b-0">
-          <div className="flex items-center gap-3 lg:gap-6 pointer-events-auto">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-[var(--ember-accent)] flex items-center justify-center">
-                <Flame className="w-4 h-4 text-[var(--ember-bg)]" strokeWidth={2.5} />
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className="text-base font-bold tracking-tight leading-none font-display"
-                  style={{ fontVariationSettings: "'opsz' 14, 'SOFT' 100" }}
-                >
-                  Lumes
-                </span>
-                <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ember-text-faint)] leading-none mt-0.5 font-medium">
-                  {t(lang, "app.tagline")}
-                </span>
-              </div>
-            </div>
-          </div>
-
+        {/* Top app bar — map controls only (brand is in dashboard panel header) */}
+        <header className="hidden lg:flex sticky md:absolute top-0 left-0 right-0 z-30 justify-end items-center h-14 lg:h-16 px-3 lg:px-6 pointer-events-none select-none bg-transparent">
           <div className="flex items-center gap-1.5 md:gap-2 pointer-events-auto">
             {/* Notifications */}
             <button
@@ -2887,6 +2868,14 @@ function DashboardPanel({
   setPhaseFilter,
   resourceFilter,
   setResourceFilter,
+  criticalOnly,
+  setCriticalOnly,
+  hideResolved,
+  setHideResolved,
+  severityFilter,
+  toggleSeverity,
+  visibleSources,
+  toggleSource,
   selectedIncidentId,
   followedIncidentIds,
   loading,
@@ -2954,6 +2943,19 @@ function DashboardPanel({
       .slice(0, 5);
   }, [metrics.byType]);
   const maxTypeCount = typeEntries.length > 0 ? typeEntries[0][1] : 1;
+
+  // Top districts by incident count (from allIncidents)
+  const topDistrictBreakdown = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const inc of allIncidents) {
+      const district = inc.district;
+      if (district) counts[district] = (counts[district] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [allIncidents]);
 
   // Sorted + filtered incidents for "All" tab
   const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -3109,46 +3111,47 @@ function DashboardPanel({
           </div>
         </div>
 
-        {/* Summary metric grid (4-card layout) */}
-        <div className="px-4 py-4 border-b border-[var(--ember-border)]">
-          <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2.5">
-            {t(lang, "dashboard.details")}
+        {/* Top districts breakdown — replaces duplicate stats grid.
+            Shows which districts have the most active fires. */}
+        <div className="px-4 py-3 border-b border-[var(--ember-border)]">
+          <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2">
+            {lang === "pt" ? "Distritos mais ativos" : "Top districts"}
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <DashStat
-              label={lang === "pt" ? "Total" : "Total"}
-              value={metrics.total}
-              icon={Flame}
-              color="var(--ember-text)"
-              active={quickFilter === "all" && !phaseFilter}
-              onClick={() => { setQuickFilter("all"); setPhaseFilter(null); }}
-            />
-            <DashStat
-              label={lang === "pt" ? "Ativos" : "Active"}
-              value={metrics.activeCount}
-              icon={Radio}
-              color="var(--ember-critical)"
-              pulse={metrics.activeCount > 0}
-              active={quickFilter === "active"}
-              onClick={() => { setQuickFilter("active"); setPhaseFilter(null); }}
-            />
-            <DashStat
-              label={t(lang, "dashboard.critical")}
-              value={metrics.criticalCount}
-              icon={AlertTriangle}
-              color="var(--ember-critical)"
-              active={quickFilter === "critical"}
-              onClick={() => { setQuickFilter("critical"); setPhaseFilter(null); }}
-            />
-            <DashStat
-              label={lang === "pt" ? "Elevados" : "High"}
-              value={metrics.highCount}
-              icon={TrendingUp}
-              color="var(--ember-warning)"
-              active={quickFilter === "high"}
-              onClick={() => { setQuickFilter("high"); setPhaseFilter(null); }}
-            />
-          </div>
+          {topDistrictBreakdown.length === 0 ? (
+            <p className="text-[11px] text-[var(--ember-text-faint)]">
+              {lang === "pt" ? "Sem dados" : "No data"}
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {topDistrictBreakdown.map((d) => {
+                const max = topDistrictBreakdown[0]?.count ?? 1;
+                const pct = (d.count / max) * 100;
+                return (
+                  <button
+                    key={d.name}
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery(d.name);
+                    }}
+                    className="w-full flex items-center gap-2 group"
+                  >
+                    <span className="text-[10px] text-[var(--ember-text)] w-20 truncate text-left group-hover:text-[var(--ember-accent)] transition-colors">
+                      {d.name}
+                    </span>
+                    <div className="flex-1 h-1.5 bg-[var(--ember-surface-2)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[var(--ember-accent)] rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-mono tabular-nums text-[var(--ember-text-faint)] w-6 text-right">
+                      {d.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Resources deployed */}
@@ -3827,9 +3830,9 @@ function IncidentDetailPanel({
                 <OverviewTab incident={incident} lang={lang} />
               )}
               {activeTab === "timeline" && (
-                <TimelineTab incident={incident} />
+                <TimelineTab incident={incident} lang={lang} />
               )}
-              {activeTab === "sources" && <SourcesTab incident={incident} />}
+              {activeTab === "sources" && <SourcesTab incident={incident} lang={lang} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -4045,7 +4048,7 @@ function MetricCard({
 // ============================================================
 // Timeline tab
 // ============================================================
-function TimelineTab({ incident }: { incident: Incident }) {
+function TimelineTab({ incident, lang }: { incident: Incident; lang: Language }) {
   const [snapshots, setSnapshots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -4203,7 +4206,7 @@ function TimelineTab({ incident }: { incident: Incident }) {
 // ============================================================
 // Sources tab
 // ============================================================
-function SourcesTab({ incident }: { incident: Incident }) {
+function SourcesTab({ incident, lang }: { incident: Incident; lang: Language }) {
   const sourcesByType = useMemo(() => {
     const map = new Map<SourceType, TimelineEvent[]>();
     for (const evt of incident.timeline) {
