@@ -1258,6 +1258,14 @@ export default function Home() {
           incidentCount={visibleIncidents.length}
           criticalCount={visibleIncidents.filter((i) => i.severity === "critical").length}
           filterCount={activeFilterCount}
+          severityCounts={{
+            critical: visibleIncidents.filter((i) => i.severity === "critical").length,
+            high: visibleIncidents.filter((i) => i.severity === "high").length,
+            medium: visibleIncidents.filter((i) => i.severity === "medium").length,
+            low: visibleIncidents.filter((i) => i.severity === "low").length,
+          }}
+          activeSeverities={severityFilter}
+          onToggleSeverity={(s) => toggleSeverity(s)}
           onZoomIn={() => mapRef.current?.zoomIn()}
           onZoomOut={() => mapRef.current?.zoomOut()}
           onLocate={() => mapRef.current?.resetView()}

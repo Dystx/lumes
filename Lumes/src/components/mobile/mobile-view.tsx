@@ -45,6 +45,12 @@ interface MobileViewProps {
   criticalCount?: number;
   // Active filter count (for FILTROS tab badge)
   filterCount?: number;
+  // Severity counts (for legend)
+  severityCounts?: Partial<Record<"critical" | "high" | "medium" | "low", number>>;
+  // Currently active severity filters
+  activeSeverities?: Set<"critical" | "high" | "medium" | "low">;
+  // Toggle a severity on/off from the legend
+  onToggleSeverity?: (s: "critical" | "high" | "medium" | "low") => void;
   // Map controls (FABs) — shown overlaid on the map
   onZoomIn?: () => void;
   onZoomOut?: () => void;
@@ -90,6 +96,9 @@ export function MobileView({
   incidentCount = 0,
   criticalCount = 0,
   filterCount = 0,
+  severityCounts,
+  activeSeverities,
+  onToggleSeverity,
   onZoomIn,
   onZoomOut,
   onLocate,
@@ -133,7 +142,12 @@ export function MobileView({
           <>
             <MobileAttribution count={incidentCount} onTap={() => setActiveTab("live")} />
             <MobileFilterPill count={filterCount} onTap={() => setActiveTab("layers")} />
-            <MobileLegend lang={lang ?? "pt"} />
+            <MobileLegend
+              lang={lang ?? "pt"}
+              counts={severityCounts}
+              activeSeverities={activeSeverities}
+              onToggleSeverity={onToggleSeverity}
+            />
             {(onZoomIn || onZoomOut || onLocate) && (
               <MobileMapControls
                 onZoomIn={onZoomIn ?? (() => {})}
