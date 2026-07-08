@@ -11,6 +11,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SlidersHorizontal, FileText, Newspaper, X } from "lucide-react";
+import { EmberFilterIcon, EmberDocIcon, EmberNewsIcon, EmberCloseIcon } from "@/components/icons/brand-icons";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
 
@@ -74,14 +75,14 @@ export function RightSidebar({
       {/* Tabs */}
       <div className="flex items-stretch border-b border-[var(--ember-border)] bg-[var(--ember-surface-2)] flex-shrink-0">
         <TabButton
-          icon={<SlidersHorizontal className="w-3.5 h-3.5" />}
+          icon={<EmberFilterIcon className="w-3.5 h-3.5" />}
           label={t(lang, "tabs.filters")}
           active={activeTab === "filters"}
           onClick={() => setActiveTab("filters")}
           count={undefined}
         />
         <TabButton
-          icon={<FileText className="w-3.5 h-3.5" />}
+          icon={<EmberDocIcon className="w-3.5 h-3.5" />}
           label={t(lang, "tabs.detail")}
           active={activeTab === "detail"}
           onClick={() => setActiveTab("detail")}
@@ -89,7 +90,7 @@ export function RightSidebar({
           hidden={!showDetailTab}
         />
         <TabButton
-          icon={<Newspaper className="w-3.5 h-3.5" />}
+          icon={<EmberNewsIcon className="w-3.5 h-3.5" />}
           label={t(lang, "tabs.news")}
           active={activeTab === "news"}
           onClick={() => setActiveTab("news")}
@@ -105,7 +106,7 @@ export function RightSidebar({
               className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface)] transition-colors"
               aria-label={t(lang, "a11y.closePanel")}
             >
-              <X className="w-3.5 h-3.5" />
+              <EmberCloseIcon className="w-3.5 h-3.5" />
             </button>
           )}
         </div>

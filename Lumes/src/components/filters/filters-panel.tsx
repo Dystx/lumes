@@ -37,6 +37,7 @@ import {
   Satellite,
   ChevronDown,
   RotateCcw,
+  Moon,
 } from "lucide-react";
 import { t, type Language } from "@/lib/i18n";
 import type { Severity, SourceType } from "@/lib/incident-types";

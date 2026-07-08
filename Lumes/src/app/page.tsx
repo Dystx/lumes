@@ -13,6 +13,7 @@ import { OperationalPhases } from "@/components/dashboard/operational-phases";
 import { CollapsibleLegend } from "@/components/overlays/legend";
 import { FiltersPanel } from "@/components/filters/filters-panel";
 import { RightSidebar } from "@/components/layout/right-sidebar";
+import { EmberIcon } from "@/components/icons/brand-icons";
 import { MobileView, type MobileTab } from "@/components/mobile/mobile-view";
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh";
 import { LongPressActions } from "@/components/mobile/long-press-actions";
@@ -3001,7 +3002,7 @@ function DashboardPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-md bg-[var(--ember-accent-subtle)] flex items-center justify-center">
-              <TrendingUp className="w-3.5 h-3.5 text-[var(--ember-accent)]" />
+              <EmberIcon className="w-4 h-4 text-[var(--ember-accent)]" />
             </div>
             <div>
               <h2
