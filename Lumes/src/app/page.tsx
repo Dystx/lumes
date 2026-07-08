@@ -1120,11 +1120,11 @@ export default function Home() {
         />
       </main>
 
-      {/* ===== RIGHT: SMART SIDEBAR (Filters + Detail + News tabs) ===== */}
+      {/* ===== RIGHT: COLLAPSIBLE RAIL (Filters + Detail + News panels) ===== */}
       <RightSidebar
         selectedIncidentId={selectedIncidentId}
         onCloseDetail={() => setSelectedIncidentId(null)}
-        width={360}
+        activeFilterCount={activeFilterCount}
         news={<NewsSection lang={lang} />}
         filters={
           <FiltersPanel
@@ -1307,7 +1307,7 @@ export default function Home() {
                 selectedIncidentId={selectedIncidentId}
                 flyToIncidentId={flyToIncidentId}
                 showFireRisk={showFireRisk}
-                showFireStations={showFireStations && fireStationsReady}
+                showFireStations={showFireStations && !!fireStations.data}
                 showSatellite={showSatellite}
                 visibleSources={visibleSources}
                 fireRiskFeatures={fireRiskFeatures}

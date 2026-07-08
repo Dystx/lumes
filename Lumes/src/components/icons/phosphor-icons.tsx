@@ -143,6 +143,7 @@ export const Bell = makeIcon(PBell);
 export const MapPin = makeIcon(PMapPin);
 export const Search = makeIcon(PSearch);
 export const Filter = makeIcon(PFilter);
+export const Funnel = makeIcon(PFilter);
 export const Sun = makeIcon(PSun);
 export const Moon = makeIcon(PMoon);
 export const ChevronLeft = makeIcon(PCaretLeft);
