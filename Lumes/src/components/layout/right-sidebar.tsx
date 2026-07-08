@@ -10,15 +10,16 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SlidersHorizontal, FileText, X } from "lucide-react";
+import { SlidersHorizontal, FileText, Newspaper, X } from "lucide-react";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
 
-export type RightSidebarTab = "filters" | "detail";
+export type RightSidebarTab = "filters" | "detail" | "news";
 
 export interface RightSidebarProps {
   filters: ReactNode;
   detail: ReactNode | null;
+  news?: ReactNode | null;
   /** Currently selected incident id (or null) */
   selectedIncidentId?: string | null;
   /** External tab control (optional) */
@@ -33,6 +34,7 @@ export interface RightSidebarProps {
 export function RightSidebar({
   filters,
   detail,
+  news,
   selectedIncidentId,
   activeTab: externalTab,
   onTabChange: onExternalTabChange,
@@ -59,7 +61,9 @@ export function RightSidebar({
   }, [selectedIncidentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasDetail = !!detail;
+  const hasNews = !!news;
   const showDetailTab = hasDetail;
+  const showNewsTab = hasNews;
 
   return (
     <aside
@@ -83,6 +87,14 @@ export function RightSidebar({
           onClick={() => setActiveTab("detail")}
           count={selectedIncidentId ? "●" : undefined}
           hidden={!showDetailTab}
+        />
+        <TabButton
+          icon={<Newspaper className="w-3.5 h-3.5" />}
+          label={t(lang, "tabs.news")}
+          active={activeTab === "news"}
+          onClick={() => setActiveTab("news")}
+          count={undefined}
+          hidden={!showNewsTab}
         />
         {/* Spacer + close detail button */}
         <div className="ml-auto flex items-center pr-1">
@@ -124,6 +136,18 @@ export function RightSidebar({
               className="h-full overflow-y-auto ember-scroll"
             >
               {detail}
+            </motion.div>
+          )}
+          {activeTab === "news" && news && (
+            <motion.div
+              key="news"
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 8 }}
+              transition={{ duration: 0.18 }}
+              className="h-full overflow-y-auto ember-scroll"
+            >
+              {news}
             </motion.div>
           )}
         </AnimatePresence>

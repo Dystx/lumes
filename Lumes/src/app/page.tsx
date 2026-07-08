@@ -848,7 +848,7 @@ export default function Home() {
       </BottomSheet>
 
       {/* ===== LEFT: SITUATIONAL DASHBOARD (always visible on desktop) ===== */}
-      <div className="hidden lg:block h-full flex-shrink-0 w-[320px] border-r border-[var(--ember-border)]">
+      <div className="hidden lg:block h-full flex-shrink-0 w-[360px] border-r border-[var(--ember-border)]">
         <DashboardPanel
           key="dashboard"
           metrics={dashboardMetrics}
@@ -1119,11 +1119,12 @@ export default function Home() {
         />
       </main>
 
-      {/* ===== RIGHT: SMART SIDEBAR (Filters + Detail tabs) ===== */}
+      {/* ===== RIGHT: SMART SIDEBAR (Filters + Detail + News tabs) ===== */}
       <RightSidebar
         selectedIncidentId={selectedIncidentId}
         onCloseDetail={() => setSelectedIncidentId(null)}
-        width={340}
+        width={360}
+        news={<NewsSection lang={lang} />}
         filters={
           <FiltersPanel
             lang={lang}
@@ -2993,7 +2994,7 @@ function DashboardPanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-      className="flex w-[360px] h-full flex-col bg-[var(--ember-bg)] border-r border-[var(--ember-border)] flex-shrink-0 z-30"
+      className="flex w-[360px] h-full flex-col bg-[var(--ember-bg)] border-r border-[var(--ember-border)] flex-shrink-0 z-20 relative"
     >
       {/* Header — section title + live status (brand is in the top header) */}
       <div className="px-5 py-3 border-b border-[var(--ember-border)] flex-shrink-0">
@@ -3082,7 +3083,8 @@ function DashboardPanel({
           </div>
         ) : (
         <>
-        {/* Hero metric — large primary number for at-a-glance awareness */}
+        {/* Hero metric — large primary number for at-a-glance awareness.
+            Each counter is clickable to filter the priority list. */}
         <div className="px-4 pt-4 pb-3 border-b border-[var(--ember-border)]">
           <div className="flex items-end gap-3">
             <HeroCounter
@@ -3092,6 +3094,8 @@ function DashboardPanel({
               color="var(--ember-text)"
               hint={t(lang, "map.totalLabel")}
               caption={dataFetchedAt ? `${lang === "pt" ? "Atualizado" : "Updated"} ${timeAgo(typeof dataFetchedAt === "string" ? dataFetchedAt : dataFetchedAt.toISOString())}` : undefined}
+              active={quickFilter === "all" && !criticalOnly}
+              onClick={() => { setQuickFilter("all"); setCriticalOnly(false); }}
             />
             <div className="flex-1 grid grid-cols-2 gap-1.5">
               <HeroCounter
@@ -3100,12 +3104,24 @@ function DashboardPanel({
                 icon={Radio}
                 color="var(--ember-critical)"
                 pulse={metrics.activeCount > 0}
+                active={quickFilter === "active"}
+                onClick={() => { setQuickFilter(quickFilter === "active" ? "all" : "active"); }}
               />
               <HeroCounter
                 label={t(lang, "dashboard.critical")}
                 value={metrics.criticalCount}
                 icon={AlertTriangle}
                 color="var(--ember-critical)"
+                active={quickFilter === "critical" || criticalOnly}
+                onClick={() => {
+                  if (quickFilter === "critical") {
+                    setQuickFilter("all");
+                    setCriticalOnly(false);
+                  } else {
+                    setQuickFilter("critical");
+                    setCriticalOnly(true);
+                  }
+                }}
               />
             </div>
           </div>

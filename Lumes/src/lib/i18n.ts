@@ -19,6 +19,7 @@ export const translations = {
   tabs: {
     filters: { pt: "Filtros", en: "Filters" },
     detail: { pt: "Detalhe", en: "Detail" },
+    news: { pt: "Notícias", en: "News" },
   },
 
   // Live data connection state (badge in left sidebar)
