@@ -20,6 +20,7 @@ import { LongPressActions } from "@/components/mobile/long-press-actions";
 import { BottomSheet } from "@/components/mobile/bottom-sheet";
 import { SectionError } from "@/components/ui/section-error";
 import { EmptyState } from "@/components/ui/empty/empty-state";
+import { FilterStatus, type FilterStatusItem } from "@/components/filters/filter-status";
 import { useUIStore } from "@/store/ui-store";
 import {
   Flame,
@@ -336,7 +337,7 @@ export default function Home() {
     flyToIncidentId, setFlyToIncidentId,
     searchQuery, setSearchQuery,
     visibleSources, toggleSource,
-    severityFilter, toggleSeverity,
+    severityFilter, toggleSeverity, resetSeverityFilter,
     criticalOnly, setCriticalOnly,
     hideResolved, setHideResolved,
     sortMode, setSortMode,
@@ -406,7 +407,9 @@ export default function Home() {
         const detected = new Date(inc.firstDetected || inc.observedAt).getTime();
         return detected <= playbackTime;
       });
-      pool = pool.filter((inc) => severityFilter.has(inc.severity));
+      if (severityFilter.size > 0) {
+        pool = pool.filter((inc) => severityFilter.has(inc.severity));
+      }
       if (criticalOnly) pool = pool.filter((inc) => inc.severity === "critical");
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -432,7 +435,9 @@ export default function Home() {
       let pool = SAMPLE_INCIDENTS.filter((inc) =>
         frame.activeIncidentIds.includes(inc.id)
       );
-      pool = pool.filter((inc) => severityFilter.has(inc.severity));
+      if (severityFilter.size > 0) {
+        pool = pool.filter((inc) => severityFilter.has(inc.severity));
+      }
       if (criticalOnly) pool = pool.filter((inc) => inc.severity === "critical");
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -450,8 +455,10 @@ export default function Home() {
     // Live mode — use live incidents
     let pool = liveIncidents.incidents;
 
-    // Apply severity filter
-    let filtered = pool.filter((inc) => severityFilter.has(inc.severity));
+    // Apply severity filter — empty set means "show all severities"
+    let filtered = severityFilter.size > 0
+      ? pool.filter((inc) => severityFilter.has(inc.severity))
+      : pool;
 
     // Apply hide-resolved (default on — hides historical fires)
     if (hideResolved) {
@@ -810,6 +817,64 @@ export default function Home() {
     (hideResolved ? 1 : 0)
   );
 
+  // Single source of truth for clearing ALL filter state. Used by the
+  // FilterStatus "Clear" button in both the right Filters panel and the
+  // left Dashboard panel.
+  const resetAllFilters = () => {
+    setSearchQuery("");
+    setQuickFilter("all");
+    setCriticalOnly(false);
+    setHideResolved(false);
+    if (severityFilter.size !== 4) {
+      resetSeverityFilter();
+    }
+    setShowFireRisk(false);
+    setShowFireStations(false);
+    setShowSatellite(false);
+    setShowAerial(false);
+    setShowBiomass(false);
+    setShowCompositeRisk(false);
+  };
+
+  // Active filter items — single source of truth shared between
+  // the right Filters panel (active filter chips) and the left dashboard
+  // (filter status banner with clear button).
+  const activeFilterItems: FilterStatusItem[] = [
+    ...(quickFilter !== "all" ? [{
+      id: `quick-${quickFilter}`,
+      label: quickFilter === "active" ? t(lang, "dashboard.active") : quickFilter === "critical" ? t(lang, "dashboard.critical") : t(lang, "dashboard.high"),
+      onClear: () => setQuickFilter("all"),
+    }] : []),
+    ...(severityFilter.size > 0 ? Array.from(severityFilter).map((s) => ({
+      id: `sev-${s}`,
+      label: t(lang, `severity.${s}`),
+      onClear: () => toggleSeverity(s),
+    })) : []),
+    ...(searchQuery ? [{
+      id: "search",
+      label: `"${searchQuery}"`,
+      onClear: () => setSearchQuery(""),
+    }] : []),
+    ...(showFireRisk ? [{
+      id: "risk",
+      label: t(lang, "sidebar.fireRiskLayer"),
+      onClear: () => setShowFireRisk(false),
+      category: "layer" as const,
+    }] : []),
+    ...(showFireStations ? [{
+      id: "stations",
+      label: t(lang, "sidebar.fireStations"),
+      onClear: () => setShowFireStations(false),
+      category: "layer" as const,
+    }] : []),
+    ...(showSatellite ? [{
+      id: "sat",
+      label: t(lang, "dataSources.nasa-firms-viirs"),
+      onClear: () => setShowSatellite(false),
+      category: "layer" as const,
+    }] : []),
+  ];
+
   return (
     <div className="h-screen w-full flex lg:overflow-hidden overflow-hidden flex-col lg:flex-row bg-[var(--ember-bg)] text-[var(--ember-text)] font-sans relative">
       {skipLink}
@@ -849,7 +914,18 @@ export default function Home() {
       </BottomSheet>
 
       {/* ===== LEFT: SITUATIONAL DASHBOARD (always visible on desktop) ===== */}
-      <div className="hidden lg:block h-full flex-shrink-0 w-[360px] border-r border-[var(--ember-border)]">
+      <div className="hidden lg:flex h-full flex-shrink-0 w-[360px] border-r border-[var(--ember-border)] flex-col">
+        {/* Active filter status — single click-to-clear indicator */}
+        {activeFilterItems.length > 0 && (
+          <FilterStatus
+            lang={lang}
+            items={activeFilterItems}
+            onClearAll={resetAllFilters}
+            liveCount={visibleIncidents.length}
+            totalCount={liveIncidents.incidents.length || visibleIncidents.length}
+          />
+        )}
+
         <DashboardPanel
           key="dashboard"
           metrics={dashboardMetrics}
@@ -1165,26 +1241,7 @@ export default function Home() {
             satelliteCount={satellite.data?.count ?? 0}
             sourceHealth={sourceHealth.data?.sources ?? []}
             liveCount={visibleIncidents.length}
-            activeFilters={[
-              ...(quickFilter !== "all" ? [{
-                id: `quick-${quickFilter}`,
-                label: quickFilter === "active" ? t(lang, "dashboard.active") : quickFilter === "critical" ? t(lang, "dashboard.critical") : t(lang, "dashboard.high"),
-                onClear: () => setQuickFilter("all"),
-              }] : []),
-              ...(severityFilter.size > 0 ? Array.from(severityFilter).map((s) => ({
-                id: `sev-${s}`,
-                label: t(lang, `severity.${s}`),
-                onClear: () => toggleSeverity(s),
-              })) : []),
-              ...(searchQuery ? [{
-                id: "search",
-                label: `"${searchQuery}"`,
-                onClear: () => setSearchQuery(""),
-              }] : []),
-              ...(showFireRisk ? [{ id: "risk", label: t(lang, "sidebar.fireRiskLayer"), onClear: () => setShowFireRisk(false) }] : []),
-              ...(showFireStations ? [{ id: "stations", label: t(lang, "sidebar.fireStations"), onClear: () => setShowFireStations(false) }] : []),
-              ...(showSatellite ? [{ id: "sat", label: t(lang, "dataSources.nasa-firms-viirs"), onClear: () => setShowSatellite(false) }] : []),
-            ]}
+            activeFilters={activeFilterItems}
           />
         }
         detail={
@@ -1393,26 +1450,7 @@ export default function Home() {
               satelliteCount={satellite.data?.count ?? 0}
               sourceHealth={sourceHealth.data?.sources ?? []}
               liveCount={visibleIncidents.length}
-              activeFilters={[
-                ...(quickFilter !== "all" ? [{
-                  id: `quick-${quickFilter}`,
-                  label: quickFilter === "active" ? t(lang, "dashboard.active") : quickFilter === "critical" ? t(lang, "dashboard.critical") : t(lang, "dashboard.high"),
-                  onClear: () => setQuickFilter("all"),
-                }] : []),
-                ...(severityFilter.size > 0 ? Array.from(severityFilter).map((s) => ({
-                  id: `sev-${s}`,
-                  label: t(lang, `severity.${s}`),
-                  onClear: () => toggleSeverity(s),
-                })) : []),
-                ...(searchQuery ? [{
-                  id: "search",
-                  label: `"${searchQuery}"`,
-                  onClear: () => setSearchQuery(""),
-                }] : []),
-                ...(showFireRisk ? [{ id: "risk", label: t(lang, "sidebar.fireRiskLayer"), onClear: () => setShowFireRisk(false) }] : []),
-                ...(showFireStations ? [{ id: "stations", label: t(lang, "sidebar.fireStations"), onClear: () => setShowFireStations(false) }] : []),
-                ...(showSatellite ? [{ id: "sat", label: t(lang, "dataSources.nasa-firms-viirs"), onClear: () => setShowSatellite(false) }] : []),
-              ]}
+              activeFilters={activeFilterItems}
             />
           }
           more={
@@ -2393,6 +2431,7 @@ function DashboardPanel({
           </div>
         ) : (
         <>
+
         {/* Hero metric — large primary number for at-a-glance awareness.
             Each counter is clickable to filter the priority list. */}
         <div className="px-4 pt-4 pb-3 border-b border-[var(--ember-border)]">
@@ -2439,7 +2478,7 @@ function DashboardPanel({
 
         {/* Top districts breakdown — replaces duplicate stats grid.
             Shows which districts have the most active fires. */}
-        <div className="px-4 py-3 border-b border-[var(--ember-border)]">
+        <div className="px-4 py-4 border-b border-[var(--ember-border)] space-y-2">
           <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2">
             {lang === "pt" ? "Distritos mais ativos" : "Top districts"}
           </div>
@@ -2481,7 +2520,7 @@ function DashboardPanel({
         </div>
 
         {/* Resources deployed */}
-        <div className="px-4 py-4 border-b border-[var(--ember-border)]">
+        <div className="px-4 py-4 border-b border-[var(--ember-border)] space-y-2.5">
           <div className="flex items-center justify-between mb-2.5">
             <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
               {t(lang, "dashboard.resourcesDeployed")}
@@ -2573,7 +2612,7 @@ function DashboardPanel({
         </div>
 
         {/* Incident list — priority or recent or all */}
-        <div className="px-4 py-3">
+        <div className="px-4 py-4 space-y-2">
           <AnimatePresence mode="wait">
             <motion.div
               key={activityTab}

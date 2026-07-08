@@ -51,11 +51,11 @@ export function FilterStatus({
     <AnimatePresence>
       {isActive && (
         <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="border-b border-[var(--ember-border)] bg-[var(--ember-surface-2)]/50 overflow-hidden"
+          className="border-b border-[var(--ember-border)] bg-[var(--ember-surface-2)]/50 flex-shrink-0"
         >
           <div className="px-4 py-3 space-y-2.5">
             {/* Header row: filter icon + label + count + clear all */}
