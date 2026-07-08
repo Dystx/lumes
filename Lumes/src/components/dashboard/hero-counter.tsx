@@ -4,7 +4,7 @@
 // Replaces the cramped 160×68 stat cards with a bigger 40-60px display number
 // that reads at a glance. Clickable to filter.
 
-import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "@/components/icons/phosphor-icons";
 
 export interface HeroCounterProps {
   label: string;

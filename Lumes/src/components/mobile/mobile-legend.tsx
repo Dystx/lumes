@@ -10,7 +10,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X } from "@/components/icons/phosphor-icons";
 import { t, type Language } from "@/lib/i18n";
 import { SEVERITY_LABEL, type Severity } from "@/lib/incident";
 

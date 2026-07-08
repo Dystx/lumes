@@ -10,7 +10,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SlidersHorizontal, FileText, Newspaper, X } from "lucide-react";
+import { SlidersHorizontal, FileText, Newspaper, X } from "@/components/icons/phosphor-icons";
 import { EmberFilterIcon, EmberDocIcon, EmberNewsIcon, EmberCloseIcon } from "@/components/icons/brand-icons";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";

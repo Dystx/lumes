@@ -72,7 +72,7 @@ import {
   Bell as BellIcon,
   Activity,
   Share2,
-} from "lucide-react";
+} from "@/components/icons/phosphor-icons";
 import EmberMap, { type BasemapMode, type FireRiskFeature, type FireStationFeature, type EmberMapHandle } from "@/components/ember-map";
 import dynamic from "next/dynamic";
 

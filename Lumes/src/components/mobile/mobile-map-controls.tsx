@@ -4,7 +4,7 @@
 // Positioned bottom-right of the map (thumb-reachable zone for one-handed
 // mobile use). 48×48 px touch targets per Apple HIG / Material Design 3.
 
-import { Minus, Plus, Locate, Layers as LayersIcon } from "lucide-react";
+import { Minus, Plus, Locate, Layers as LayersIcon } from "@/components/icons/phosphor-icons";
 import { motion } from "framer-motion";
 
 interface MobileMapControlsProps {

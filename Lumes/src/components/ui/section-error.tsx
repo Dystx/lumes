@@ -5,7 +5,7 @@
 // should degrade gracefully: show a clear message + retry button instead
 // of the entire page error boundary.
 
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw } from "@/components/icons/phosphor-icons";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
 

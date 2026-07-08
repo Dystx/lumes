@@ -17,7 +17,7 @@
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence, useMotionValue, type PanInfo } from "framer-motion";
-import { Activity, Filter as FilterIcon, Flame, Layers as LayersIcon, Map as MapIcon, MoreHorizontal, X } from "lucide-react";
+import { Activity, Filter as FilterIcon, Flame, Layers as LayersIcon, Map as MapIcon, MoreHorizontal, X } from "@/components/icons/phosphor-icons";
 import { EmberMapIcon, EmberFilterIcon, EmberMoreIcon, EmberFlameIcon, EmberCloseIcon } from "@/components/icons/brand-icons";
 import { MobileMapControls } from "./mobile-map-controls";
 import { MobileLegend } from "./mobile-legend";

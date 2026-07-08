@@ -4,7 +4,7 @@
 // Tappable to open the Live tab.
 
 import { motion } from "framer-motion";
-import { Flame, ChevronUp } from "lucide-react";
+import { Flame, ChevronUp } from "@/components/icons/phosphor-icons";
 import { useLanguage } from "@/lib/use-language";
 import { tFmt, t } from "@/lib/i18n";
 

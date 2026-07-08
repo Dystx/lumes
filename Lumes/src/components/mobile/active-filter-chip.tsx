@@ -4,7 +4,7 @@
 // When user clicks a counter (Critical, Active) or operational phase
 // (Em Conclusão, etc.), a chip appears here with tap-to-clear action.
 
-import { X } from "lucide-react";
+import { X } from "@/components/icons/phosphor-icons";
 import { motion, AnimatePresence } from "framer-motion";
 import { t, type Language } from "@/lib/i18n";
 

@@ -8,7 +8,7 @@
 // - "all clear" (no active incidents — celebratory)
 
 import { motion } from "framer-motion";
-import { Flame, Filter, SearchX, MapPin } from "lucide-react";
+import { Flame, Filter, SearchX, MapPin } from "@/components/icons/phosphor-icons";
 import { t, type Language } from "@/lib/i18n";
 
 export type EmptyStateVariant =

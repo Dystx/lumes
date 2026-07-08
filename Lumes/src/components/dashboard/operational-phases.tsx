@@ -6,7 +6,7 @@
 //
 // Tasks C-leaves (refactor plan): extracted from page.tsx.
 
-import { X } from "lucide-react";
+import { X } from "@/components/icons/phosphor-icons";
 import { PHASE_COLOR } from "@/lib/incident";
 
 export interface OperationalPhasesProps {

@@ -9,7 +9,7 @@
 
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bookmark, Share2, MapPin, X, Bell } from "lucide-react";
+import { Bookmark, Share2, MapPin, X, Bell } from "@/components/icons/phosphor-icons";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
 

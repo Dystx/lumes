@@ -40,7 +40,7 @@ import {
   RotateCcw,
   Moon,
   Eye,
-} from "lucide-react";
+} from "@/components/icons/phosphor-icons";
 import { t, type Language } from "@/lib/i18n";
 import type { Severity, SourceType } from "@/lib/incident-types";
 

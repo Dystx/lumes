@@ -7,7 +7,7 @@
 // hidden on the Map view in some configurations).
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Filter } from "lucide-react";
+import { Filter } from "@/components/icons/phosphor-icons";
 import { useLanguage } from "@/lib/use-language";
 
 export function MobileFilterPill({

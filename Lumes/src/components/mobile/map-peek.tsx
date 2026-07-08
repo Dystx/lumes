@@ -7,7 +7,7 @@
 // Tap any incident card to open the detail panel. Tap the sheet handle
 // to expand to the full Live tab.
 
-import { Flame, AlertTriangle, ChevronUp, Clock } from "lucide-react";
+import { Flame, AlertTriangle, ChevronUp, Clock } from "@/components/icons/phosphor-icons";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
