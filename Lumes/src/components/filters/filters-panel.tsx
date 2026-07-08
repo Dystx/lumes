@@ -276,10 +276,10 @@ export function FiltersPanel({
       {/* Content */}
       <div className="flex-1 overflow-y-auto ember-scroll">
         {tab === "essentials" && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-5">
             {/* Search */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1.5 block">
+              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
                 {lang === "pt" ? "Pesquisar" : "Search"}
               </label>
               <div className="relative">
@@ -308,10 +308,10 @@ export function FiltersPanel({
 
             {/* Quick filter chips */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1.5 block">
+              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
                 {lang === "pt" ? "Filtro rápido" : "Quick filter"}
               </label>
-              <div className="flex gap-1 flex-wrap">
+              <div className="flex gap-1.5 flex-wrap">
                 {([
                   { v: "all" as const, label: t(lang, "dashboard.quickFilterAll") },
                   { v: "active" as const, label: t(lang, "dashboard.quickFilterActive") },
@@ -446,10 +446,10 @@ export function FiltersPanel({
         )}
 
         {tab === "layers" && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-5">
             {/* Basemap */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1.5 block">
+              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
                 {lang === "pt" ? "Mapa base" : "Basemap"}
               </label>
               <div className="grid grid-cols-3 gap-1.5">
@@ -463,13 +463,13 @@ export function FiltersPanel({
                     <button
                       key={opt.v}
                       onClick={() => setBasemap(opt.v)}
-                      className={`flex flex-col items-center gap-1 py-2 rounded-md border text-[10px] font-medium transition-colors ${
+                      className={`flex flex-col items-center gap-1.5 py-3 rounded-md border text-[10px] font-medium transition-colors ${
                         basemap === opt.v
                           ? "bg-[var(--ember-accent-subtle)] border-[var(--ember-accent)] text-[var(--ember-accent)]"
                           : "bg-transparent border-[var(--ember-border)] text-[var(--ember-text-muted)] hover:text-[var(--ember-text)]"
                       }`}
                     >
-                      <Icon className="w-3.5 h-3.5" />
+                      <Icon className="w-4 h-4" />
                       <span>{opt.label}</span>
                     </button>
                   );

@@ -39,20 +39,53 @@ interface NewsItem {
   matched?: boolean;
 }
 
-// Portuguese fire-related keywords (lowercased)
+// Portuguese fire-related keywords (lowercased).
+// Each item is a single fire-specific token. We require AT LEAST 1 of these
+// to be present in the headline OR description to qualify as fire-related.
+// Generic terms like "fogo" (which is too broad — matches "ponto de fogo",
+// "fogo de artifício", "fogo amigo" etc.) have been REMOVED to stop unrelated
+// news (soccer, traffic, security, etc.) from being classified as fires.
 const FIRE_KEYWORDS = [
-  "incêndio", "incendio", "fogo", "fogos", "floresta", "florestal",
-  "queimada", "mato", "vegetação", "vegetacao", "ignição",
-  "rural", "rurais", "combatente", "combatentes", "bombeiro",
-  "bombeiros", "anepe", "protecção civil", "protecao civil",
-  "prociv", "helicóptero", "aeronave", "meios aéreos", "meios aereos",
-  "sep", "fwi", "rcm", "risco de incêndio", "fogo florestal",
-  "vigilância", "vigilancia", "despacho", "to",
+  // Specific wildfire types
+  "incêndio florestal", "incendio florestal", "incêndios florestais",
+  "incendios florestais", "incêndio rural", "incêndio urbano",
+  "fogo florestal", "fogo rural", "fogos florestais",
+  "incêndio ativo", "incêndio ativo", "incêndios ativos",
+  "fogo de mato", "fogo em mato", "queimada", "queimadas",
+  // Emergency services
+  "bombeiros", "bombeiro", "corporação de bombeiros",
+  "anepe", "protecção civil", "protecao civil", "prociv",
+  "sapadores", "florestais",
+  // Aerial / response
+  "meios aéreos", "meios aereos", "aeronave", "aeronaves",
+  "helicóptero de combate", "helicóptero bombeiro", "canadair",
+  // Operations
+  "combate a incêndio", "combate às chamas", "rescaldo",
+  "evacuação de população", "ordem de evacuação",
+  "reativação", "reativação de incêndio", "reacendimento",
+  // Meteorological risk indicators
+  "risco de incêndio", "risco máximo de incêndio", "perigo de incêndio",
+  "risco de ignição", "rcm", "fwi", "sep",
+  // Portuguese region names commonly associated with fire reports
+  "serra da estrela", "lousã", "manteigas", "belmonte",
+  "chamusca", "mação", "sardoal", "proença-a-nova",
+  "oleiros", "pampilhosa da serra", "pedrógão grande",
+  "alijó", "valpaços", "murça", "sabrosa", "alijó",
 ];
-// English fallbacks (cross-language)
+
+// English fallbacks (cross-language wildfire terms)
 const FIRE_KEYWORDS_EN = [
-  "wildfire", "forest fire", "bushfire", "fire",
-  "evacuation", "burn", "burning",
+  "wildfire", "forest fire", "bushfire", "grass fire",
+  "brush fire", "active fire", "fire brigade", "fire crew",
+  "firefighting", "fire evacuation", "fire danger", "fire risk",
+  "civil protection",
+];
+
+// Some words that, on their own, are TOO GENERIC to qualify a story as
+// fire-related. We exclude them from being enough on their own (must be
+// combined with another fire-specific word).
+const AMBIGUOUS_FIRE_WORDS = [
+  "fogo", "fogos", "fogar", "foguear",
 ];
 
 // Verified, working RSS feeds for Portuguese general news.
@@ -219,11 +252,52 @@ function decodeEntities(s: string): string {
 }
 
 function isFireRelated(title: string, description: string): boolean {
-  const blob = `${title} ${description}`.toLowerCase();
-  return (
-    FIRE_KEYWORDS.some((k) => blob.includes(k)) ||
-    FIRE_KEYWORDS_EN.some((k) => blob.includes(k))
-  );
+  const titleBlob = title.toLowerCase();
+  const fullBlob = `${title} ${description}`.toLowerCase();
+
+  // Strategy: include any article that EITHER:
+  // (a) has a specific wildfire term in the TITLE, OR
+  // (b) has "incêndio" + a fire-context word in the FULL text, OR
+  // (c) has "fogo" + multiple fire-context words (avoid "fogo de artifício")
+
+  // (a) Specific keywords in TITLE — strongest signal
+  const hasTitleFire =
+    titleBlob.includes("incêndio") ||
+    titleBlob.includes("incendio") ||
+    titleBlob.includes("fogo florestal") ||
+    titleBlob.includes("fogo rural") ||
+    titleBlob.includes("queimada") ||
+    titleBlob.includes("bombeiro") ||
+    titleBlob.includes("bombeiros") ||
+    titleBlob.includes("anepe") ||
+    titleBlob.includes("protecção civil") ||
+    titleBlob.includes("protecao civil") ||
+    titleBlob.includes("helicóptero") ||
+    titleBlob.includes("canadair") ||
+    titleBlob.includes("evacuação") ||
+    titleBlob.includes("rcm") ||
+    titleBlob.includes("fwi");
+  if (hasTitleFire) return true;
+
+  // Check for specific (unambiguous) fire keywords in full text
+  const hasSpecificPT = FIRE_KEYWORDS.some((k) => fullBlob.includes(k));
+  const hasSpecificEN = FIRE_KEYWORDS_EN.some((k) => fullBlob.includes(k));
+  if (hasSpecificPT || hasSpecificEN) return true;
+
+  // (b) "incêndio" + at least 1 fire-context word anywhere
+  const hasIncendio = fullBlob.includes("incêndio") || fullBlob.includes("incendio");
+  if (hasIncendio) {
+    const CONTEXT_WORDS = [
+      "queimada", "bombeiro", "bombeiros", "evacuação", "evacuados",
+      "chamas", "chama", "anepe", "protecção civil", "protecao civil", "prociv",
+      "sapadores", "floresta", "florestal",
+      "rcm", "fwi", "sep", "aeronave", "aeronaves", "helicóptero",
+      "vegetação", "vegetacao",
+    ];
+    return CONTEXT_WORDS.some((k) => fullBlob.includes(k));
+  }
+
+  return false;
 }
 
 async function fetchFeed(feed: { url: string; source: string; sourceUrl: string }): Promise<NewsItem[]> {

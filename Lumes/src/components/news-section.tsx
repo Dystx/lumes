@@ -62,23 +62,22 @@ export default function NewsSection({ lang }: { lang: Language }) {
       : sources;
 
   return (
-    <div className="px-3 py-2.5 border-b border-[var(--ember-border)]">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center gap-1.5">
+    <div className="px-4 py-3 border-b border-[var(--ember-border)]">
+      {/* Header — centered title with item count */}
+      <div className="text-center mb-2.5">
+        <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center justify-center gap-1.5">
           <Newspaper className="w-3 h-3" />
-          {lang === "pt" ? "Notícias" : "News"}
+          <span>{lang === "pt" ? "Notícias" : "News"}</span>
+          <span className="text-[9px] tabular-nums opacity-70">
+            ({news.loading ? "…" : data
+              ? data.counts.matched + data.counts.incidents + data.counts.press
+              : 0})
+          </span>
         </div>
-        <span className="text-[9px] text-[var(--ember-text-faint)] tabular-nums">
-          {news.loading
-            ? "…"
-            : data
-            ? `${data.counts.matched + data.counts.incidents + data.counts.press} ${lang === "pt" ? "itens" : "items"}`
-            : "—"}
-        </span>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-2">
+      {/* Tabs — centered row */}
+      <div className="flex items-center justify-center gap-1 mb-3">
         {(
           [
             { v: "matched", label: lang === "pt" ? "Combinadas" : "Matched", count: matched.length + incidents.length, badge: matched.length > 0 },
@@ -90,7 +89,7 @@ export default function NewsSection({ lang }: { lang: Language }) {
             key={t2.v}
             type="button"
             onClick={() => setTab(t2.v)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider transition-colors ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[9px] font-medium uppercase tracking-wider transition-colors ${
               activeTab === t2.v
                 ? "bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)]"
                 : "text-[var(--ember-text-faint)] hover:text-[var(--ember-text-muted)]"
@@ -106,7 +105,7 @@ export default function NewsSection({ lang }: { lang: Language }) {
       </div>
 
       {/* Items */}
-      <div className="space-y-1.5 max-h-72 overflow-y-auto ember-scroll pr-1">
+      <div className="space-y-1.5 max-h-80 overflow-y-auto ember-scroll pr-1">
         {items.length === 0 ? (
           <EmptyState
             variant="no-news"

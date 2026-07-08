@@ -323,11 +323,30 @@ export interface EmberMapProps {
 }
 
 function pickStyle(basemap: BasemapMode, theme: "dark" | "light"): string {
+  if (basemap === "sat") return DARK_STYLE;
   // Satellite mode uses the dark style as a base; the EOX raster is added
   // as a layer on top (see EFFECT 2b), not as a style replacement.
   if (basemap === "satellite") return DARK_STYLE;
   if (basemap === "light" || (basemap === "dark" && theme === "light")) return LIGHT_STYLE;
   return DARK_STYLE;
+}
+
+// Ocean/water color per theme + basemap.
+// — Dark mode: deep blue (#0a2540) — readable, distinguishes from land.
+// — Light mode: classic blue (#a8c8e8) — similar to Google Maps water.
+// — Satellite mode: keep the basemap's own water tint so the satellite
+//   imagery looks natural.
+function pickWaterColor(theme: "dark" | "light", basemap: BasemapMode): string {
+  if (basemap === "satellite" || basemap === "sat") {
+    // Satellite keeps the original water tint from the raster imagery
+    return theme === "light" ? "#bcd4e6" : "#1e3a5f";
+  }
+  if (theme === "light") {
+    // Light mode: classic soft blue water
+    return "#a8c8e8";
+  }
+  // Dark mode: deep blue water (matches the warm parchment dark theme)
+  return "#0a2540";
 }
 
 const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
@@ -450,6 +469,24 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
 
     const onStyleLoad = () => {
       addEmberSourcesAndLayers(map, theme, basemap);
+      // Customize ocean/water color per theme and basemap
+      try {
+        const style = map.getStyle();
+        const layers = style.layers || [];
+        // Find water/ocean layers and re-tint them
+        const waterColor = pickWaterColor(theme, basemap);
+        for (const layer of layers) {
+          if (layer.id && /water|ocean|sea/i.test(layer.id)) {
+            if (layer.type === "fill") {
+              map.setPaintProperty(layer.id, "fill-color", waterColor);
+            } else if (layer.type === "background" && /water|ocean/i.test(layer.id)) {
+              map.setPaintProperty(layer.id, "background-color", waterColor);
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
       currentStyleRef.current = targetStyle;
       setMapReady(true);
     };

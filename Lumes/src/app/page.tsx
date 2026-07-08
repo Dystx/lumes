@@ -118,7 +118,7 @@ import {
 import {
   useDashboardNew,
   useFireRiskNew, useWeatherNew,
-  useFireStationsNew, useSourceHealthNew,
+  useFireStationsNew, useSourceHealthNew, useMatchedIncidentNews,
   usePersistenceStatsNew, useHistoryNew,
   useWeatherWarningsNew, useSatelliteNew,
 } from "@/lib/use-app-data";
@@ -3203,6 +3203,9 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
     : incident.severity === "medium" ? "var(--ember-info)"
     : "var(--ember-success)";
 
+  // Fetch news matched to this incident's location
+  const matchedNews = useMatchedIncidentNews(incident.id);
+
   return (
     <div className="flex flex-col gap-3">
       {/* Description */}
@@ -3322,6 +3325,64 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
                 <AlertTriangle className="w-3.5 h-3.5 text-[var(--ember-warning)] flex-shrink-0" />
                 {road}
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Matched press articles for this incident's location */}
+      {matchedNews.data?.items && matchedNews.data.items.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center gap-1.5">
+              <Newspaper className="w-3 h-3" />
+              {lang === "pt" ? "Imprensa sobre este local" : "Press for this location"}
+            </div>
+            <span className="text-[10px] text-[var(--ember-text-faint)] tabular-nums">
+              {matchedNews.data.items.length} {lang === "pt" ? "artigos" : "articles"}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {matchedNews.data.items.map((item) => (
+              <a
+                key={item.id}
+                href={item.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block bg-[var(--ember-accent-subtle)] border border-[var(--ember-accent)]/30 hover:border-[var(--ember-accent)] rounded-md p-2.5 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <Flame className="w-3 h-3 mt-0.5 text-[var(--ember-accent)] flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-medium text-[var(--ember-text)] leading-tight line-clamp-2 group-hover:text-[var(--ember-accent)] transition-colors">
+                      {item.title}
+                    </div>
+                    {item.summary && (
+                      <div className="text-[10px] text-[var(--ember-text-muted)] mt-1 line-clamp-2 leading-relaxed">
+                        {item.summary}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-1.5 text-[9px] text-[var(--ember-text-faint)]">
+                      <span className="font-semibold uppercase tracking-wider text-[var(--ember-accent)]">
+                        {item.source}
+                      </span>
+                      <span>·</span>
+                      <span className="font-mono tabular-nums">
+                        {new Date(item.publishedAt).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })}
+                      </span>
+                      {item.matchedOn && (
+                        <>
+                          <span>·</span>
+                          <span className="text-[var(--ember-accent)] font-medium">
+                            {item.matchedOn}
+                          </span>
+                        </>
+                      )}
+                      <ExternalLink className="w-2.5 h-2.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                </div>
+              </a>
             ))}
           </div>
         </div>

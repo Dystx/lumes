@@ -96,6 +96,32 @@ export function useSourceHealthNew() {
   });
 }
 
+// === Matched news for a specific incident ===
+export interface MatchedNewsItem {
+  id: string;
+  title: string;
+  source: string;
+  sourceUrl: string;
+  publishedAt: string;
+  category: string;
+  summary?: string;
+  municipality?: string;
+  district?: string;
+  matched: boolean;
+  matchedOn: string | null;
+}
+
+export function useMatchedIncidentNews(incidentId: string | null | undefined) {
+  return useFetch<{
+    incidentId: string;
+    count: number;
+    items: MatchedNewsItem[];
+  } | null>(
+    incidentId ? `/api/incidents/${encodeURIComponent(incidentId)}/news` : "",
+    { refreshMs: 5 * 60_000, enabled: !!incidentId, fallback: { incidentId: "", count: 0, items: [] } }
+  );
+}
+
 // === Weather Warnings ===
 export function useWeatherWarningsNew() {
   return useFetch<any>("/api/weather-warnings", { refreshMs: 10 * 60_000, fallback: null });
