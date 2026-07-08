@@ -43,6 +43,7 @@ import {
 } from "@/components/icons/phosphor-icons";
 import { t, type Language } from "@/lib/i18n";
 import type { Severity, SourceType } from "@/lib/incident-types";
+import { FilterStatus, type FilterStatusItem } from "./filter-status";
 
 export interface FiltersPanelProps {
   lang: Language;
@@ -252,25 +253,18 @@ export function FiltersPanel({
 
       {/* Active filter chips */}
       {activeFilters.length > 0 && (
-        <div className="px-4 py-2 border-b border-[var(--ember-border)] flex items-center gap-1.5 flex-wrap">
-          {activeFilters.map((f) => (
-            <motion.button
-              key={f.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.15 }}
-              onClick={f.onClear}
-              className="group flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-[var(--ember-accent)] text-[#1a1410] text-[10px] font-bold uppercase tracking-wider hover:bg-[var(--ember-accent-hover)] hover:shadow-[0_0_0_3px_var(--ember-accent-subtle)] transition-all"
-              aria-label={`${f.label} — ${lang === "pt" ? "remover" : "remove"}`}
-            >
-              <span className="leading-none">{f.label}</span>
-              <span className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center group-hover:bg-black/30 transition-colors">
-                <X className="w-2 h-2" />
-              </span>
-            </motion.button>
-          ))}
-        </div>
+        <FilterStatus
+          lang={lang}
+          items={activeFilters.map((f) => ({
+            id: f.id,
+            label: f.label,
+            onClear: f.onClear,
+            category: f.category,
+          }))}
+          onClearAll={resetAll}
+          liveCount={liveCount}
+          totalCount={liveCount}
+        />
       )}
 
       {/* Content */}

@@ -199,6 +199,7 @@ export const MagnifyingGlass = makeIcon(PMagnifyingGlass);
 export const ChartLine = makeIcon(PChartLine);
 export const ChartBar = makeIcon(PChartBar);
 export const RotateCcw = makeIcon(PRotateCcw);
+export const ArrowCounterClockwise = makeIcon(PRotateCcw);
 export const Sliders = makeIcon(PSliders);
 export const SlidersHorizontal = makeIcon(PSliders);
 export const Sparkles = makeIcon(PSparkles);
