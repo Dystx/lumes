@@ -4,7 +4,8 @@
 // Replaces the cramped 160×68 stat cards with a bigger 40-60px display number
 // that reads at a glance. Clickable to filter.
 
-import type { LucideIcon } from "@/components/icons/phosphor-icons";
+type LucideIcon = React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+import { LoadingSkeleton } from "@/components/ui/empty-state";
 
 export interface HeroCounterProps {
   label: string;
@@ -18,6 +19,8 @@ export interface HeroCounterProps {
   hint?: string;
   /** Optional secondary line shown in a faint color (e.g. "Updated 12s ago") */
   caption?: string;
+  /** Show skeleton loading state */
+  isLoading?: boolean;
 }
 
 export function HeroCounter({
@@ -30,7 +33,12 @@ export function HeroCounter({
   onClick,
   hint,
   caption,
+  isLoading,
 }: HeroCounterProps) {
+  if (isLoading) {
+    return <LoadingSkeleton rows={2} height={48} />;
+  }
+
   return (
     <button
       type="button"

@@ -35,6 +35,8 @@ export interface FilterStatusProps {
   filteredCount?: number;
   /** Total incidents (for context) */
   totalCount?: number;
+  /** Live count (optional for context) */
+  liveCount?: number;
 }
 
 export function FilterStatus({
@@ -61,7 +63,7 @@ export function FilterStatus({
             {/* Header row: filter icon + label + count + clear all */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <Funnel className="w-3.5 h-3.5 text-[var(--ember-accent)] flex-shrink-0" weight="bold" />
+                <Funnel className="w-3.5 h-3.5 text-[var(--ember-accent)] flex-shrink-0" />
                 <span className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-semibold">
                   {lang === "pt" ? "Filtros ativos" : "Active filters"}
                 </span>

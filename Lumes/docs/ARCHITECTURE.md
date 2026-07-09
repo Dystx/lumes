@@ -1,6 +1,6 @@
 # Lumes.pt — Code Architecture
 
-> Last updated: 2026-07-09
+> Last updated: 2026-07-09 (local-only refactor tranche; no deployment verified)
 
 ## High-level stack
 
@@ -30,7 +30,7 @@ Lumes/
 │   │   ├── incidents/           # CRUD + risks/news/timeline subroutes
 │   │   ├── source-health/       # 30s polling target
 │   │   └── …                    # aerial, biomass, fire-risk, satellite, weather
-│   ├── page.tsx                 # ⭐ MAIN PAGE (3,800 lines, mostly JSX)
+│   ├── page.tsx                 # ⭐ data composition + shell orchestration
 │   ├── layout.tsx               # root layout, fonts, theme provider, SW register
 │   ├── globals.css              # design tokens, animations, ember-* utilities
 │   └── error.tsx                # error boundary
@@ -94,7 +94,8 @@ Lumes/
 
 ## `src/app/page.tsx` — what's in it
 
-The home page is a single ~3,800-line file. Top to bottom:
+The home page remains the data-composition entry point; stable shell and
+detail surfaces now live in focused components. Top to bottom:
 
 1. **Imports** (~80 lines): React, hooks, all the component modules,
    the data hooks, the dashboard component, helpers.
@@ -105,18 +106,18 @@ The home page is a single ~3,800-line file. Top to bottom:
    - `MetricCard` — small KPI tile
    - `ReportFireModal`, `HistoryModal` — full-screen overlays
    - `PlaybackBar` — bottom timeline scrubber
-   - `DashboardPanel({ … })` — the entire LEFT sidebar body
-   - `IncidentDetailPanel({ … })` — middle right panel
+   - `SituationPanel({ … })` — focused left situation rail
+   - `DashboardPanel({ … })` — mobile/all-incidents destination
+   - `IncidentDetailPanel({ … })` — selected-incident panel
    - `OverviewTab`, `TimelineTab`, `SourcesTab` — detail-panel tabs
 4. **`Home()`** — the default export. Reads from a dozen hooks
    (`useFireStationsNew`, `useSatelliteNew`, `useNews`, …) and renders
-   the 3-column desktop layout: dashboard (left), map (center), right
-   rail (collapsible Filters/Detail/News).
+   the wide situation rail + map + collapsible Explore/Inspector/Updates
+   rail.
 
-This is intentionally **monolithic** — the original refactor plan
-extracted components in a controlled order, but the file is still
-the highest-level entry point. Sub-components live inside it because
-they close over hook state.
+The file intentionally remains the highest-level data-composition entry
+point. New shell boundaries should be extracted only when their behavior
+is covered by route and browser tests.
 
 ## State management
 
@@ -207,21 +208,20 @@ that all hooks read via `useLanguage()`.
 ## Adding a new API route (recipe)
 
 1. `src/app/api/<thing>/route.ts` — exports `GET` (and `POST` if needed)
-2. Use `src/lib/api/cache.ts` `withCache()` for any data that's
+2. Use `src/lib/api/cache.ts` `cached()` for any data that's
    slow-changing (RSS, IPMA, satellite feeds)
 3. If mutating, add `assertSafeOrigin()` from `src/lib/api/csrf.ts`
 4. If the body is user-supplied, add a zod schema in
    `src/lib/api/schemas.ts` and validate with `.safeParse()`
-5. If public, add rate-limiting with `enforceRateLimit()` from
+5. If public, add rate-limiting with `rateLimit()` and `clientKey()` from
    `src/lib/api/rate-limit.ts`
-6. Document the new endpoint in `docs/API.md` (TBD)
+6. Document the new endpoint beside its contract tests and in the API inventory.
 
 ## Why certain things are the way they are
 
-- **Why is `page.tsx` so long?**  — The user has had flaky experiences
-  with sub-component refactors in the past; we deliberately keep
-  the working file intact and pull things out in a controlled
-  sweep. The "right" way is a follow-up per the REFACTOR-PLAN.md.
+- **Why does `page.tsx` still own data composition?** — Data composition
+  remains centralized while stable visual shells are extracted behind
+  typed props and contract tests. Further extraction is incremental.
 
 - **Why not a real state machine for filters?**  — The current set of
   filter logic is manageable in `useMemo`. Once we add URL persistence

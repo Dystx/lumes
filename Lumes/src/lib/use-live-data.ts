@@ -1,4 +1,5 @@
-// Client-side data fetching hooks with graceful fallback to sample data
+// Legacy client-side data fetching hooks (being phased out in favor of use-app-data.ts / useFetch).
+// Realtime/SSE and some helpers remain here.
 
 "use client";
 
@@ -146,7 +147,7 @@ function adaptLiveToUI(live: LiveIncident): any {
       title: live.properties.statusText || live.properties.statusGroup || "Reported",
       description: `${live.properties.naturezaText || live.properties.rasi || "Occurrence"} — ${live.properties.statusText || ""}. ${live.properties.personnelTotal || 0} personnel, ${live.properties.assetsGround || 0} engines, ${live.properties.assetsAerial || 0} aircraft deployed.`,
       confidence: live.trust.confidence,
-      verification: live.verificationStatus,
+      verification: live.trust.verificationStatus,
     },
   ];
 
@@ -162,7 +163,7 @@ function adaptLiveToUI(live: LiveIncident): any {
     firstDetected: live.firstDetected,
     lastUpdated: live.lastUpdated,
     confidence: live.trust.confidence,
-    verification: live.verificationStatus,
+    verification: live.trust.verificationStatus,
     sourceCount: 1,
     sourceTypes: ["official" as const],
     // Weather — will be looked up separately by location
@@ -574,19 +575,20 @@ export function useHistory(status?: string, enabled = false) {
   );
 }
 
-// === Followed incidents — persisted to Prisma ===
+// === Followed incidents — browser-local until an authenticated owner exists ===
 export function useFollowedIncidents() {
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/follow")
-      .then((r) => r.json())
-      .then((data) => {
-        setFollowedIds(new Set(data.incidentIds || []));
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    try {
+      const stored = window.localStorage.getItem("lumes.followed-incidents");
+      setFollowedIds(new Set(stored ? JSON.parse(stored) as string[] : []));
+    } catch {
+      setFollowedIds(new Set());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const toggleFollow = useCallback(async (incidentId: string) => {
@@ -599,28 +601,14 @@ export function useFollowedIncidents() {
       return next;
     });
 
+    const next = new Set(followedIds);
+    if (isFollowing) next.delete(incidentId);
+    else next.add(incidentId);
     try {
-      if (isFollowing) {
-        await fetch("/api/follow", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ incidentId }),
-        });
-      } else {
-        await fetch("/api/follow", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ incidentId }),
-        });
-      }
+      window.localStorage.setItem("lumes.followed-incidents", JSON.stringify([...next]));
     } catch {
-      // Revert on error
-      setFollowedIds((prev) => {
-        const next = new Set(prev);
-        if (isFollowing) next.add(incidentId);
-        else next.delete(incidentId);
-        return next;
-      });
+      // Browser storage can be unavailable in privacy mode; the optimistic
+      // in-memory state remains usable for the current session.
     }
   }, [followedIds]);
 

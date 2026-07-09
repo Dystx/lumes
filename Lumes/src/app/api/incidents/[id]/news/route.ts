@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { cached } from "@/lib/api/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,9 +24,6 @@ interface NewsItem {
   matched: boolean;
   matchedOn: string | null;
 }
-
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const cache = new Map<string, { ts: number; data: NewsItem[] }>();
 
 // Inline the fire-related detection to avoid importing the full RSS pipeline
 const FIRE_KEYWORDS = [
@@ -128,22 +126,10 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  // Check cache
-  const cached = cache.get(id);
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    return NextResponse.json({
-      incidentId: id,
-      count: cached.data.length,
-      items: cached.data,
-    });
-  }
-
   // Look up the incident in the DB to get location info
   let incident: any = null;
   try {
-    incident = await db.incident.findFirst({
-      where: { OR: [{ id }, { legacyId: id }] },
-    });
+    incident = await db.incident.findUnique({ where: { id } });
   } catch {
     // If DB is unavailable, try live incidents
   }
@@ -159,84 +145,85 @@ export async function GET(
     return NextResponse.json({ incidentId: id, count: 0, items: [] });
   }
 
-  // Fetch all RSS feeds
-  const allItems: Array<{
-    title: string;
-    source: string;
-    link: string;
-    description: string;
-    pubDate: string;
-  }> = [];
+  const items = await cached<NewsItem[]>(`incident-news-${id}`, 5 * 60 * 1000, async () => {
+    // Fetch all RSS feeds
+    const allItems: Array<{
+      title: string;
+      source: string;
+      link: string;
+      description: string;
+      pubDate: string;
+    }> = [];
 
-  for (const feed of RSS_FEEDS) {
-    try {
-      const r = await fetch(feed.url, {
-        signal: AbortSignal.timeout(8_000),
-        headers: { "User-Agent": "lumes.pt/0.1", Accept: "application/rss+xml" },
-      });
-      if (!r.ok) continue;
-      const xml = await r.text();
-      const items = parseRSS(xml);
-      for (const it of items) {
-        allItems.push({
-          title: it.title,
-          link: it.link,
-          source: feed.source,
-          description: it.description,
-          pubDate: it.pubDate,
+    for (const feed of RSS_FEEDS) {
+      try {
+        const r = await fetch(feed.url, {
+          signal: AbortSignal.timeout(8_000),
+          headers: { "User-Agent": "lumes.pt/0.1", Accept: "application/rss+xml" },
         });
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  // Filter for fire-related AND match to incident location
-  const matchedItems: NewsItem[] = [];
-  const seen = new Set<string>();
-
-  for (const it of allItems) {
-    if (!isFireRelated(it.title, it.description)) continue;
-    const blob = normalise(`${it.title} ${it.description}`);
-    let matchedOn: string | null = null;
-    for (const place of places) {
-      const np = normalise(place);
-      if (np.length < 4) continue;
-      if (blob.includes(np)) {
-        matchedOn = place;
-        break;
+        if (!r.ok) continue;
+        const xml = await r.text();
+        const rssItems = parseRSS(xml);
+        for (const it of rssItems) {
+          allItems.push({
+            title: it.title,
+            link: it.link,
+            source: feed.source,
+            description: it.description,
+            pubDate: it.pubDate,
+          });
+        }
+      } catch {
+        // ignore
       }
     }
-    if (!matchedOn) continue;
 
-    const key = it.link || it.title;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    // Filter for fire-related AND match to incident location
+    const matchedItems: NewsItem[] = [];
+    const seen = new Set<string>();
 
-    matchedItems.push({
-      id: `news-${id}-${it.link || it.title}`.slice(0, 200),
-      title: it.title,
-      source: it.source,
-      sourceUrl: it.link,
-      publishedAt: it.pubDate ? new Date(it.pubDate).toISOString() : new Date().toISOString(),
-      category: "press",
-      summary: it.description.slice(0, 200),
-      municipality: incident?.municipality ?? undefined,
-      district: incident?.district ?? undefined,
-      matched: true,
-      matchedOn,
-    });
+    for (const it of allItems) {
+      if (!isFireRelated(it.title, it.description)) continue;
+      const blob = normalise(`${it.title} ${it.description}`);
+      let matchedOn: string | null = null;
+      for (const place of places) {
+        const np = normalise(place);
+        if (np.length < 4) continue;
+        if (blob.includes(np)) {
+          matchedOn = place;
+          break;
+        }
+      }
+      if (!matchedOn) continue;
 
-    if (matchedItems.length >= 6) break;
-  }
+      const key = it.link || it.title;
+      if (seen.has(key)) continue;
+      seen.add(key);
 
-  matchedItems.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+      matchedItems.push({
+        id: `news-${id}-${it.link || it.title}`.slice(0, 200),
+        title: it.title,
+        source: it.source,
+        sourceUrl: it.link,
+        publishedAt: it.pubDate ? new Date(it.pubDate).toISOString() : new Date().toISOString(),
+        category: "press",
+        summary: it.description.slice(0, 200),
+        municipality: incident?.municipality ?? undefined,
+        district: incident?.district ?? undefined,
+        matched: true,
+        matchedOn,
+      });
 
-  cache.set(id, { ts: Date.now(), data: matchedItems });
+      if (matchedItems.length >= 6) break;
+    }
+
+    matchedItems.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    return matchedItems;
+  });
 
   return NextResponse.json({
     incidentId: id,
-    count: matchedItems.length,
-    items: matchedItems,
+    count: items.length,
+    items,
   });
 }

@@ -19,7 +19,6 @@ export default function ErrorPage({
 
   useEffect(() => {
     // Log to console — wire to Sentry / pino later
-    // eslint-disable-next-line no-console
     console.error("[lumes:error-boundary]", {
       message: error.message,
       digest: error.digest,

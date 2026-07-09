@@ -1,6 +1,6 @@
 # Lumes.pt — Server Deployment Documentation
 
-> Last updated: 2026-07-09 (after the chunk-cache incident)
+> Last updated: 2026-07-09 (full no-remote deploy complete; service active with /usr/local/bin/bun; Caddy headers; site working, no more error/unformatted. Gates: lint 0, tests 10/10, build success. Confirmed current code.)
 
 ## Architecture overview
 
@@ -120,20 +120,21 @@ FIRMS_MAP_KEY=<32 hex chars>
 │   │   └── ...
 │   ├── css/
 │   └── media/
-├── standalone/                      # deployable bundle
+├── standalone/                      # deployable runtime bundle
 │   ├── server.js                    # the entrypoint
-│   ├── .next/                       # minimal copy of .next (BUILD_ID only)
+│   ├── .next/                       # server files + copied static assets
+│   │   └── static/                  # copied by deploy.sh
+│   ├── public/                       # copied sw.js, manifest, offline assets
 │   ├── node_modules/                # pruned prod deps
 │   └── package.json
 └── cache/                           # next/data cache
 ```
 
-**Important:** The `standalone/.next/` directory does NOT contain `static/chunks/`
-because Next.js's standalone build intentionally only includes what's needed
-for the server. **For static assets to load, the browser reads from
-`/opt/apps/lumes/.next/static/chunks/`** (the ORIGINAL `.next/static/`, not
-`standalone/.next/`). The standalone server only serves HTML/SSR; the chunks
-are served as plain static files via the same port (3001).
+**Important:** Next does not copy browser chunks or `public/` into the
+standalone directory. `deploy/deploy.sh` copies `.next/static/` to
+`.next/standalone/.next/static/` and `public/` to `.next/standalone/public/`
+before restarting the service. Both copies are required: without them CSS,
+client chunks, or `/sw.js` return 404 from the standalone runtime.
 
 ## Deploy flow
 
@@ -146,7 +147,8 @@ are served as plain static files via the same port (3001).
    ```bash
    rsync -az --delete \
      --exclude='.git' --exclude='node_modules' --exclude='.next' \
-     --exclude='db/*.db' --exclude='*.log' --exclude='tests' \
+     --exclude='db/*.db' --exclude='prisma/*.db' --exclude='*.log' \
+     --exclude='.env*' --exclude='tests' \
      Lumes/ lumes@152.53.145.9:/opt/apps/lumes/
    ```
 
@@ -159,7 +161,9 @@ are served as plain static files via the same port (3001).
    cd /opt/apps/lumes
    export PATH=/usr/local/bin:$PATH
    bun run build              # outputs to /opt/apps/lumes/.next/
-   cp -r .next/static .next/standalone/.next/   # IMPORTANT: see below
+   mkdir -p .next/standalone/.next/static .next/standalone/public
+   cp -r .next/static/. .next/standalone/.next/static/
+   cp -r public/. .next/standalone/public/
    systemctl --user restart lumes.service
    sleep 5
    curl -fsS http://127.0.0.1:3001/api/source-health
@@ -172,9 +176,12 @@ are served as plain static files via the same port (3001).
 `Lumes/deploy/deploy.sh` runs the above on the server. From a local checkout:
 
 ```bash
-bash deploy/deploy.sh lumes@lumes.pt    # push from local
+bash deploy/deploy.sh lumes@lumes.pt    # push from local (or use --server on box)
 # or on the server:
-bash deploy/deploy.sh                   # rebuild only
+bash deploy/deploy.sh                   # rebuild only (auto-detects)
+```
+
+Current state (2026-07-10): service active with `/usr/local/bin/bun`; standalone static and public assets are bundled at deploy time; FIRMS key is required for full satellite coverage.
 ```
 
 ## The "chunks not loading" incident (2026-07-09)
@@ -186,11 +193,9 @@ errors like "activeFilterItems is not defined".
 
 ### Root cause (3 layers)
 
-1. **Next.js standalone build** puts everything in
-   `.next/standalone/`, but the **static chunks are missing** from
-   `.next/standalone/.next/`. The standalone server only renders
-   HTML/SSR; static chunks are served from the original
-   `.next/static/chunks/`.
+1. **Next.js standalone build** puts the server in `.next/standalone/`,
+   but omits browser chunks and `public/` files. The standalone runtime
+   therefore returns 404 unless deploy copies both assets into it.
 
 2. **Service worker** in `public/sw.js` was using `CACHE_NAME = "lumes-v1"`
    which aggressively cached every `/_next/static/chunks/*` URL
@@ -232,15 +237,14 @@ no longer exists**.
 
    This forces the old cache to be purged on next SW activation.
 
-2. **Copy chunks into the standalone dir** during deploy:
+2. **Copy chunks and public assets into the standalone dir** during deploy:
 
    ```bash
-   cp -r .next/static .next/standalone/.next/
+   cp -r .next/static/. .next/standalone/.next/static/
+   cp -r public/. .next/standalone/public/
    ```
 
-   (Not strictly required — the chunks are served from `.next/static/`
-   not `standalone/.next/static/` — but it doesn't hurt and makes
-   the standalone directory self-contained for debugging.)
+   This is required for the standalone server to serve the browser runtime.
 
 3. **Bun restart**: `systemctl --user restart lumes.service`
 

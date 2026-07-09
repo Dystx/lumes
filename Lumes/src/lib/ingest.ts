@@ -18,6 +18,13 @@
 
 import { persistIncidents } from "@/lib/persistence";
 import type { LiveIncident } from "@/lib/types";
+import {
+  ptDateToISO,
+  mapEventType,
+  mapIncidentStatus,
+  mapSeverity,
+  freshnessScore,
+} from "@/lib/incident";
 
 const ANEPC_FEATURE_SERVER =
   "https://services-eu1.arcgis.com/VlrHb7fn5ewYhX6y/arcgis/rest/services/OcorrenciasSite/FeatureServer/0/query";
@@ -65,69 +72,8 @@ export interface IngestResult {
   latencyMs: number;
 }
 
-function ptDateToISO(pt: string): string {
-  if (!pt) return new Date().toISOString();
-  const m = pt.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/);
-  if (!m) return new Date().toISOString();
-  return `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00Z`;
-}
-
-function mapEventType(rasi: string): LiveIncident["eventType"] {
-  if (!rasi) return "other";
-  if (rasi.includes("Rurais")) return "wildfire";
-  if (rasi.includes("Urbanos")) return "urban_fire";
-  if (rasi.includes("Outros Incêndios")) return "other_fire";
-  return "other";
-}
-
-function mapIncidentStatus(estadoAgrupado: string): LiveIncident["incidentStatus"] {
-  if (!estadoAgrupado) return "detected";
-  if (estadoAgrupado.includes("Despacho")) return "detected";
-  if (estadoAgrupado.includes("Curso")) return "active";
-  if (estadoAgrupado.includes("Resolu")) return "contained";
-  // "Em Conclusão" means "being concluded" — still active, not yet closed.
-  // Only fully terminated states (Encerrada / Encerrado / Falso Alarme) are resolved.
-  if (estadoAgrupado.includes("Encerrada") || estadoAgrupado.includes("Falso Alarme")) return "resolved";
-  if (estadoAgrupado.includes("Conclu")) return "contained"; // wrapping up, not yet closed
-  if (estadoAgrupado.includes("Vigil")) return "monitoring";
-  return "detected";
-}
-
-function mapSeverity(
-  personnelTotal: number,
-  assetsAerial: number,
-  eventType: LiveIncident["eventType"],
-  incidentStatus: LiveIncident["incidentStatus"]
-): LiveIncident["severity"] {
-  let peak: LiveIncident["severity"];
-  if (eventType === "wildfire") {
-    if (assetsAerial >= 2 || personnelTotal >= 30) peak = "critical";
-    else if (assetsAerial >= 1 || personnelTotal >= 15) peak = "high";
-    else if (personnelTotal >= 5) peak = "medium";
-    else peak = "low";
-  } else if (eventType === "urban_fire") {
-    if (personnelTotal >= 20) peak = "high";
-    else if (personnelTotal >= 8) peak = "medium";
-    else peak = "low";
-  } else {
-    peak = personnelTotal >= 15 ? "medium" : "low";
-  }
-
-  switch (incidentStatus) {
-    case "resolved":
-      return peak === "critical" ? "medium" : "low";
-    case "contained":
-    case "monitoring":
-      return peak === "critical" ? "high" : peak === "high" ? "medium" : "low";
-    default:
-      return peak;
-  }
-}
-
-function freshnessScore(observedAt: string): number {
-  const ageHr = (Date.now() - new Date(observedAt).getTime()) / 3_600_000;
-  return Math.max(0, 1 - ageHr / 24);
-}
+// ptDateToISO, mapEventType, mapIncidentStatus, mapSeverity, freshnessScore
+// are now imported from @/lib/incident (unified)
 
 function normalizeFeature(f: RawANepcFeature): LiveIncident {
   const p = f.properties;

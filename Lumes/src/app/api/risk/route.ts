@@ -6,6 +6,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { lookupCell } from "@/lib/biomass/synthetic-grid";
 import { fetchOpenMeteoWeather, computeRisk } from "@/lib/risk/composite";
 import { BIOMASS_PROFILES, type SpeciesGroup } from "@/lib/biomass/equations";
+import { clientKey, rateLimit } from "@/lib/api/rate-limit";
+import { logServerFailure } from "@/lib/observability";
+import { createDataStateMeta } from "@/lib/data-state";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,8 +17,12 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const lat = parseFloat(url.searchParams.get("lat") ?? "");
   const lon = parseFloat(url.searchParams.get("lon") ?? "");
-  if (Number.isNaN(lat) || Number.isNaN(lon)) {
-    return NextResponse.json({ error: "lat and lon required" }, { status: 400 });
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < 36.95 || lat > 42.15 || lon < -9.5 || lon > -6) {
+    return NextResponse.json({ error: "lat and lon must be finite Portugal coordinates" }, { status: 400 });
+  }
+  const rl = rateLimit(clientKey(req), { limit: 30 });
+  if (!rl.ok) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
   }
 
   const cell = lookupCell(
@@ -35,8 +42,9 @@ export async function GET(req: NextRequest) {
   try {
     weather = await fetchOpenMeteoWeather(lat, lon);
   } catch (err) {
+    logServerFailure("risk.fetch", err, { route: "/api/risk", retryable: true });
     return NextResponse.json(
-      { error: "weather unavailable", detail: err instanceof Error ? err.message : "unknown" },
+      { error: "Weather data is temporarily unavailable.", dataState: createDataStateMeta("retryable-error", "Weather source unavailable") },
       { status: 502 }
     );
   }
@@ -53,6 +61,7 @@ export async function GET(req: NextRequest) {
         tonsPerHectare: profile.tonsPerHectare,
       },
       risk: result,
+      dataState: createDataStateMeta("healthy", undefined, new Date().toISOString(), "open-meteo"),
     },
     {
       headers: {

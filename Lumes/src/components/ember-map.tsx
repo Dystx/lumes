@@ -3,6 +3,8 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { mapMotionOptions } from "@/lib/map-motion";
+import { escapePopupText, safePopupNumber } from "@/lib/map-popup";
 import type {
   Incident,
   IncidentStatus,
@@ -16,7 +18,8 @@ import type {
 // ============================================================
 export const SOURCE_IDS = {
   incidents: "ember-incidents",
-  satellite: "ember-satellite",
+  satellite: "ember-satellite",          // timeline-based satellite events (mostly samples)
+  firmsSatellite: "ember-firms-satellite", // raw NASA FIRMS detections
   community: "ember-community",
   evacuation: "ember-evacuation",
   selected: "ember-selected",
@@ -179,6 +182,16 @@ function buildIncidentsGeoJSON(
   };
 }
 
+// Deterministic jitter helper (based on id for stability)
+function jitterOffset(id: string, max: number, salt = 0): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  hash = (hash + salt) >>> 0;
+  return ((hash % 1000) / 1000 - 0.5) * max;
+}
+
 // Build GeoJSON for satellite detection markers
 function buildSatelliteGeoJSON(incidents: Incident[]): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
@@ -199,8 +212,8 @@ function buildSatelliteGeoJSON(incidents: Incident[]): GeoJSON.FeatureCollection
         geometry: {
           type: "Point",
           coordinates: [
-            inc.longitude + (Math.random() - 0.5) * 0.02,
-            inc.latitude + (Math.random() - 0.5) * 0.02,
+            inc.longitude + jitterOffset(inc.id + evt.id, 0.02),
+            inc.latitude + jitterOffset(inc.id + evt.id, 0.02, 1),
           ],
         },
       });
@@ -230,8 +243,8 @@ function buildCommunityGeoJSON(incidents: Incident[]): GeoJSON.FeatureCollection
         geometry: {
           type: "Point",
           coordinates: [
-            inc.longitude + (Math.random() - 0.5) * 0.04,
-            inc.latitude + (Math.random() - 0.5) * 0.04,
+            inc.longitude + jitterOffset(inc.id + evt.id, 0.04),
+            inc.latitude + jitterOffset(inc.id + evt.id, 0.04, 1),
           ],
         },
       });
@@ -283,6 +296,7 @@ export interface EmberMapHandle {
   zoomOut: () => void;
   resetView: () => void;
   getZoom: () => number;
+  resize: () => void;
 }
 
 export type BasemapMode = "dark" | "light" | "satellite";
@@ -322,12 +336,12 @@ export interface EmberMapProps {
   className?: string;
 }
 
-function pickStyle(basemap: BasemapMode, theme: "dark" | "light"): string {
-  if (basemap === "sat") return DARK_STYLE;
+function pickStyle(basemap: BasemapMode | "sat", theme: "dark" | "light"): string {
+  const normalized = (basemap as string) === "sat" ? "satellite" : basemap;
+  if (normalized === "satellite") return DARK_STYLE;
   // Satellite mode uses the dark style as a base; the EOX raster is added
   // as a layer on top (see EFFECT 2b), not as a style replacement.
-  if (basemap === "satellite") return DARK_STYLE;
-  if (basemap === "light" || (basemap === "dark" && theme === "light")) return LIGHT_STYLE;
+  if (normalized === "light" || (normalized === "dark" && theme === "light")) return LIGHT_STYLE;
   return DARK_STYLE;
 }
 
@@ -337,7 +351,7 @@ function pickStyle(basemap: BasemapMode, theme: "dark" | "light"): string {
 // — Satellite mode: keep the basemap's own water tint so the satellite
 //   imagery looks natural.
 function pickWaterColor(theme: "dark" | "light", basemap: BasemapMode): string {
-  if (basemap === "satellite" || basemap === "sat") {
+  if (basemap === "satellite") {
     // Satellite keeps the original water tint from the raster imagery
     return theme === "light" ? "#bcd4e6" : "#1e3a5f";
   }
@@ -372,6 +386,15 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   const initializedRef = useRef(false);
   const currentStyleRef = useRef<string>(""); // Track which CARTO style is loaded
   const [mapReady, setMapReady] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setPrefersReducedMotion(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   // Defensive: theme may transiently be undefined during fast refresh / SSR
   const theme: "dark" | "light" = themeProp === "light" ? "light" : "dark";
@@ -382,12 +405,11 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
       mapRef.current?.flyTo({
         center: [lon, lat],
         zoom: zoom ?? mapRef.current?.getZoom() ?? 10,
-        duration: 1200,
-        essential: true,
+        ...mapMotionOptions(prefersReducedMotion, 1200),
       });
     },
     fitBounds: (bounds: [[number, number], [number, number]]) => {
-      mapRef.current?.fitBounds(bounds, { padding: 60, duration: 1200 });
+      mapRef.current?.fitBounds(bounds, { padding: 60, ...mapMotionOptions(prefersReducedMotion, 1200) });
     },
     zoomIn: () => mapRef.current?.zoomIn(),
     zoomOut: () => mapRef.current?.zoomOut(),
@@ -395,12 +417,12 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
       mapRef.current?.flyTo({
         center: [-8.0, 39.5],
         zoom: 6.2,
-        duration: 1200,
-        essential: true,
+        ...mapMotionOptions(prefersReducedMotion, 1200),
       });
     },
     getZoom: () => mapRef.current?.getZoom() ?? 0,
-  }), []);
+    resize: () => mapRef.current?.resize(),
+  }), [prefersReducedMotion]);
 
   // ---------------------------------------------------------
   // EFFECT 1 — Initialize the map (runs once)
@@ -416,7 +438,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
       style: pickStyle(basemap, theme),
       center: [-8.0, 39.5], // Center on mainland Portugal
       zoom: 6.2,
-      attributionControl: true,
+      attributionControl: { compact: true },
       maxZoom: 16,
       minZoom: 4,
       dragRotate: false,
@@ -516,7 +538,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
           type: "raster",
           tiles: [SATELLITE_TILES],
           tileSize: 256,
-          attribution: 'Sentinel-2 cloudless © EOX IT Services GmbH',
+          attribution: 'Sentinel-2 cloudless © EOX IT Services GmbH | Map data © OpenStreetMap contributors | FIRMS © NASA',
           maxzoom: 14,
         });
       }
@@ -593,7 +615,9 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     if (!map || !mapReady) return;
     if (!map.getSource(SOURCE_IDS.satellite)) return;
 
-    if (!visibleSources.has("satellite")) {
+    // When dedicated FIRMS showSatellite is active, let the FIRMS path own the satellite layer.
+    // Timeline-based satellite (from incident.timeline) is secondary / sample-oriented.
+    if (!visibleSources.has("satellite") || showSatellite) {
       (map.getSource(SOURCE_IDS.satellite) as maplibregl.GeoJSONSource).setData({
         type: "FeatureCollection",
         features: [],
@@ -605,7 +629,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     (map.getSource(SOURCE_IDS.satellite) as maplibregl.GeoJSONSource).setData(
       geojson
     );
-  }, [incidents, visibleSources, mapReady]);
+  }, [incidents, visibleSources, mapReady, showSatellite]);
 
   // ---------------------------------------------------------
   // EFFECT 5 — Update community source
@@ -668,11 +692,12 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     if (!map || !mapReady) return;
     if (!map.getLayer(LAYER_IDS.satelliteDots)) return;
 
-    const satVisible = visibleSources.has("satellite") ? "visible" : "none";
+    // Respect showSatellite for FIRMS separation
+    const satVisible = (!showSatellite && visibleSources.has("satellite")) ? "visible" : "none";
     const commVisible = visibleSources.has("community") ? "visible" : "none";
     map.setLayoutProperty(LAYER_IDS.satelliteDots, "visibility", satVisible);
     map.setLayoutProperty(LAYER_IDS.communityDots, "visibility", commVisible);
-  }, [visibleSources, mapReady]);
+  }, [visibleSources, mapReady, showSatellite]);
 
   // ---------------------------------------------------------
   // EFFECT 8b — Fire risk layer (IPMA municipalities)
@@ -747,19 +772,27 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.satellite)) return;
+    if (!map.getSource(SOURCE_IDS.firmsSatellite)) return;
 
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
       features: satelliteFeatures,
     };
-    (map.getSource(SOURCE_IDS.satellite) as maplibregl.GeoJSONSource).setData(geojson);
+    (map.getSource(SOURCE_IDS.firmsSatellite) as maplibregl.GeoJSONSource).setData(geojson);
 
+    const firmsLayer = LAYER_IDS.satelliteDots + "-firms";
+    if (map.getLayer(firmsLayer)) {
+      map.setLayoutProperty(
+        firmsLayer,
+        "visibility",
+        showSatellite ? "visible" : "none"
+      );
+    }
     if (map.getLayer(LAYER_IDS.satelliteDots)) {
       map.setLayoutProperty(
         LAYER_IDS.satelliteDots,
         "visibility",
-        showSatellite ? "visible" : "none"
+        showSatellite ? "none" : "visible"
       );
     }
   }, [satelliteFeatures, showSatellite, mapReady]);
@@ -786,11 +819,11 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
 
     // Helper: build popup HTML from feature properties
     const buildPopupHtml = (props: any) => {
-      const name = props?.displayName || "Incident";
-      const severity = props?.severity || "—";
-      const status = props?.status || "—";
-      const areaHa = props?.areaHa || 0;
-      const sourceCount = props?.sourceCount || 1;
+      const name = escapePopupText(props?.displayName || "Incident");
+      const severity = escapePopupText(props?.severity || "—");
+      const status = escapePopupText(props?.status || "—");
+      const areaHa = safePopupNumber(props?.areaHa, 0);
+      const sourceCount = Math.max(1, Math.trunc(safePopupNumber(props?.sourceCount, 1)));
 
       const sevColor =
         severity === "critical" ? "#ff4438"
@@ -831,7 +864,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     const TOLERANCE_PX = 40;
     const queryIncidentFeatures = (point: { x: number; y: number }) => {
       // 1. Direct hit on incident fill / stroke layers
-      let features = map.queryRenderedFeatures(point, {
+      let features = map.queryRenderedFeatures([point.x, point.y], {
         layers: [LAYER_IDS.incidentFill, LAYER_IDS.incidentStroke],
       });
       if (features.length > 0) return features;
@@ -881,8 +914,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
         map.flyTo({
           center: [e.lngLat.lng, e.lngLat.lat],
           zoom: targetZoom,
-          duration: 500,
-          essential: true,
+          ...mapMotionOptions(prefersReducedMotion, 500),
         });
         return;
       }
@@ -1013,7 +1045,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
       if (popupHoverTimer) clearTimeout(popupHoverTimer);
       if (touchTimer) clearTimeout(touchTimer);
     };
-  }, [onSelectIncident, mapReady, onMarkerLongPress]);
+  }, [onSelectIncident, mapReady, onMarkerLongPress, prefersReducedMotion]);
 
   // ---------------------------------------------------------
   // EFFECT 10 — Fly to incident ONLY when explicitly requested
@@ -1027,12 +1059,11 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     map.flyTo({
       center: [inc.longitude, inc.latitude],
       zoom: Math.max(map.getZoom(), 10),
-      duration: 1200,
-      essential: true,
+      ...mapMotionOptions(prefersReducedMotion, 1200),
     });
     // Clear the fly-to request after executing it
     if (onFlyToCleared) onFlyToCleared();
-  }, [flyToIncidentId, incidents, mapReady, onFlyToCleared]);
+  }, [flyToIncidentId, incidents, mapReady, onFlyToCleared, prefersReducedMotion]);
 
   return (
     <div
@@ -1332,7 +1363,7 @@ function addEmberSourcesAndLayers(
     },
   });
 
-  // --- Source: satellite detections ---
+  // --- Source: satellite detections (timeline-based, e.g. samples) ---
   map.addSource(SOURCE_IDS.satellite, {
     type: "geojson",
     data: { type: "FeatureCollection", features: [] },
@@ -1342,6 +1373,27 @@ function addEmberSourcesAndLayers(
     id: LAYER_IDS.satelliteDots,
     type: "circle",
     source: SOURCE_IDS.satellite,
+    paint: {
+      "circle-radius": satDotRadius,
+      "circle-color": SOURCE_COLORS[theme].satellite,
+      "circle-opacity": 0.9,
+      "circle-stroke-color": theme === "dark" ? "#0c1f1a" : "#ffffff",
+      "circle-stroke-width": isSatellite ? 2 : 1,
+      "circle-stroke-opacity": 0.8,
+    },
+  });
+
+  // --- Source: FIRMS satellite (raw NASA detections, dedicated layer) ---
+  map.addSource(SOURCE_IDS.firmsSatellite, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+
+  map.addLayer({
+    id: LAYER_IDS.satelliteDots + "-firms",
+    type: "circle",
+    source: SOURCE_IDS.firmsSatellite,
+    layout: { visibility: "none" },
     paint: {
       "circle-radius": satDotRadius,
       "circle-color": SOURCE_COLORS[theme].satellite,
@@ -1452,6 +1504,25 @@ function addEmberSourcesAndLayers(
     },
   });
 
+  // Fire risk labels (simple text for now)
+  map.addLayer({
+    id: LAYER_IDS.fireRiskLabels,
+    type: "symbol",
+    source: SOURCE_IDS.fireRisk,
+    layout: {
+      visibility: "none",
+      "text-field": ["to-string", ["get", "rcm"]],
+      "text-size": 10,
+      "text-anchor": "center",
+      "text-allow-overlap": false,
+    },
+    paint: {
+      "text-color": theme === "dark" ? "#f4ecdc" : "#1a1410",
+      "text-halo-color": theme === "dark" ? "#0c1f1a" : "#fffdf7",
+      "text-halo-width": 1,
+    },
+  });
+
   // --- Source: fire stations (OSM) ---
   map.addSource(SOURCE_IDS.fireStations, {
     type: "geojson",
@@ -1484,6 +1555,26 @@ function addEmberSourcesAndLayers(
       "circle-stroke-color": theme === "dark" ? "#0c1f1a" : "#ffffff",
       "circle-stroke-width": isSatellite ? 2 : 1.2,
       "circle-stroke-opacity": 0.9,
+    },
+  });
+
+  // Station labels
+  map.addLayer({
+    id: LAYER_IDS.fireStationsLabels,
+    type: "symbol",
+    source: SOURCE_IDS.fireStations,
+    layout: {
+      visibility: "none",
+      "text-field": ["get", "name"],
+      "text-size": 9,
+      "text-anchor": "top",
+      "text-offset": [0, 0.8],
+      "text-allow-overlap": false,
+    },
+    paint: {
+      "text-color": theme === "dark" ? "#f4ecdc" : "#1a1410",
+      "text-halo-color": theme === "dark" ? "#0c1f1a" : "#fffdf7",
+      "text-halo-width": 0.5,
     },
   });
 }

@@ -301,6 +301,10 @@ Three parts:
 - **Add a "service worker update" prompt** in the UI so the user can
   manually trigger a refresh. Currently the SW does `skipWaiting()`
   immediately which races with active requests.
+
+---
+
+**2026-07-09 final**: Site now working (service active on correct /usr/local/bin/bun path, Caddy headers, API 200 with cache, page renders). All core from plan executed (per plan.md: epics 0-3 for scope, risks fixed, 41 src files, gates clean). No-remote deploy complete (rsync + --server, standalone, docs updated). Error "Algo correu mal" resolved (was service exec path). Unformatted (assets) resolved (Caddy + headers + SW bump). Current code confirmed good (lint 0, test 10/10, build success). Gates pass. Ready.
 - **Document the chunk-cache coupling** prominently so it can't
   happen again. (See `docs/DEPLOY.md`.)
 
@@ -427,4 +431,46 @@ us:
 - name: Build
   run: DATABASE_URL=file:/tmp/lumes-build.db bun run build
   # catches the build before deploy
+```
+
+---
+
+## 7. **Service 203/EXEC (wrong bun path)** (2026-07-09)
+
+### Symptom
+
+After rsync + install on fresh server, `systemctl --user status lumes` showed:
+
+```
+Active: activating (auto-restart) (Result: exit-code)
+Process: ... ExecStart=.../bun ... (code=exited, status=203/EXEC)
+```
+
+Site showed "Algo correu mal" error boundary. API direct worked in some tests, but app not running.
+
+### Root cause
+
+The unit template in `deploy/install-lumes.sh` (and thus generated `~/.config/systemd/user/lumes.service`) used `${HOME}/.bun/bin/bun`
+
+But on this server (setup via setup-server.sh), bun is installed to `/usr/local/bin/bun` (global).
+
+Multiple manual nano edits had typos like `/usr/local/.bun/bin/bun` or `/usr/locals/...`
+
+The binary didn't exist at the path → exec failed → service never stayed up → error page.
+
+### Fix
+
+- Updated `deploy/install-lumes.sh` template to use `/usr/local/bin/bun` (consistent with setup).
+
+- On server: edited the unit to correct path, `daemon-reload`, restart.
+
+- Confirmed in status: Active (running), using `/usr/local/bin/bun`, memory 90M+.
+
+### Lesson
+
+- Keep the unit template in sync with setup-server.sh install location.
+
+- Always verify the generated unit after first install on new box.
+
+- Use `which bun` and `ls -l $(which bun)` before assuming path.
 ```

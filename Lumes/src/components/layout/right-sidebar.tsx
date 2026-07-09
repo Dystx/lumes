@@ -10,13 +10,14 @@
 //
 // This is a major UX improvement over a fixed sidebar.
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Funnel, FileText, Newspaper, X } from "@/components/icons/phosphor-icons";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
+import { IconButton } from "@/components/ui/icon-button";
 
-export type RightSidebarTab = "filters" | "detail" | "news";
+export type RightSidebarTab = "explore" | "inspector" | "updates";
 
 export interface RightSidebarProps {
   filters: ReactNode;
@@ -46,19 +47,45 @@ export function RightSidebar({
 }: RightSidebarProps) {
   const { language: lang } = useLanguage();
   const [openTab, setOpenTab] = useState<RightSidebarTab | null>(defaultOpenTab);
+  const panelRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
 
-  // Auto-open detail tab when an incident is selected (if not already open)
+  // Auto-open detail tab when an incident is selected (if not already open).
+  // This is an intentional "prop change -> UI state" side effect (common for auto-opening panels).
   useEffect(() => {
-    if (selectedIncidentId && openTab !== "detail") {
-      setOpenTab("detail");
+    if (selectedIncidentId && openTab !== "inspector") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpenTab("inspector");
     }
-  }, [selectedIncidentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedIncidentId]);
 
   const hasDetail = !!detail;
   const hasNews = !!news;
   const isOpen = openTab !== null;
 
+  // The rail is a non-modal drawer, but it still owns focus while open and
+  // returns focus to the button that opened it. Escape is handled in capture
+  // phase so it wins over lower-priority page shortcuts/selected detail.
+  useEffect(() => {
+    if (!isOpen) {
+      openerRef.current?.focus();
+      return;
+    }
+    requestAnimationFrame(() => panelRef.current?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpenTab(null);
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [isOpen]);
+
   const handleTabClick = (tab: RightSidebarTab) => {
+    if (openTab === null) {
+      openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
     if (openTab === tab) {
       // Toggle off if same tab
       setOpenTab(null);
@@ -71,31 +98,31 @@ export function RightSidebar({
     <>
       {/* Slim rail - always visible */}
       <aside
-        className="hidden lg:flex flex-col items-center py-3 px-1.5 gap-2 bg-[var(--ember-surface)]/95 backdrop-blur-md border-l border-[var(--ember-border)] flex-shrink-0 z-20 w-12"
+        className="hidden xl:flex flex-col items-center py-3 px-1.5 gap-2 bg-[var(--ember-surface)]/95 backdrop-blur-md border-l border-[var(--ember-border)] flex-shrink-0 z-20 w-12"
         aria-label={lang === "pt" ? "Barra lateral" : "Side rail"}
       >
         <RailButton
-          icon={<Funnel size={20} weight={openTab === "filters" ? "fill" : "regular"} />}
-          label={t(lang, "tabs.filters")}
-          active={openTab === "filters"}
+          icon={<Funnel size={20} />}
+          label={lang === "pt" ? "Explorar" : "Explore"}
+          active={openTab === "explore"}
           badge={activeFilterCount}
-          onClick={() => handleTabClick("filters")}
+          onClick={() => handleTabClick("explore")}
         />
         {hasDetail && (
           <RailButton
-            icon={<FileText size={20} weight={openTab === "detail" ? "fill" : "regular"} />}
-            label={t(lang, "tabs.detail")}
-            active={openTab === "detail"}
+            icon={<FileText size={20} />}
+            label={lang === "pt" ? "Inspector" : "Inspector"}
+            active={openTab === "inspector"}
             badge={selectedIncidentId ? "●" : undefined}
-            onClick={() => handleTabClick("detail")}
+            onClick={() => handleTabClick("inspector")}
           />
         )}
         {hasNews && (
           <RailButton
-            icon={<Newspaper size={20} weight={openTab === "news" ? "fill" : "regular"} />}
-            label={t(lang, "tabs.news")}
-            active={openTab === "news"}
-            onClick={() => handleTabClick("news")}
+            icon={<Newspaper size={20} />}
+            label={lang === "pt" ? "Atualizações" : "Updates"}
+            active={openTab === "updates"}
+            onClick={() => handleTabClick("updates")}
           />
         )}
       </aside>
@@ -109,41 +136,44 @@ export function RightSidebar({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="hidden lg:flex flex-col absolute right-12 top-0 bottom-0 w-[360px] bg-[var(--ember-bg)] border-l border-[var(--ember-border)] z-30 shadow-[-8px_0_24px_rgba(0,0,0,0.3)]"
+            className="hidden xl:flex flex-col absolute right-12 top-0 bottom-0 w-[360px] bg-[var(--ember-bg)] border-l border-[var(--ember-border)] z-30 shadow-[-8px_0_24px_rgba(0,0,0,0.3)]"
+            ref={panelRef}
+            role="dialog"
+            aria-modal="false"
+            tabIndex={-1}
             aria-label={
-              openTab === "filters" ? t(lang, "tabs.filters") :
-              openTab === "detail" ? t(lang, "tabs.detail") :
-              t(lang, "tabs.news")
+              openTab === "explore" ? (lang === "pt" ? "Explorar" : "Explore") :
+              openTab === "inspector" ? "Inspector" :
+              (lang === "pt" ? "Atualizações" : "Updates")
             }
           >
             {/* Tab header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--ember-border)] flex-shrink-0">
               <div className="flex items-center gap-2">
-                {openTab === "filters" && <Funnel size={16} weight="bold" className="text-[var(--ember-accent)]" />}
-                {openTab === "detail" && <FileText size={16} weight="bold" className="text-[var(--ember-accent)]" />}
-                {openTab === "news" && <Newspaper size={16} weight="bold" className="text-[var(--ember-accent)]" />}
+                {openTab === "explore" && <Funnel size={16} className="text-[var(--ember-accent)]" />}
+                {openTab === "inspector" && <FileText size={16} className="text-[var(--ember-accent)]" />}
+                {openTab === "updates" && <Newspaper size={16} className="text-[var(--ember-accent)]" />}
                 <h2 className="text-sm font-semibold text-[var(--ember-text)]">
-                  {openTab === "filters" && t(lang, "tabs.filters")}
-                  {openTab === "detail" && t(lang, "tabs.detail")}
-                  {openTab === "news" && t(lang, "tabs.news")}
+                  {openTab === "explore" && (lang === "pt" ? "Explorar" : "Explore")}
+                  {openTab === "inspector" && "Inspector"}
+                  {openTab === "updates" && (lang === "pt" ? "Atualizações" : "Updates")}
                 </h2>
               </div>
-              <button
-                type="button"
+              <IconButton
                 onClick={() => setOpenTab(null)}
-                className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
-                aria-label={t(lang, "a11y.closePanel")}
+                className="min-h-9 min-w-9"
+                label={t(lang, "a11y.closePanel")}
               >
                 <X size={14} />
-              </button>
+              </IconButton>
             </div>
 
             {/* Tab content */}
             <div className="flex-1 min-h-0 overflow-hidden">
               <AnimatePresence mode="wait">
-                {openTab === "filters" && (
+                {openTab === "explore" && (
                   <motion.div
-                    key="filters"
+                    key="explore"
                     initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 8 }}
@@ -153,9 +183,9 @@ export function RightSidebar({
                     {filters}
                   </motion.div>
                 )}
-                {openTab === "detail" && detail && (
+                {openTab === "inspector" && detail && (
                   <motion.div
-                    key="detail"
+                    key="inspector"
                     initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 8 }}
@@ -165,9 +195,9 @@ export function RightSidebar({
                     {detail}
                   </motion.div>
                 )}
-                {openTab === "news" && news && (
+                {openTab === "updates" && news && (
                   <motion.div
-                    key="news"
+                    key="updates"
                     initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 8 }}
@@ -206,7 +236,7 @@ function RailButton({
       aria-pressed={active}
       aria-label={label}
       title={label}
-      className={`relative w-9 h-9 rounded-md flex items-center justify-center transition-colors ${
+      className={`relative h-11 w-11 rounded-md flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ember-accent)]/70 ${
         active
           ? "bg-[var(--ember-accent)] text-white"
           : "text-[var(--ember-text-faint)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)]"

@@ -58,6 +58,7 @@ export interface MergeResult {
 
 const PORTUGAL_BBOX: [number, number, number, number] = [-9.5, 36.95, -6.0, 42.15];
 const MAX_RADIUS_KM = 280; // ~250 km, rounded up
+const MAX_SUBQUERIES = 64;
 const fetcherTimeoutMs = 8_000;
 const metaFreshAt = () => new Date().toISOString();
 
@@ -168,6 +169,7 @@ function bboxSubQueries(
         Math.hypot((subLonMax - lon) / 2, (subLatMax - lat) / 2) * 111
       );
       out.push({ center: [cx, cy], radiusKm: rKm });
+      if (out.length > MAX_SUBQUERIES) return [];
     }
   }
   return out;

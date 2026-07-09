@@ -7,18 +7,17 @@ import { type Language, detectLanguage } from "@/lib/i18n";
 const STORAGE_KEY = "ember-language";
 
 export function useLanguage() {
+  // Start from a deterministic server/client value. Reading localStorage in
+  // the initial client render caused locale-dependent hydration failures.
   const [language, setLanguage] = useState<Language>("pt");
 
-  // Load saved language on mount
   useEffect(() => {
-    const saved = typeof window !== "undefined"
-      ? (localStorage.getItem(STORAGE_KEY) as Language | null)
-      : null;
-    if (saved === "pt" || saved === "en") {
-      setLanguage(saved);
-    } else {
-      setLanguage(detectLanguage());
-    }
+    const saved = localStorage.getItem(STORAGE_KEY) as Language | null;
+    const preferred = saved === "pt" || saved === "en" ? saved : detectLanguage();
+    // Defer the client preference until after hydration; this keeps the
+    // initial markup deterministic without a synchronous effect update.
+    const timer = window.setTimeout(() => setLanguage(preferred), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Persist + update <html lang>

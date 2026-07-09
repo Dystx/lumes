@@ -26,8 +26,11 @@ import { MobileFilterPill } from "./mobile-filter-pill";
 import { ActiveFilterChips, type ActiveFilter } from "./active-filter-chip";
 import { MapPeek, type PeekIncident } from "./map-peek";
 import { PullToRefresh } from "./pull-to-refresh";
+import { MOBILE_TABS, mobileTabLabel, type MobileTab } from "@/lib/mobile-navigation";
+import { trapFocus } from "@/lib/focus-trap";
+import type { DataTrustState } from "@/lib/data-trust";
 
-export type MobileTab = "map" | "live" | "layers" | "more";
+export type { MobileTab } from "@/lib/mobile-navigation";
 
 interface MobileViewProps {
   // Map content
@@ -38,6 +41,8 @@ interface MobileViewProps {
   sidebar: React.ReactNode;
   // More menu (notifications, history, report fire)
   more: React.ReactNode;
+  // Followed incidents, notification history, and urgent updates.
+  alerts: React.ReactNode;
   // Optional active tab controlled externally
   activeTab?: MobileTab;
   onTabChange?: (tab: MobileTab) => void;
@@ -69,21 +74,15 @@ interface MobileViewProps {
   onTapIncident?: (id: string) => void;
   // Last data refresh time (for "Updated Xs ago" indicator)
   lastUpdated?: Date | null;
+  dataTrust?: DataTrustState;
   // Pull-to-refresh callback (Live tab)
   onRefresh?: () => Promise<void> | void;
 }
 
-const TAB_LABELS: Record<MobileTab, string> = {
-  map: "Mapa",
-  live: "Incêndios",
-  layers: "Filtros",
-  more: "Mais",
-};
-
 const TAB_ICONS: Record<MobileTab, typeof MapIcon> = {
   map: EmberMapIcon,
-  live: EmberFlameIcon,
-  layers: EmberFilterIcon,
+  incidents: EmberFlameIcon,
+  alerts: Activity,
   more: EmberMoreIcon,
 };
 
@@ -92,6 +91,7 @@ export function MobileView({
   dashboard,
   sidebar,
   more,
+  alerts,
   activeTab: externalTab,
   onTabChange,
   incidentCount = 0,
@@ -112,27 +112,86 @@ export function MobileView({
   peekHigh,
   onTapIncident,
   lastUpdated,
+  dataTrust,
   onRefresh,
 }: MobileViewProps) {
   const [internalTab, setInternalTab] = useState<MobileTab>("map");
+  const [mapSheetExpanded, setMapSheetExpanded] = useState(false);
+  const [exploreOpen, setExploreOpen] = useState(false);
+  const exploreRef = useRef<HTMLElement>(null);
+  const exploreOpenerRef = useRef<HTMLElement | null>(null);
   const activeTab = externalTab ?? internalTab;
   const setActiveTab = (tab: MobileTab) => {
     if (onTabChange) onTabChange(tab);
     setInternalTab(tab);
+    if (tab !== "map") setMapSheetExpanded(false);
+    setExploreOpen(false);
+  };
+  const openExplore = () => {
+    exploreOpenerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setExploreOpen(true);
   };
 
-  // Sheet height per tab — peek for map, full for others
+  useEffect(() => {
+    if (!exploreOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setExploreOpen(false);
+        return;
+      }
+      if (exploreRef.current) trapFocus(exploreRef.current, event);
+    };
+    const focusTimer = requestAnimationFrame(() => {
+      exploreRef.current?.querySelector<HTMLElement>("button, input, select, [tabindex]:not([tabindex='-1'])")?.focus();
+    });
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      cancelAnimationFrame(focusTimer);
+      window.removeEventListener("keydown", onKeyDown, true);
+      exploreOpenerRef.current?.focus();
+    };
+  }, [exploreOpen]);
+
+  // The map starts with a one-row summary. It expands before rendering
+  // incident cards, avoiding the clipped 96px peek.
   const sheetHeightClass =
-    activeTab === "map" ? "h-24" : "h-[calc(100vh-3.5rem-3.5rem)]";
+    activeTab === "map"
+      ? (mapSheetExpanded ? "h-[52vh]" : "h-14")
+      : "h-[calc(100vh-3.5rem-3.5rem)]";
 
   return (
-    <div className="lg:hidden fixed inset-0 flex flex-col bg-[var(--ember-bg)] text-[var(--ember-text)]">
+    <div className="xl:hidden fixed inset-0 flex flex-col bg-transparent text-[var(--ember-text)]">
+      {/* Tablet toolbar: keep the map-first shell while replacing phone-only
+          bottom navigation with a compact, reachable top control row. */}
+      <div className="hidden md:flex xl:hidden absolute inset-x-0 top-0 z-20 items-center gap-1 border-b border-[var(--ember-border)] bg-[var(--ember-bg)]/90 px-3 py-2 backdrop-blur-md">
+        {MOBILE_TABS.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`min-h-11 rounded-md px-3 text-sm font-medium transition-colors ${activeTab === tab ? "bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)]" : "text-[var(--ember-text-muted)] hover:bg-[var(--ember-surface-2)]"}`}
+          >
+            {mobileTabLabel(tab, lang ?? "pt")}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={openExplore}
+          className="ml-auto min-h-11 rounded-md border border-[var(--ember-border)] px-3 text-sm font-medium text-[var(--ember-text-muted)] hover:bg-[var(--ember-surface-2)]"
+        >
+          {lang === "en" ? "Explore" : "Explorar"}
+        </button>
+      </div>
       {/* Map area (always rendered, opacity controlled by tab) */}
       <div
         className="absolute inset-0 z-0"
         style={{
           opacity: activeTab === "map" ? 1 : 0,
-          pointerEvents: activeTab === "map" ? "auto" : "none",
+          // The MapScene is shared underneath this chrome. Only explicit
+          // controls opt back into pointer events; the transparent surface
+          // must not intercept map gestures.
+          pointerEvents: "none",
           transition: "opacity 200ms",
         }}
         aria-hidden={activeTab !== "map"}
@@ -141,8 +200,8 @@ export function MobileView({
         {/* Mobile-only map overlays — FABs, attribution, legend */}
         {activeTab === "map" && (
           <>
-            <MobileAttribution count={incidentCount} onTap={() => setActiveTab("live")} />
-            <MobileFilterPill count={filterCount} onTap={() => setActiveTab("layers")} />
+            <MobileAttribution count={incidentCount} dataTrust={dataTrust} onTap={() => setActiveTab("incidents")} />
+            <MobileFilterPill count={filterCount} onTap={openExplore} />
             <MobileLegend
               lang={lang ?? "pt"}
               counts={severityCounts}
@@ -154,7 +213,8 @@ export function MobileView({
                 onZoomIn={onZoomIn ?? (() => {})}
                 onZoomOut={onZoomOut ?? (() => {})}
                 onLocate={onLocate ?? (() => {})}
-                onLayers={onLayers}
+                onLayers={onLayers ?? openExplore}
+                lang={lang}
               />
             )}
           </>
@@ -176,8 +236,10 @@ export function MobileView({
               high={peekHigh ?? 0}
               topIncidents={peekIncidents}
               onTapIncident={onTapIncident ?? (() => {})}
-              onExpand={() => setActiveTab("live")}
+              onExpand={() => setMapSheetExpanded(true)}
+              onViewIncidents={() => setActiveTab("incidents")}
               lastUpdated={lastUpdated}
+              compact={!mapSheetExpanded}
             />
           </div>
         )}
@@ -187,7 +249,7 @@ export function MobileView({
             onClick={() => setActiveTab("map")}
           />
         )}
-        {activeTab === "live" && (
+        {activeTab === "incidents" && (
           <PullToRefresh
             onRefresh={async () => {
               if (onRefresh) {
@@ -197,7 +259,7 @@ export function MobileView({
           >
             <div className="h-full overflow-y-auto ember-scroll">
               <SheetHeader
-                title="Incêndios Ativos"
+                title={(lang ?? "pt") === "pt" ? "Incêndios ativos" : "Active incidents"}
                 onClose={() => setActiveTab("map")}
               />
               {activeFilters.length > 0 && (
@@ -207,19 +269,19 @@ export function MobileView({
             </div>
           </PullToRefresh>
         )}
-        {activeTab === "layers" && (
+        {activeTab === "alerts" && (
           <div className="h-full overflow-y-auto ember-scroll">
             <SheetHeader
-              title="Filtros & Camadas"
+              title={(lang ?? "pt") === "pt" ? "Alertas" : "Alerts"}
               onClose={() => setActiveTab("map")}
             />
-            {sidebar}
+            {alerts}
           </div>
         )}
         {activeTab === "more" && (
           <div className="h-full overflow-y-auto ember-scroll">
             <SheetHeader
-              title="Mais"
+              title={(lang ?? "pt") === "pt" ? "Mais" : "More"}
               onClose={() => setActiveTab("map")}
             />
             {more}
@@ -227,13 +289,36 @@ export function MobileView({
         )}
       </BottomSheet>
 
+      <AnimatePresence>
+        {exploreOpen && (
+          <motion.section
+            ref={exploreRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={(lang ?? "pt") === "pt" ? "Explorar mapa" : "Explore map"}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-x-0 bottom-0 z-30 flex max-h-[92vh] flex-col rounded-t-2xl border-t border-[var(--ember-border)] bg-[var(--ember-bg)] shadow-[var(--ember-shadow-lg)] md:left-auto md:right-0 md:w-[min(28rem,calc(100vw-1rem))]"
+            style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+          >
+            <SheetHeader
+              title={(lang ?? "pt") === "pt" ? "Explorar" : "Explore"}
+              onClose={() => setExploreOpen(false)}
+            />
+            <div className="min-h-0 flex-1 overflow-y-auto ember-scroll">{sidebar}</div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
       {/* Bottom navigation */}
       <BottomNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
         incidentCount={incidentCount}
         criticalCount={criticalCount}
-        filterCount={filterCount}
+        lang={lang ?? "pt"}
       />
     </div>
   );
@@ -292,12 +377,12 @@ function SheetHandle({
 
 function SheetHeader({ title, onClose }: { title: string; onClose: () => void }) {
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-[var(--ember-bg)] border-b border-[var(--ember-border)]">
+    <div className="sticky top-0 z-10 flex min-h-14 items-center justify-between px-4 py-3 bg-[var(--ember-bg)] border-b border-[var(--ember-border)]">
       <h2 className="text-base font-semibold">{title}</h2>
       <button
         type="button"
         onClick={onClose}
-        className="w-9 h-9 -mr-2 flex items-center justify-center rounded-md text-[var(--ember-text-muted)] hover:bg-[var(--ember-surface-2)] hover:text-[var(--ember-text)] transition-colors"
+        className="w-11 h-11 -mr-2 flex items-center justify-center rounded-md text-[var(--ember-text-muted)] hover:bg-[var(--ember-surface-2)] hover:text-[var(--ember-text)] transition-colors"
         aria-label="Fechar"
       >
         <X className="w-5 h-5" />
@@ -339,7 +424,7 @@ function BottomSheet({
       <motion.div
         key={activeTab}
         ref={sheetRef}
-        drag="y"
+        drag={activeTab === "map" ? "y" : false}
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={{ top: 0, bottom: 0.5 }}
         onDragStart={() => setIsDragging(true)}
@@ -353,7 +438,7 @@ function BottomSheet({
             : { duration: 0.25, ease: [0.16, 1, 0.3, 1] }
         }
         style={{ y }}
-        className={`relative z-10 mt-auto bg-[var(--ember-bg)] border-t border-[var(--ember-border)] rounded-t-2xl shadow-[0_-8px_24px_rgba(0,0,0,0.3)] ${heightClass} flex flex-col transition-[height] duration-300 touch-none`}
+        className={`relative z-10 mt-auto bg-[var(--ember-bg)] border-t border-[var(--ember-border)] rounded-t-2xl shadow-[0_-8px_24px_rgba(0,0,0,0.3)] ${heightClass} flex flex-col transition-[height] duration-300`}
       >
         {/* Drag handle indicator (always visible) */}
         <div className="flex-shrink-0 flex justify-center pt-2 pb-1 cursor-grab active:cursor-grabbing">
@@ -370,27 +455,26 @@ function BottomNav({
   onTabChange,
   incidentCount,
   criticalCount,
-  filterCount,
+  lang,
 }: {
   activeTab: MobileTab;
   onTabChange: (tab: MobileTab) => void;
   incidentCount: number;
   criticalCount: number;
-  filterCount?: number;
+  lang: "pt" | "en";
 }) {
   return (
     <nav
-      className="relative z-20 grid grid-cols-4 bg-[var(--ember-bg)] border-t border-[var(--ember-border)]"
+      className="relative z-20 grid grid-cols-4 bg-[var(--ember-bg)] border-t border-[var(--ember-border)] md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-      aria-label="Navegação principal"
+      aria-label={lang === "pt" ? "Navegação principal" : "Primary navigation"}
     >
-      {(["map", "live", "layers", "more"] as MobileTab[]).map((tab) => {
+      {MOBILE_TABS.map((tab) => {
         const Icon = TAB_ICONS[tab];
         const isActive = activeTab === tab;
-        const label = TAB_LABELS[tab];
-        const showIncidentBadge = tab === "live" && incidentCount > 0;
-        const showCriticalBadge = tab === "live" && criticalCount > 0;
-        const showFilterBadge = tab === "layers" && (filterCount ?? 0) > 0;
+        const label = mobileTabLabel(tab, lang);
+        const showIncidentBadge = tab === "incidents" && incidentCount > 0;
+        const showCriticalBadge = tab === "incidents" && criticalCount > 0;
         return (
           <button
             key={tab}
@@ -398,7 +482,7 @@ function BottomNav({
             onClick={() => onTabChange(tab)}
             aria-current={isActive ? "page" : undefined}
             aria-label={label}
-            className={`relative flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+            className={`relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
               isActive
                 ? "text-[var(--ember-accent)]"
                 : "text-[var(--ember-text-faint)] hover:text-[var(--ember-text-muted)]"
@@ -414,14 +498,6 @@ function BottomNav({
               {showIncidentBadge && !showCriticalBadge && (
                 <span className="absolute -top-0.5 -right-1 min-w-[14px] h-[14px] px-1 rounded-full bg-[var(--ember-accent)] text-[var(--ember-bg)] text-[9px] font-bold flex items-center justify-center">
                   {incidentCount}
-                </span>
-              )}
-              {showFilterBadge && (
-                <span
-                  className="absolute -top-0.5 -right-1 min-w-[14px] h-[14px] px-1 rounded-full bg-[var(--ember-accent)] text-[var(--ember-bg)] text-[9px] font-bold flex items-center justify-center"
-                  aria-label={`${filterCount} filtros ativos`}
-                >
-                  {filterCount}
                 </span>
               )}
             </div>

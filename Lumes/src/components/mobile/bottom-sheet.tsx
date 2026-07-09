@@ -13,6 +13,7 @@
 
 import { useRef, useState, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
+import { trapFocus } from "@/lib/focus-trap";
 
 export interface BottomSheetProps {
   open: boolean;
@@ -47,16 +48,20 @@ export function BottomSheet({
   header,
 }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const y = useMotionValue(0);
   const [isDragging, setIsDragging] = useState(false);
 
   // Body scroll lock when open
   useEffect(() => {
     if (!open) return;
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const original = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    requestAnimationFrame(() => sheetRef.current?.focus());
     return () => {
       document.body.style.overflow = original;
+      openerRef.current?.focus();
     };
   }, [open]);
 
@@ -64,11 +69,11 @@ export function BottomSheet({
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (sheetRef.current) trapFocus(sheetRef.current, e);
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [open]);
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     setIsDragging(false);
@@ -92,7 +97,7 @@ export function BottomSheet({
       {open && (
         <motion.div
           key="bottom-sheet"
-          className="lg:hidden fixed inset-0"
+          className="xl:hidden fixed inset-0"
           style={{ zIndex, pointerEvents: "auto" }}
           role="dialog"
           aria-modal="true"
@@ -128,8 +133,9 @@ export function BottomSheet({
             dragElastic={{ top: 0, bottom: 0.6 }}
             onDragStart={() => setIsDragging(true)}
             onDragEnd={handleDragEnd}
-            style={{ y }}
-            className={`absolute inset-x-0 bottom-0 max-h-[${snapVh}vh] bg-[var(--ember-bg)] border-t border-[var(--ember-border)] rounded-t-xl shadow-[0_-8px_24px_rgba(0,0,0,0.3)] flex flex-col ${panelClassName}`}
+            style={{ y, maxHeight: `${snapVh}vh` }}
+            tabIndex={-1}
+            className={`absolute inset-x-0 bottom-0 bg-[var(--ember-bg)] border-t border-[var(--ember-border)] rounded-t-xl shadow-[0_-8px_24px_rgba(0,0,0,0.3)] flex flex-col outline-none ${panelClassName}`}
           >
             {/* Drag handle / header */}
             {header ?? (

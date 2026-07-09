@@ -1,10 +1,11 @@
 // Persistence stats — shows database health + incident counts
 import { NextResponse } from "next/server";
 import { getPersistenceStats } from "@/lib/persistence";
+import { cached } from "@/lib/api/cache";
 
 export async function GET() {
   try {
-    const stats = await getPersistenceStats();
+    const stats = await cached("persistence-stats", 60_000, getPersistenceStats);
     return NextResponse.json({
       ...stats,
       fetchedAt: new Date().toISOString(),

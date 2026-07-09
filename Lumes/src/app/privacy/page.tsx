@@ -10,6 +10,8 @@
 // This is a draft for review by a legal professional. Update the
 // contact email and the data-controller identity before going live.
 
+import { PublicPageShell } from "@/components/public/public-page-shell";
+
 export const metadata = {
   title: "Política de Privacidade — lumes.pt",
   description: "Como o lumes.pt recolhe, processa e protege os seus dados pessoais.",
@@ -18,9 +20,8 @@ export const metadata = {
 export default function PrivacyPage() {
   const lastUpdated = "2026-07-01";
   return (
-    <main className="min-h-screen bg-[var(--ember-bg)] text-[var(--ember-text)]">
-      <div className="max-w-3xl mx-auto px-4 py-10 prose prose-invert prose-zinc max-w-none">
-        <h1 className="text-2xl font-semibold mb-2">Política de Privacidade</h1>
+    <PublicPageShell title="Política de Privacidade">
+      <article className="max-w-[75ch] text-[var(--ember-text-muted)] leading-7 [&_h2]:text-[var(--ember-text)] [&_h2]:leading-tight [&_a]:text-[var(--ember-accent)] [&_a]:underline [&_strong]:text-[var(--ember-text)]">
         <p className="text-sm text-[var(--ember-text-faint)] mb-8">
           Última atualização: {lastUpdated}
         </p>
@@ -199,7 +200,7 @@ export default function PrivacyPage() {
           Este texto é um rascunho para revisão por profissional jurídico
           antes de publicação definitiva.
         </p>
-      </div>
-    </main>
+      </article>
+    </PublicPageShell>
   );
 }

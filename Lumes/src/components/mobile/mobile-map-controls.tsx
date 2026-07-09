@@ -12,6 +12,7 @@ interface MobileMapControlsProps {
   onZoomOut: () => void;
   onLocate: () => void;
   onLayers?: () => void;
+  lang?: "pt" | "en";
 }
 
 export function MobileMapControls({
@@ -19,7 +20,11 @@ export function MobileMapControls({
   onZoomOut,
   onLocate,
   onLayers,
+  lang = "pt",
 }: MobileMapControlsProps) {
+  const labels = lang === "pt"
+    ? { zoomIn: "Aumentar zoom", zoomOut: "Diminuir zoom", locate: "Centrar mapa", layers: "Explorar mapa" }
+    : { zoomIn: "Zoom in", zoomOut: "Zoom out", locate: "Center map", layers: "Explore map" };
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -28,17 +33,17 @@ export function MobileMapControls({
       className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 pointer-events-auto"
       aria-label="Map controls"
     >
-      <FabButton onClick={onZoomIn} ariaLabel="Zoom in">
+      <FabButton onClick={onZoomIn} ariaLabel={labels.zoomIn}>
         <Plus className="w-5 h-5" />
       </FabButton>
-      <FabButton onClick={onZoomOut} ariaLabel="Zoom out">
+      <FabButton onClick={onZoomOut} ariaLabel={labels.zoomOut}>
         <Minus className="w-5 h-5" />
       </FabButton>
-      <FabButton onClick={onLocate} ariaLabel="Locate me" className="mt-1">
+      <FabButton onClick={onLocate} ariaLabel={labels.locate} className="mt-1">
         <Locate className="w-5 h-5" />
       </FabButton>
       {onLayers && (
-        <FabButton onClick={onLayers} ariaLabel="Toggle layers" className="mt-1">
+        <FabButton onClick={onLayers} ariaLabel={labels.layers} className="mt-1">
           <LayersIcon className="w-5 h-5" />
         </FabButton>
       )}

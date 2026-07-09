@@ -49,9 +49,12 @@ function parseViewport(s: string): { width: number; height: number } {
 }
 
 const VIEWPORTS = [
-  { name: "mobile", w: "390x844" },   // iPhone 13
-  { name: "tablet", w: "810x1080" },  // iPad
-  { name: "desktop", w: "1440x900" }, // Desktop
+  { name: "small", w: "320x568" },
+  { name: "mobile", w: "390x844" },
+  { name: "tablet", w: "768x1024" },
+  { name: "landscape", w: "1024x768" },
+  { name: "desktop", w: "1280x800" },
+  { name: "wide", w: "1440x900" },
 ];
 
 const URLS = [

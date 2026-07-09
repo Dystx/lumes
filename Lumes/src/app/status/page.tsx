@@ -11,6 +11,7 @@
 //   - /api/source-health : individual upstream status
 
 import { Suspense } from "react";
+import { PublicPageShell } from "@/components/public/public-page-shell";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 30;
@@ -44,7 +45,7 @@ type SourceHealthEntry = {
 async function fetchJson<T>(url: string, fallback: T): Promise<T> {
   // We render the page inside Next.js; the absolute URL is constructed
   // from environment. For local dev this falls back to relative.
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "";
+  const base = process.env.NEXT_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || "3000"}`;
   try {
     const res = await fetch(`${base}${url}`, {
       cache: "no-store",
@@ -70,11 +71,11 @@ function formatTime(iso: string | null): string {
 
 function statusBadge(status: "ok" | "degraded" | "stale" | "error" | "fail") {
   const map: Record<string, { label: string; cls: string }> = {
-    ok: { label: "operacional", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
-    degraded: { label: "degradado", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
-    stale: { label: "dados parados", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
-    error: { label: "erro", cls: "bg-red-500/15 text-red-300 border-red-500/30" },
-    fail: { label: "erro", cls: "bg-red-500/15 text-red-300 border-red-500/30" },
+    ok: { label: "operacional", cls: "bg-[var(--ember-success-subtle)] text-[var(--ember-success)] border-[var(--ember-success)]/30" },
+    degraded: { label: "degradado", cls: "bg-[var(--ember-warning-subtle)] text-[var(--ember-warning)] border-[var(--ember-warning)]/30" },
+    stale: { label: "dados parados", cls: "bg-[var(--ember-warning-subtle)] text-[var(--ember-warning)] border-[var(--ember-warning)]/30" },
+    error: { label: "erro", cls: "bg-[var(--ember-critical-subtle)] text-[var(--ember-critical)] border-[var(--ember-critical)]/30" },
+    fail: { label: "erro", cls: "bg-[var(--ember-critical-subtle)] text-[var(--ember-critical)] border-[var(--ember-critical)]/30" },
   };
   const s = map[status] ?? { label: status, cls: "bg-[var(--ember-surface-2)] text-[var(--ember-text-muted)] border-[var(--ember-border)]" };
   return (
@@ -106,8 +107,8 @@ async function StatusCards() {
       <div
         className={`rounded-lg border p-4 ${
           overall === "ok"
-            ? "border-emerald-500/30 bg-emerald-500/10"
-            : "border-amber-500/30 bg-amber-500/10"
+            ? "border-[var(--ember-success)]/30 bg-[var(--ember-success-subtle)]"
+            : "border-[var(--ember-warning)]/30 bg-[var(--ember-warning-subtle)]"
         }`}
       >
         <div className="flex items-center justify-between">
@@ -137,8 +138,10 @@ async function StatusCards() {
         <h2 className="text-sm font-medium text-[var(--ember-text-muted)] uppercase tracking-wider mb-2">
           Fontes de dados
         </h2>
-        <div className="rounded-lg border border-[var(--ember-border)] divide-y divide-zinc-800">
-          {sources.sources.map((s) => (
+        <div className="rounded-lg border border-[var(--ember-border)] divide-y divide-[var(--ember-border)]">
+          {sources.sources.length === 0 ? (
+            <p className="px-4 py-5 text-sm text-[var(--ember-text-muted)]">Não foi possível confirmar o estado das fontes neste momento.</p>
+          ) : sources.sources.map((s) => (
             <div key={s.sourceId} className="p-3 flex items-center justify-between text-sm">
               <div className="flex items-center gap-3">
                 {statusBadge(s.status)}
@@ -154,14 +157,9 @@ async function StatusCards() {
         </div>
       </div>
 
-      {/* Operator note */}
-      <div className="text-xs text-[var(--ember-text-faint)] border-t border-[var(--ember-border)] pt-4">
-        Para operadores: ver{" "}
-        <a href="/docs/RUNBOOK.md" className="underline hover:text-[var(--ember-text-muted)]">
-          docs/RUNBOOK.md
-        </a>{" "}
-        no repositório para o manual operacional completo.
-      </div>
+      <p className="border-t border-[var(--ember-border)] pt-4 text-xs text-[var(--ember-text-faint)]">
+        O estado degradado significa que os dados podem estar incompletos. Confirme sempre junto das autoridades locais em caso de emergência.
+      </p>
     </div>
   );
 }
@@ -177,24 +175,15 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 export default function StatusPage() {
   return (
-    <main className="min-h-screen bg-[var(--ember-bg)] text-[var(--ember-text)]">
-      <div className="max-w-3xl mx-auto px-4 py-10">
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-1">
-            <span className="text-2xl">🟢</span>
-            <h1 className="text-xl font-semibold">lumes.pt — Estado do serviço</h1>
-          </div>
-          <p className="text-sm text-[var(--ember-text-muted)]">
-            Esta página mostra se o site está a funcionar, e — quando
-            alguma fonte de dados está parada — qual delas.
-          </p>
-        </header>
-
+    <PublicPageShell
+      title="Estado do serviço"
+      description="Veja se o lumes.pt está operacional e se as fontes de dados estão atualizadas."
+    >
+      <div className="max-w-3xl">
         <Suspense fallback={<div className="text-[var(--ember-text-faint)]">A carregar…</div>}>
-          {/* @ts-expect-error Async Server Component */}
           <StatusCards />
         </Suspense>
       </div>
-    </main>
+    </PublicPageShell>
   );
 }

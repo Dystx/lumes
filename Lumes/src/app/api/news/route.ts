@@ -15,12 +15,10 @@
 // Caching: 5 minutes (matches /api/incidents TTL loosely).
 
 import { NextResponse } from "next/server";
+import { cached } from "@/lib/api/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const CACHE_TTL_MS = 5 * 60 * 1000;
-let cache: { ts: number; data: unknown } | null = null;
 
 interface NewsItem {
   id: string;
@@ -456,34 +454,29 @@ function crossMatch(
 }
 
 export async function GET() {
-  if (cache && Date.now() - cache.ts < CACHE_TTL_MS) {
-    return NextResponse.json(
-      { ...(cache.data as object), cached: true, cacheAge: Math.round((Date.now() - cache.ts) / 1000) },
-      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
-    );
-  }
-  const [pressNews, incidentResult] = await Promise.all([
-    loadPressNews(),
-    loadIncidentNews(),
-  ]);
-  const { matched, unmatchedPlaces } = crossMatch(pressNews, incidentResult.places);
-  const data = {
-    source: "lumes-curated",
-    fetchedAt: new Date().toISOString(),
-    matched,
-    incidents: incidentResult.items,
-    press: pressNews.filter((p) => !matched.some((m) => m.id === p.id)).slice(0, 6),
-    sources: OFFICIAL_SOURCES,
-    placesTracked: incidentResult.places,
-    placesMatched: unmatchedPlaces,
-    counts: {
-      matched: matched.length,
-      incidents: incidentResult.items.length,
-      press: pressNews.length,
-      sources: OFFICIAL_SOURCES.length,
-    },
-  };
-  cache = { ts: Date.now(), data };
+  const data = await cached("news", 5 * 60 * 1000, async () => {
+    const [pressNews, incidentResult] = await Promise.all([
+      loadPressNews(),
+      loadIncidentNews(),
+    ]);
+    const { matched, unmatchedPlaces } = crossMatch(pressNews, incidentResult.places);
+    return {
+      source: "lumes-curated",
+      fetchedAt: new Date().toISOString(),
+      matched,
+      incidents: incidentResult.items,
+      press: pressNews.filter((p) => !matched.some((m) => m.id === p.id)).slice(0, 6),
+      sources: OFFICIAL_SOURCES,
+      placesTracked: incidentResult.places,
+      placesMatched: unmatchedPlaces,
+      counts: {
+        matched: matched.length,
+        incidents: incidentResult.items.length,
+        press: pressNews.length,
+        sources: OFFICIAL_SOURCES.length,
+      },
+    };
+  });
   return NextResponse.json(data, {
     headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
   });

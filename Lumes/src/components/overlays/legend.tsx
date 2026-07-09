@@ -95,6 +95,7 @@ export function CollapsibleLegend({ lang }: { lang: Language }) {
                     {t(lang, "legend.evacuation")}
                   </span>
                 </div>
+                <div className="pt-1 text-[9px] text-[var(--ember-text-faint)]">{t(lang, "legend.synthetic")}</div>
               </div>
 
               {/* Fire Risk legend */}

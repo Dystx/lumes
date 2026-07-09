@@ -14,12 +14,11 @@ import { db } from "@/lib/db";
 import { getSyntheticBiomassGrid, lookupCell } from "@/lib/biomass/synthetic-grid";
 import { BIOMASS_PROFILES, type SpeciesGroup } from "@/lib/biomass/equations";
 import { fetchOpenMeteoWeather, computeRisk, type WeatherSnapshot } from "@/lib/risk/composite";
+import { cached } from "@/lib/api/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const cache = new Map<string, { ts: number; payload: Record<string, unknown> }>();
 const MAX_IDS = 200;
 
 interface RiskResponse {
@@ -32,9 +31,9 @@ interface RiskResponse {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const body = await req.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;
   const idsRaw = Array.isArray(body.incidentIds) ? body.incidentIds : [];
-  const ids = Array.from(
+  const ids: string[] = Array.from(
     new Set(
       idsRaw
         .filter((x): x is string => typeof x === "string")
@@ -43,27 +42,6 @@ export async function POST(req: NextRequest) {
   );
   if (ids.length === 0) {
     return NextResponse.json({ risks: {}, fetchedAt: new Date().toISOString() });
-  }
-
-  // Cheap cache hit if all ids are recent.
-  const allFresh = ids.every((id) => {
-    const c = cache.get(id);
-    return c && Date.now() - c.ts < CACHE_TTL_MS;
-  });
-  if (allFresh) {
-    const out: Record<string, unknown> = {};
-    for (const id of ids) {
-      const c = cache.get(id);
-      if (c) out[id] = c.payload[id];
-    }
-    return NextResponse.json(
-      { risks: out, fetchedAt: new Date().toISOString(), cacheHit: true },
-      {
-        headers: {
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-        },
-      }
-    );
   }
 
   const incidents = await db.incident.findMany({
@@ -85,50 +63,43 @@ export async function POST(req: NextRequest) {
 
   const outcomes = await Promise.all(
     incidents.map(async (inc): Promise<[string, RiskResponse | null]> => {
-      const cell = lookupCell(cells, inc.latitude, inc.longitude);
-      if (!cell) {
-        return [inc.id, {
-          score: 0, category: "low",
-          ignition: 0, intensity: 0,
-          biomassProfile: "no_data",
-          dataQuality: "no_biomass" as const,
-        }];
-      }
-      const profile = BIOMASS_PROFILES[cell.dominantSpecies];
-      const weather = await getWeather(inc.latitude, inc.longitude);
-      if (!weather) {
-        return [inc.id, {
-          score: 0, category: "low",
-          ignition: 0, intensity: 0,
+      const risk = await cached<RiskResponse>(`inc-risk-${inc.id}`, 5 * 60 * 1000, async () => {
+        const cell = lookupCell(cells, inc.latitude, inc.longitude);
+        if (!cell) {
+          return {
+            score: 0, category: "low",
+            ignition: 0, intensity: 0,
+            biomassProfile: "no_data",
+            dataQuality: "no_biomass" as const,
+          };
+        }
+        const profile = BIOMASS_PROFILES[cell.dominantSpecies];
+        const weather = await getWeather(inc.latitude, inc.longitude);
+        if (!weather) {
+          return {
+            score: 0, category: "low",
+            ignition: 0, intensity: 0,
+            biomassProfile: cell.dominantSpecies,
+            dataQuality: "no_weather" as const,
+          };
+        }
+        const r = computeRisk({ biomass: profile, weather });
+        return {
+          score: r.score,
+          category: r.category,
+          ignition: r.ignitionLikelihood,
+          intensity: r.intensityPotential,
           biomassProfile: cell.dominantSpecies,
-          dataQuality: "no_weather" as const,
-        }];
-      }
-      const r = computeRisk({ biomass: profile, weather });
-      return [inc.id, {
-        score: r.score,
-        category: r.category,
-        ignition: r.ignitionLikelihood,
-        intensity: r.intensityPotential,
-        biomassProfile: cell.dominantSpecies,
-        dataQuality: "ok" as const,
-      }];
+          dataQuality: "ok" as const,
+        };
+      });
+      return [inc.id, risk];
     }),
   );
 
   const risks = Object.fromEntries(
     outcomes.filter(([, r]) => r !== null),
   ) as Record<string, RiskResponse>;
-
-  // Update cache.
-  for (const [id, risk] of outcomes) {
-    if (risk) {
-      const entry = cache.get(id) ?? { ts: 0, payload: {} };
-      entry.payload[id] = risk;
-      entry.ts = Date.now();
-      cache.set(id, entry);
-    }
-  }
 
   return NextResponse.json(
     { risks, fetchedAt: new Date().toISOString() },

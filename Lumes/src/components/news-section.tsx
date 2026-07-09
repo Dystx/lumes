@@ -11,7 +11,7 @@
 
 import { useState } from "react";
 import { ExternalLink, Flame, Newspaper, Radio, Sparkles, X } from "@/components/icons/phosphor-icons";
-import { useNews } from "@/lib/use-live-data";
+import { useNewsNew } from "@/lib/use-app-data";
 import { t, type Language } from "@/lib/i18n";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -41,7 +41,7 @@ function relTime(iso: string, lang: Language): string {
 }
 
 export default function NewsSection({ lang }: { lang: Language }) {
-  const news = useNews();
+  const news = useNewsNew();
   const data = news.data;
   const [tab, setTab] = useState<"matched" | "press" | "sources">("matched");
 
@@ -62,12 +62,12 @@ export default function NewsSection({ lang }: { lang: Language }) {
       : sources;
 
   return (
-    <div className="px-4 py-3 border-b border-[var(--ember-border)]">
+    <div className="flex flex-col h-full px-4 py-4 border-b border-[var(--ember-border)]">
       {/* Header — centered title with item count */}
-      <div className="text-center mb-2.5">
+      <div className="text-center mb-2.5 flex-shrink-0">
         <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center justify-center gap-1.5">
           <Newspaper className="w-3 h-3" />
-          <span>{lang === "pt" ? "Notícias" : "News"}</span>
+          <span className="text-[15px] font-semibold text-[var(--ember-text)]">{lang === "pt" ? "Notícias" : "News"}</span>
           <span className="text-[9px] tabular-nums opacity-70">
             ({news.loading ? "…" : data
               ? data.counts.matched + data.counts.incidents + data.counts.press
@@ -77,7 +77,7 @@ export default function NewsSection({ lang }: { lang: Language }) {
       </div>
 
       {/* Tabs — centered row */}
-      <div className="flex items-center justify-center gap-1 mb-3">
+      <div className="flex items-center justify-center gap-1 mb-3 flex-shrink-0">
         {(
           [
             { v: "matched", label: lang === "pt" ? "Combinadas" : "Matched", count: matched.length + incidents.length, badge: matched.length > 0 },
@@ -97,7 +97,7 @@ export default function NewsSection({ lang }: { lang: Language }) {
           >
             <span>{t2.label}</span>
             <span className="font-mono tabular-nums">{t2.count}</span>
-            {t2.badge && (
+            {"badge" in t2 && t2.badge && (
               <span className="w-1 h-1 rounded-full bg-[var(--ember-accent)] animate-pulse" />
             )}
           </button>
@@ -105,7 +105,7 @@ export default function NewsSection({ lang }: { lang: Language }) {
       </div>
 
       {/* Items */}
-      <div className="space-y-1.5 max-h-80 overflow-y-auto ember-scroll pr-1">
+      <div className="flex-1 min-h-0 space-y-1.5 overflow-y-auto ember-scroll pr-1">
         {items.length === 0 ? (
           <EmptyState
             variant="no-news"

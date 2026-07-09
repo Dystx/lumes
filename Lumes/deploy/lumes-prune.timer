@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily DB prune for lumes.pt
+Documentation=https://lumes.pt/docs/REFACTOR-PLAN.md#task-g
+
+[Timer]
+# Run at 04:17 daily (offset from ingest at 04:15 to avoid races)
+OnCalendar=*-*-* 04:17:00
+# Run 5 minutes after boot in case we missed a window
+Persistent=true
+OnBootSec=5min
+
+[Install]
+WantedBy=timers.target

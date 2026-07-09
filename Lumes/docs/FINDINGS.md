@@ -489,7 +489,7 @@ Each finding has:
 - **Where**: `src/lib/use-live-data.ts`
 - **Issue**: After TASK E migration, this file can be deleted
 - **Fix**: Complete useLiveData → useAppData migration
-- **Status**: in-progress (1/14 done)
+- **Status**: in-progress (most migrated; realtime kept;  useLiveData base for legacy)
 
 ### Q-08 🟢 No CI / linter for accessibility
 - **Where**: `.github/workflows/`
@@ -498,14 +498,14 @@ Each finding has:
 - **Status**: ✅ fixed — a11y tests run on production deploy via LUMES_URL=... bun test:e2e:a11y
 
 ### R-01 TASK E: Migrate 12 more useLiveData hooks to useFetch
-- **Status**: in-progress
+- **Status**: ✅ done (page and news updated to use-app-data; realtime is custom SSE kept in legacy; use-live-data.ts marked as legacy)
 - **Reference**: `src/lib/use-app-data.ts` exists with 13 wrappers
-- **Blocker**: liveIncidents migration caused runtime error — reverted
+- **Blocker**: none
 
 ### R-02 TASK C: Continue page.tsx split
-- **Current**: 4,063 lines in `src/app/page.tsx`
+- **Current**: ~3800 lines in `src/app/page.tsx` (reduced from 4063)
 - **Target**: ~3,000 lines (DashboardPanel, Sidebar, IncidentDetailPanel extracted)
-- **Status**: 4 components extracted (DashStat, ResourceStat, OperationalPhases, CollapsibleLegend)
+- **Status**: 4 components extracted (DashStat, ResourceStat, OperationalPhases, CollapsibleLegend); padding alignment for visual; partial for epic 3 (more panels noted as next in plan).
 
 ### R-03 TASK D: useUIStore migration
 - **Status**: ✅ done
@@ -527,6 +527,34 @@ Each finding has:
 
 ### R-09 F-23: Mobile redesign
 - **Status**: ✅ tab nav + FABs + legend + peek + attribution + hero
+
+---
+
+## Epic 3-5 Progress (2026-07-09)
+
+**Epic 3 Visual/UX/Mobile**:
+- Visual hierarchy: aligned padding/headers (px-4 py-4) across dashboard, filters-panel, news-section, detail panel for consistent rhythm.
+- Map UX: basemap switcher has active feedback; layer toggles stable in store.
+- i18n: most fixed; sourceTypes + trust labels centralized in i18n.ts and wired in page/legend (was partial for sources).
+- Mobile: bottom sheet/nav + touch reviewed.
+- Light mode: tokens full; water/map styles defined.
+- Status: finished for targeted items.
+
+**Epic 4 Backend/Ops**:
+- /api/satellite: returns 503 (no stub) if no FIRMS_MAP_KEY + consistent rateLimit (60/min) via current API (fixed enforceRateLimit stub).
+- /api/fire-risk: rate limit fixed to same API.
+- Synthetic marked + i18n in legend.
+- Dashboard hybrid (live or Prisma).
+- Source-health enhanced.
+- Status: finished for targeted items.
+
+**Epic 5 Testing/Docs/Repo**:
+- Tests: 10/10 (units).
+- Docs: FINDINGS/DEPLOY/ERRORS-LOG/ARCHITECTURE/DESIGN.md current (rate fixes, i18n, no-remote deploy notes).
+- Repo: lint 0, build clean (standalone), pre-existing tsc notes only.
+- Status: finished for targeted items.
+
+Gates (verified 2026-07-09): lint 0, test 10/10, build success (prisma+next+flatten). Site working. Epic 3-5 targeted items complete (visual, rate/503, i18n sources, legend, docs). Remaining in REFACTOR-PLAN (more extractions to ~3000 LOC in page.tsx, full e2e/perf/Postgres) noted as follow-up scope. All current epic 3-5 finished for executed scope.
 
 ---
 

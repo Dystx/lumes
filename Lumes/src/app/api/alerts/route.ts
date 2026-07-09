@@ -4,27 +4,18 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { alertSubscribeSchema, followSchema, validateBody } from "@/lib/api/schemas";
 import { rateLimit, clientKey } from "@/lib/api/rate-limit";
 import { assertSafeOrigin } from "@/lib/api/csrf";
+import { createDataStateMeta } from "@/lib/data-state";
+
+const ALERTS_UNAVAILABLE = "Personal alerts are unavailable until an account owner can be verified.";
 
 // GET — list all alert subscriptions
 export async function GET() {
-  try {
-    const subscriptions = await db.alertSubscription.findMany({
-      where: { active: true },
-      orderBy: { createdAt: "desc" },
-    });
-    return NextResponse.json({
-      count: subscriptions.length,
-      subscriptions,
-    });
-  } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err), count: 0, subscriptions: [] },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { error: ALERTS_UNAVAILABLE, count: 0, subscriptions: [], dataState: createDataStateMeta("retryable-error", "Alert ownership is not configured") },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 // POST — create a new alert subscription
@@ -42,32 +33,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  try {
-    // F-24 — zod validation
-    const body = await request.json().catch(() => ({} as Record<string, unknown>));
-    const v = validateBody(alertSubscribeSchema, body);
-    if (!v.ok) {
-      return NextResponse.json({ error: v.error }, { status: 400 });
-    }
-    const data = v.data;
-
-    const sub = await db.alertSubscription.create({
-      data: {
-        name: data.topic,
-        latitude: 0, // alertSubscribeSchema doesn't include lat/lon — future enhancement
-        longitude: 0,
-        radiusKm: 10,
-        alertTypes: data.minSeverity,
-      },
-    });
-
-    return NextResponse.json({ ok: true, subscription: sub }, { status: 201 });
-  } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { error: ALERTS_UNAVAILABLE, dataState: createDataStateMeta("retryable-error", "Alert ownership is not configured") },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 // DELETE — remove an alert subscription
@@ -85,27 +54,10 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  try {
-    // F-24 — zod validation (reuse followSchema since it has the same shape)
-    const body = await request.json().catch(() => ({} as Record<string, unknown>));
-    const v = validateBody(followSchema, body);
-    if (!v.ok) {
-      return NextResponse.json({ error: v.error }, { status: 400 });
-    }
-    const { incidentId: id } = v.data;
-    if (!id) {
-      return NextResponse.json({ error: "id required" }, { status: 400 });
-    }
-
-    await db.alertSubscription.delete({ where: { id } }).catch(() => {});
-
-    return NextResponse.json({ ok: true });
-  } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { error: ALERTS_UNAVAILABLE, dataState: createDataStateMeta("retryable-error", "Alert ownership is not configured") },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 // Helper: check if a new incident triggers any alert subscriptions

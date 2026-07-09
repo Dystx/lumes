@@ -1,22 +1,38 @@
 // useUIStore — central UI state (filters, layers, modals, selection).
 //
 // TASK D (refactor plan): Extract 30+ useState hooks from page.tsx.
-// Data fetching state stays in useLiveData (in /lib/use-live-data.ts).
+// Data fetching state uses useAppData (in /lib/use-app-data.ts); use-live-data.ts is legacy for realtime/SSE and some helpers.
 //
 // All setter functions are exposed as actions. This replaces prop
 // drilling and useState/UseEffect sprawl.
 
 import { create } from "zustand";
-import type { BasemapMode } from "@/lib/types";
-
-type MobileTab = "map" | "live" | "layers" | "more";
+import { ALL_SEVERITIES, type IncidentFilterState, type ResourceFilter } from "@/lib/incident-filters";
+import type { BasemapMode, SourceType, Severity as IncidentSeverity } from "@/lib/types";
+import type { MobileTab } from "@/lib/mobile-navigation";
+import { closeOverlay, closeTopOverlay, openOverlay } from "@/lib/overlay-stack";
 
 export type IncidentSort = "recent" | "severity" | "area" | "personnel";
 export type QuickFilter = "all" | "critical" | "high" | "active";
-export type Severity = "critical" | "high" | "medium" | "low";
-export type SourceType = "satellite" | "official" | "community" | "news";
+export type Severity = IncidentSeverity;
+export type { ActiveFilter, IncidentFilterState, ResourceFilter } from "@/lib/incident-filters";
 
-interface UIState {
+/** Display state is intentionally separate from incident query state. */
+export interface MapDisplayState {
+  basemap: BasemapMode;
+  visibleSources: ReadonlySet<SourceType>;
+  fireRiskFilter: number | null;
+  showFireRisk: boolean;
+  showFireStations: boolean;
+  showSatellite: boolean;
+  showAerial: boolean;
+  showBiomass: boolean;
+  showCompositeRisk: boolean;
+}
+
+export type OverlayId = "notifications" | "history" | "report" | "help" | "shortcuts" | "mobile-sidebar";
+
+export interface UIState {
   // ─── Map / basemap ───
   basemap: BasemapMode;
   setBasemap: (b: BasemapMode) => void;
@@ -38,10 +54,9 @@ interface UIState {
   // ─── Filters ───
   severityFilter: Set<Severity>;
   toggleSeverity: (s: Severity) => void;
+  resetSeverityFilter: () => void;
   visibleSources: Set<SourceType>;
   toggleSource: (s: SourceType) => void;
-  criticalOnly: boolean;
-  setCriticalOnly: (v: boolean | ((p: boolean) => boolean)) => void;
   hideResolved: boolean;
   setHideResolved: (v: boolean | ((p: boolean) => boolean)) => void;
   fireRiskFilter: number | null;
@@ -56,12 +71,16 @@ interface UIState {
   setSortMode: (s: IncidentSort) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  /** Restores the documented incident-query baseline only; map display is preserved. */
+  resetIncidentFilters: () => void;
 
   // ─── Selection / focus ───
   selectedIncidentId: string | null;
   setSelectedIncidentId: (id: string | null) => void;
   flyToIncidentId: string | null;
   setFlyToIncidentId: (id: string | null) => void;
+  /** Clears selected/fly-to state when an active query no longer includes it. */
+  reconcileIncidentSelection: (visibleIncidentIds: ReadonlySet<string>) => void;
 
   // ─── Modals / drawers ───
   notifOpen: boolean;
@@ -76,6 +95,10 @@ interface UIState {
   setShowShortcuts: (v: boolean) => void;
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (v: boolean) => void;
+  overlayStack: OverlayId[];
+  openOverlay: (overlay: OverlayId) => void;
+  closeOverlay: (overlay: OverlayId) => void;
+  closeTopOverlay: () => OverlayId | null;
 
   // ─── Mobile ───
   mobileTab: MobileTab;
@@ -114,7 +137,7 @@ export const useUIStore = create<UIState>((set) => ({
     set((s) => ({ showCompositeRisk: typeof v === "function" ? v(s.showCompositeRisk) : v })),
 
   // Filters
-  severityFilter: new Set(["critical", "high", "medium", "low"] as Severity[]),
+  severityFilter: new Set(ALL_SEVERITIES),
   toggleSeverity: (s) =>
     set((state) => {
       const next = new Set(state.severityFilter);
@@ -122,6 +145,9 @@ export const useUIStore = create<UIState>((set) => ({
       else next.add(s);
       return { severityFilter: next };
     }),
+  /** Reset severity filter to show all severities (default). */
+  resetSeverityFilter: () =>
+    set(() => ({ severityFilter: new Set(ALL_SEVERITIES) })),
   visibleSources: new Set(["satellite", "official", "community", "news"] as SourceType[]),
   toggleSource: (s) =>
     set((state) => {
@@ -130,9 +156,6 @@ export const useUIStore = create<UIState>((set) => ({
       else next.add(s);
       return { visibleSources: next };
     }),
-  criticalOnly: false,
-  setCriticalOnly: (v) =>
-    set((s) => ({ criticalOnly: typeof v === "function" ? v(s.criticalOnly) : v })),
   hideResolved: true,
   setHideResolved: (v) =>
     set((s) => ({ hideResolved: typeof v === "function" ? v(s.hideResolved) : v })),
@@ -148,26 +171,92 @@ export const useUIStore = create<UIState>((set) => ({
   setSortMode: (s) => set({ sortMode: s }),
   searchQuery: "",
   setSearchQuery: (q) => set({ searchQuery: q }),
+  resetIncidentFilters: () =>
+    set({
+      severityFilter: new Set(ALL_SEVERITIES),
+      hideResolved: true,
+      phaseFilter: null,
+      resourceFilter: null,
+      quickFilter: "all",
+      searchQuery: "",
+    }),
 
   // Selection
   selectedIncidentId: null,
   setSelectedIncidentId: (id) => set({ selectedIncidentId: id }),
   flyToIncidentId: null,
   setFlyToIncidentId: (id) => set({ flyToIncidentId: id }),
+  reconcileIncidentSelection: (visibleIncidentIds) =>
+    set((state) => {
+      const selectedIncidentId = state.selectedIncidentId && !visibleIncidentIds.has(state.selectedIncidentId)
+        ? null
+        : state.selectedIncidentId;
+      const flyToIncidentId = state.flyToIncidentId && !visibleIncidentIds.has(state.flyToIncidentId)
+        ? null
+        : state.flyToIncidentId;
+      // Avoid publishing an identical Zustand state on every visible-list
+      // render; otherwise the reconciliation effect loops indefinitely.
+      if (
+        selectedIncidentId === state.selectedIncidentId &&
+        flyToIncidentId === state.flyToIncidentId
+      ) {
+        return state;
+      }
+      return { selectedIncidentId, flyToIncidentId };
+    }),
 
   // Modals
   notifOpen: false,
-  setNotifOpen: (v) => set({ notifOpen: v }),
+  setNotifOpen: (v) => set((state) => ({
+    notifOpen: v,
+    overlayStack: v ? openOverlay(state.overlayStack, "notifications") : closeOverlay(state.overlayStack, "notifications"),
+  })),
   showHistoryModal: false,
-  setShowHistoryModal: (v) => set({ showHistoryModal: v }),
+  setShowHistoryModal: (v) => set((state) => ({
+    showHistoryModal: v,
+    overlayStack: v ? openOverlay(state.overlayStack, "history") : closeOverlay(state.overlayStack, "history"),
+  })),
   showReportModal: false,
-  setShowReportModal: (v) => set({ showReportModal: v }),
+  setShowReportModal: (v) => set((state) => ({
+    showReportModal: v,
+    overlayStack: v ? openOverlay(state.overlayStack, "report") : closeOverlay(state.overlayStack, "report"),
+  })),
   helpOpen: false,
-  setHelpOpen: (v) => set({ helpOpen: v }),
+  setHelpOpen: (v) => set((state) => ({
+    helpOpen: v,
+    overlayStack: v ? openOverlay(state.overlayStack, "help") : closeOverlay(state.overlayStack, "help"),
+  })),
   showShortcuts: false,
-  setShowShortcuts: (v) => set({ showShortcuts: v }),
+  setShowShortcuts: (v) => set((state) => ({
+    showShortcuts: v,
+    overlayStack: v ? openOverlay(state.overlayStack, "shortcuts") : closeOverlay(state.overlayStack, "shortcuts"),
+  })),
   mobileSidebarOpen: false,
-  setMobileSidebarOpen: (v) => set({ mobileSidebarOpen: v }),
+  setMobileSidebarOpen: (v) => set((state) => ({
+    mobileSidebarOpen: v,
+    overlayStack: v ? openOverlay(state.overlayStack, "mobile-sidebar") : closeOverlay(state.overlayStack, "mobile-sidebar"),
+  })),
+  overlayStack: [],
+  openOverlay: (overlay) => set((state) => ({ overlayStack: openOverlay(state.overlayStack, overlay) })),
+  closeOverlay: (overlay) => set((state) => ({ overlayStack: closeOverlay(state.overlayStack, overlay) })),
+  closeTopOverlay: () => {
+    let closed: OverlayId | null = null;
+    set((state) => {
+      const result = closeTopOverlay(state.overlayStack);
+      closed = result.closed;
+      if (!result.closed) return state;
+      return {
+        overlayStack: result.stack,
+        notifOpen: result.closed === "notifications" ? false : state.notifOpen,
+        showHistoryModal: result.closed === "history" ? false : state.showHistoryModal,
+        showReportModal: result.closed === "report" ? false : state.showReportModal,
+        helpOpen: result.closed === "help" ? false : state.helpOpen,
+        showShortcuts: result.closed === "shortcuts" ? false : state.showShortcuts,
+        mobileSidebarOpen: result.closed === "mobile-sidebar" ? false : state.mobileSidebarOpen,
+      };
+    });
+    return closed;
+  },
 
   // Mobile
   mobileTab: "map",
@@ -185,4 +274,30 @@ export const useUIStore = create<UIState>((set) => ({
 // Helper: read-only selector hook
 export function useUIStoreShallow<T>(selector: (s: UIState) => T): T {
   return useUIStore(selector);
+}
+
+/** Converts the legacy store field names into the canonical query contract. */
+export function selectIncidentFilterState(state: UIState): IncidentFilterState {
+  return {
+    severities: state.severityFilter,
+    hideResolved: state.hideResolved,
+    quick: state.quickFilter,
+    phase: state.phaseFilter,
+    resource: state.resourceFilter,
+    search: state.searchQuery,
+  };
+}
+
+export function selectMapDisplayState(state: UIState): MapDisplayState {
+  return {
+    basemap: state.basemap,
+    visibleSources: state.visibleSources,
+    fireRiskFilter: state.fireRiskFilter,
+    showFireRisk: state.showFireRisk,
+    showFireStations: state.showFireStations,
+    showSatellite: state.showSatellite,
+    showAerial: state.showAerial,
+    showBiomass: state.showBiomass,
+    showCompositeRisk: state.showCompositeRisk,
+  };
 }

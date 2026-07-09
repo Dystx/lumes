@@ -87,7 +87,7 @@ export default function AerialLayer({ map, enabled, showLabels = true }: Props) 
           f.properties._isHeli
         ).length;
 
-        const fc = { type: "FeatureCollection", features };
+        const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features };
         const src = map.getSource(SOURCE_ID) as { setData: (d: unknown) => void } | undefined;
         if (src) {
           src.setData(fc);

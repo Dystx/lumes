@@ -11,10 +11,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
-import { sendEmail, buildConfirmationEmail } from "@/lib/email";
+import { sendEmail, buildConfirmationEmail, isEmailProviderConfigured } from "@/lib/email";
 import { newsletterSubscribeSchema, validateBody } from "@/lib/api/schemas";
 import { rateLimit, clientKey } from "@/lib/api/rate-limit";
 import { assertSafeOrigin } from "@/lib/api/csrf";
+import { createDataStateMeta } from "@/lib/data-state";
 
 export const runtime = "nodejs";
 
@@ -37,26 +38,47 @@ function hashIp(ip: string | null): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const originError = assertSafeOrigin(req);
+  if (originError) return originError;
+
   // F-22 — rate limit (5 req/min per IP for newsletter)
   const rl = rateLimit(clientKey(req), { limit: 5 });
   if (!rl.ok) {
     return NextResponse.json(
-      { error: "Rate limit exceeded" },
+      { error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
       { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
     );
   }
 
-  // F-24 — zod validation
-  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  // Accept the current JSON client contract and legacy form posts during
+  // transition so existing public links/forms remain usable.
+  const contentType = req.headers.get("content-type") ?? "";
+  const body = contentType.includes("application/json")
+    ? await req.json().catch(() => ({} as Record<string, unknown>))
+    : await req.formData()
+      .then((form) => Object.fromEntries(form.entries()))
+      .catch(() => ({} as Record<string, unknown>));
+  if (typeof body === "object" && body !== null && "locale" in body) {
+    const candidate = body as Record<string, unknown>;
+    if (candidate.locale === "pt-PT") candidate.locale = "pt";
+    if (candidate.locale === "en-US") candidate.locale = "en";
+  }
   const v = validateBody(newsletterSubscribeSchema, body);
   if (!v.ok) {
-    return NextResponse.json({ error: v.error }, { status: 400 });
+    return NextResponse.json({ error: v.error, dataState: createDataStateMeta("empty", "Invalid newsletter request") }, { status: 400, headers: { "Cache-Control": "no-store" } });
   }
   const email = v.data.email;
   const locale = v.data.locale;
 
   const emailHash = hashEmail(email);
   const ipHash = hashIp(req.headers.get("x-forwarded-for"));
+
+  if (!isEmailProviderConfigured()) {
+    return NextResponse.json(
+      { error: "Newsletter delivery is temporarily unavailable.", dataState: createDataStateMeta("retryable-error", "Email provider is not configured") },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   // Look up existing
   const existing = await db.newsletterSubscriber.findUnique({
@@ -66,12 +88,14 @@ export async function POST(req: NextRequest) {
   if (existing?.confirmedAt && !existing.unsubscribedAt) {
     return NextResponse.json({
       ok: true,
-      status: "already-confirmed",
-    });
+      status: "already_subscribed",
+      dataState: createDataStateMeta("healthy"),
+    }, { headers: { "Cache-Control": "no-store" } });
   }
 
-  // Generate a token. Reuse the existing row's token if still valid.
-  const confirmToken = existing?.confirmToken ?? crypto.randomBytes(24).toString("hex");
+  // Always rotate the bearer token when a pending/unsubscribed address asks
+  // again. Re-subscribing requires a fresh confirmation, never silent reactivation.
+  const confirmToken = crypto.randomBytes(24).toString("hex");
   const subscriber =
     existing ??
     (await db.newsletterSubscriber.create({
@@ -84,7 +108,9 @@ export async function POST(req: NextRequest) {
       where: { id: subscriber.id },
       data: {
         confirmToken,
-        unsubscribedAt: null, // reset any previous unsubscribe
+        confirmedAt: null,
+        unsubscribedAt: null,
+        createdAt: new Date(),
         updatedAt: new Date(),
       },
     });
@@ -101,7 +127,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: sent.ok,
-    status: existing?.confirmedAt ? "resent" : "pending-confirmation",
-    previewUrl: sent.previewUrl,
-  });
+    status: "pending_confirmation",
+    dataState: createDataStateMeta(sent.ok ? "healthy" : "retryable-error", sent.ok ? undefined : "Confirmation email could not be sent"),
+  }, { headers: { "Cache-Control": "no-store" } });
 }

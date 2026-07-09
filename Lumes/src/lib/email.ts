@@ -19,7 +19,7 @@ export interface EmailMessage {
   html?: string;
 }
 
-interface SendResult {
+export interface SendResult {
   ok: boolean;
   error?: string;
   /** When running in stub mode, the URL the operator can paste into
@@ -27,26 +27,30 @@ interface SendResult {
   previewUrl?: string;
 }
 
+/** The local build deliberately has no delivery provider. Keep this explicit
+ * so the API never claims a confirmation email was delivered by a stub. */
+export function isEmailProviderConfigured(): boolean {
+  return Boolean(
+    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM,
+  ) || Boolean(process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN)
+    || Boolean(process.env.MAILERSEND_API_KEY);
+}
+
 export async function sendEmail(msg: EmailMessage): Promise<SendResult> {
   // ----- MAIL PROVIDER -----
   //
   // Replace this stub with real SMTP / Mailgun / MailerSend.
   //
-  // For now, log to stdout so the operator can find the URL in
-  // journalctl / pm2 logs and either paste it into a browser or
-  // send it manually to the user (suitable for low-volume news
-  // lists run by hand).
-  const previewMatch = msg.text.match(/https?:\/\/\S+/);
-  const previewUrl = previewMatch?.[0];
-
-  console.log("[mail] would send", {
-    to: msg.to,
-    subject: msg.subject,
-    bodyPreview: msg.text.slice(0, 200),
-    confirmationLink: previewUrl,
-  });
-
-  return { ok: true, previewUrl };
+  // Do not log recipients, message bodies, or confirmation links: these are
+  // personal data and bearer-like tokens. A real provider integration should
+  // expose delivery status through its own secure operator console.
+  void msg;
+  if (!isEmailProviderConfigured()) {
+    return { ok: false, error: "email_provider_not_configured" };
+  }
+  // Provider adapters are intentionally not guessed here. A configured
+  // provider must be wired explicitly before this returns success.
+  return { ok: false, error: "email_provider_unavailable" };
 }
 
 export function buildConfirmationEmail(opts: {

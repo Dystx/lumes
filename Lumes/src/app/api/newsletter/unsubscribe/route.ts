@@ -1,17 +1,17 @@
-// GET /api/newsletter/unsubscribe?email=...
-// POST /api/newsletter/unsubscribe { email: string }
+// GET /api/newsletter/unsubscribe?token=...
+// POST /api/newsletter/unsubscribe { token: string }
 //
 // Marks a subscriber as unsubscribed. The user-facing link in any
-// newsletter should be `https://lumes.pt/api/newsletter/unsubscribe?email=...`
-// or have the form post the user's email to this URL.
+// newsletter contains a signed, expiring token. GET only renders a confirmation
+// page; POST performs the mutation after origin and token validation.
 
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { sendEmail, buildUnsubscribeEmail } from "@/lib/email";
-import { newsletterUnsubscribeSchema, validateBody } from "@/lib/api/schemas";
 import { rateLimit, clientKey } from "@/lib/api/rate-limit";
 import { assertSafeOrigin } from "@/lib/api/csrf";
+import { createNewsletterActionToken, readNewsletterActionToken } from "@/lib/newsletter-token";
 
 export const runtime = "nodejs";
 
@@ -30,6 +30,9 @@ a{color:#fb923c}</style></head><body><div class="card">
 <h1>Subscrição cancelada</h1><p>Não irá receber mais emails do lumes.pt.<br><br>
 Sentiu a nossa falta? <a href="/newsletter">Subscrever novamente</a>.</p></div></body></html>`;
 
+const PAGE_CONFIRM = (token: string) => `<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Confirmar cancelamento</title>
+<style>body{background:#0c1821;color:#f4f4f5;font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1.5rem}.card{max-width:28rem;text-align:center}h1{color:#fb923c;font-size:1.5rem}p{color:#a1a1aa;line-height:1.5}button{background:#fb923c;border:0;border-radius:6px;padding:.7rem 1rem;font-weight:600}</style></head><body><div class="card"><h1>Cancelar subscrição?</h1><p>Confirme para deixar de receber emails do lumes.pt.</p><form method="post"><input type="hidden" name="token" value="${token}"><button type="submit">Confirmar cancelamento</button></form></div></body></html>`;
+
 async function handle(email: string) {
   if (!email) return { ok: false, status: 400 };
   const emailHash = hashEmail(email);
@@ -47,19 +50,21 @@ async function handle(email: string) {
   });
   const msg = buildUnsubscribeEmail({
     to: sub.email,
-    unsubscribeUrl: `${SITE_URL}/newsletter`,
+    unsubscribeUrl: `${SITE_URL}/api/newsletter/unsubscribe?token=${encodeURIComponent(createNewsletterActionToken(emailHash))}`,
   });
   await sendEmail(msg);
   return { ok: true, status: "cancelled" };
 }
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const email = url.searchParams.get("email") ?? "";
-  const result = await handle(email);
-  return new NextResponse(PAGE_OK, {
+  // GET links must not mutate state (mail scanners routinely prefetch them).
+  const token = new URL(req.url).searchParams.get("token") ?? "";
+  if (!readNewsletterActionToken(token)) {
+    return new NextResponse("Link inválido ou expirado.", { status: 410, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+  }
+  return new NextResponse(PAGE_CONFIRM(token), {
     status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
 }
 
@@ -77,12 +82,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // F-24 — zod validation
-  const body = await req.json().catch(() => ({} as Record<string, unknown>));
-  const v = validateBody(newsletterUnsubscribeSchema, body);
-  if (!v.ok) {
-    return NextResponse.json({ error: v.error }, { status: 400 });
-  }
-  const result = await handle(v.data.email);
-  return NextResponse.json(result);
+  const contentType = req.headers.get("content-type") ?? "";
+  const body = contentType.includes("application/json")
+    ? await req.json().catch(() => ({} as Record<string, unknown>))
+    : Object.fromEntries((await req.formData().catch(() => new FormData())).entries());
+  const token = typeof body === "object" && body !== null && "token" in body
+    ? String((body as Record<string, unknown>).token ?? "")
+    : "";
+  const emailHash = readNewsletterActionToken(token);
+  if (!emailHash) return NextResponse.json({ error: "Invalid or expired unsubscribe token." }, { status: 410, headers: { "Cache-Control": "no-store" } });
+  const sub = await db.newsletterSubscriber.findUnique({ where: { emailHash } });
+  if (!sub) return NextResponse.json({ ok: true, status: "noop" }, { headers: { "Cache-Control": "no-store" } });
+  const result = await handle(sub.email);
+  return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
 }

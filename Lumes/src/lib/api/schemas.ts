@@ -56,7 +56,7 @@ export const alertSubscribeSchema = z.object({
 
 export type ValidationResult<T> =
   | { ok: true; data: T }
-  | { ok: false; error: string };
+  | { ok: false; error: string; path?: readonly (string | number)[] };
 
 /**
  * Validate a request body against a zod schema. Returns the parsed data on

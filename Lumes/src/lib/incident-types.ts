@@ -12,6 +12,8 @@ import type {
   VerificationStatus,
 } from "./types";
 
+export type { SourceType };
+
 export type OperationalPhase =
   | "Em Despacho"
   | "Em Curso"

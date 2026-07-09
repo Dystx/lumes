@@ -38,7 +38,7 @@ export function ActiveFilterChips({
           key={f.id}
           type="button"
           onClick={f.onClear}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[var(--ember-accent)] text-[var(--ember-bg)] text-[12px] font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(249,115,22,0.4)] hover:scale-105 hover:shadow-[0_0_16px_rgba(249,115,22,0.6)] active:scale-95 transition-all flex-shrink-0 animate-pulse-subtle"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[var(--ember-accent)] text-[var(--ember-bg)] text-[12px] font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(249,115,22,0.4)] hover:scale-105 hover:shadow-[0_0_16px_rgba(249,115,22,0.6)] active:scale-95 transition-all flex-shrink-0"
           aria-label={`${f.label} — ${lang === "pt" ? "remover filtro" : "remove filter"}`}
         >
           <span>{f.label}</span>

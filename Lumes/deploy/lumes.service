@@ -1,0 +1,26 @@
+[Unit]
+# System-level variant of deploy/install-lumes.sh's user-level unit.
+# Use this if you'd rather run lumes as a system service. Requires
+# a system user (e.g. `lumes`) and root.
+#
+# To switch: place at /etc/systemd/system/lumes.service,
+# adjust WorkingDirectory and User=, then:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now lumes
+
+Description=lumes.pt Next.js standalone
+After=network-online.target
+
+[Service]
+Type=simple
+User=lumes
+WorkingDirectory=/opt/apps/lumes
+EnvironmentFile=/opt/apps/lumes/.env
+ExecStart=/usr/local/bin/bun /opt/apps/lumes/.next/standalone/server.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/opt/logs/lumes.log
+StandardError=append:/opt/logs/lumes.err
+
+[Install]
+WantedBy=multi-user.target

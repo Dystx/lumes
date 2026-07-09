@@ -21,7 +21,7 @@ p{color:#a1a1aa;line-height:1.5}
 a{color:#fb923c}
 </style></head><body><div class="card">
 <h1>Subscrição confirmada ✓</h1><p>Obrigado. A partir de agora vai receber alertas do lumes.pt.<br><br>
-Pode <a href="https://lumes.pt">voltar à página principal</a> ou <a href="/api/newsletter/unsubscribe">cancelar a subscrição</a> a qualquer momento.</p></div></body></html>`;
+Pode <a href="https://lumes.pt">voltar à página principal</a>. Para cancelar, use a ligação segura recebida por email.</p></div></body></html>`;
 
 const PAGE_ERR = `<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Link inválido</title>
 <style>body{background:#0c1821;color:#f4f4f5;font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1.5rem}
@@ -59,7 +59,13 @@ export async function GET(req: NextRequest) {
       return new NextResponse(PAGE_ERR, { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
 
-    if (!sub.confirmedAt || sub.unsubscribedAt) {
+    // Confirmation links are single-purpose and expire after 24 hours. An
+    // unsubscribe is never silently reversed by revisiting an old link.
+    const tokenExpired = Date.now() - sub.createdAt.getTime() > 24 * 60 * 60 * 1000;
+    if (tokenExpired || sub.unsubscribedAt) {
+      return new NextResponse(PAGE_ERR, { status: 410, headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+    if (!sub.confirmedAt) {
       await db.newsletterSubscriber.update({
         where: { id: sub.id },
         data: {

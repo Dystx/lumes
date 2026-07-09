@@ -1,9 +1,9 @@
 # Lumes.pt — Project Handoff
 
 > **Date**: 2026-07-09
-> **Status**: Production deployed and stable
-> **Live at**: <https://lumes.pt>
-> **Last session focus**: UX polish, accessibility, anti-AI design, filter
+> **Status**: Local refactor tranche verified; deployment not performed in this session
+> **Live at**: Not verified from this workspace
+> **Last session focus**: reliability, trust states, responsive IA, accessibility, and API safety
 > system, and the chunk-cache incident (see `ERRORS-LOG.md` #4)
 
 This document is the **5-minute briefing** for whoever picks up
@@ -26,14 +26,15 @@ sources, joins them with municipal data, shows them on a MapLibre map,
 and surfaces fire-related press that matches each incident's location.
 
 The user is a Portuguese wildfire intel operator (or a citizen tracking
-local fires). The product is a single page that opens to a 3-column
-desktop layout:
+local fires). The product opens to a situation rail + map on wide desktop,
+and map-first drawers on compact screens:
 
-- **Left**: dashboard with stats, top districts, resources, ops
+- **Left**: focused situation summary with trust, count, and priority incidents
 - **Center**: live fire map
 - **Right (rail)**: collapsible filters / incident detail / news
 
-Mobile is a tabbed UI (Map / Live / Filters / More).
+Compact screens are map-first: phones use Map / Incidents / Alerts / More,
+while tablets use a compact top toolbar and contextual drawers.
 
 ---
 
@@ -45,7 +46,7 @@ Mobile is a tabbed UI (Map / Live / Filters / More).
 | 6 map layers (Fire Risk, Fire Stations, NASA FIRMS, Aerial, Biomass, Composite) | ✅ | Toggles work, render in MapLibre |
 | FlightRadar-style aerial layer | ✅ | Real ADS-B with rotating plane icons |
 | Right rail + collapsible filter/detail/news panel | ✅ | Saves ~50% map width |
-| 4 mobile tabs (Map / Live / Filters / More) | ✅ | All work |
+| Compact navigation and responsive drawers | ✅ | Responsive matrix verified at six target viewports |
 | News (fire-filtered RSS) | ✅ | Strict fire-keyword filter, 5 PT outlets |
 | Matched news in detail panel | ✅ | Shows press articles mentioning incident's location |
 | 3-day fire-risk forecast | ✅ | From IPMA RCM |
@@ -62,9 +63,9 @@ Mobile is a tabbed UI (Map / Live / Filters / More).
 | Cron: 60s ingest, daily prune | ✅ | Systemd timers |
 | PWA + service worker | ✅ | `public/sw.js` |
 | Error boundary + global error pages | ✅ | |
-| A11y automated tests (axe-core) | ✅ | 0 violations, 12 checks |
-| Unit tests | ✅ | 10/10 passing |
-| Build + deploy pipeline | ✅ | See `DEPLOY.md` |
+| A11y automated tests (axe-core) | ✅ | 0 violations across home and public routes |
+| Unit tests | ✅ | 22 files / 59 tests passing |
+| Build + deploy pipeline | ✅ | Local build verified; deployment remains separately authorized |
 | Documentation | ✅ | `DEPLOY.md`, `ARCHITECTURE.md`, `ERRORS-LOG.md`, `FINDINGS.md` |
 
 ---
@@ -73,12 +74,9 @@ Mobile is a tabbed UI (Map / Live / Filters / More).
 
 ### Top — visible problems reported by the user
 
-1. **`page.tsx` is 3,800 lines** — the entire 3-column layout is in
-   one file. The user is increasingly frustrated by this. Extract
-   `<DashboardPanel>` to `src/components/dashboard/panel.tsx`. Pass
-   state as props. See `REFACTOR-PLAN.md` (incomplete).
-   *Why pending*: the user has had flaky experiences with refactors.
-   The refactor plan is sketched but no one has driven it through.
+1. **Further orchestration extraction** — `page.tsx` still owns data
+   composition and several action handlers. Continue extracting stable
+   shell boundaries only after route and browser coverage remains green.
 
 2. **Detail panel sometimes appears blank** when first opened.
    `activeFilterItems` was the previous symptom. The deeper bug —
@@ -139,7 +137,7 @@ before touching them.
 | Landmine | Doc |
 | ---------- | ----- |
 | Service worker caching stale chunks after build | `DEPLOY.md` §"The chunks not loading incident" |
-| `page.tsx` 3,800 lines of JSX | `ARCHITECTURE.md` §"src/app/page.tsx" |
+| `page.tsx` data-composition ownership | `ARCHITECTURE.md` §"src/app/page.tsx" |
 | `ignoreBuildErrors: true` lets type errors ship | `ERRORS-LOG.md` #1, #2, #3 |
 | Variable shadowing across component boundaries | `ERRORS-LOG.md` #2, #3 |
 | Custom icon wrapper (`phosphor-icons.tsx`) needs every new icon aliased | `ARCHITECTURE.md` |
@@ -164,7 +162,7 @@ before touching them.
    cd Lumes
    bun install
    bun run build        # local sanity build
-   bun run test         # 10/10 should pass
+   bun run test         # current baseline: 22 files / 59 tests
    bun run lint         # should be clean
    ```
 
@@ -190,9 +188,9 @@ before touching them.
 If you have one afternoon, do these three things to ship a meaningful
 improvement:
 
-1. **Extract `<DashboardPanel>`** to its own file. The user has
-   been frustrated by the 3,800-line `page.tsx` for a while. This
-   is a 4-hour refactor and it unlocks unit testing of the dashboard.
+1. **Continue shell extraction** only where it reduces orchestration
+   without duplicating query or map state. `SituationPanel` and the
+   inspector are already separate and covered by focused tests.
 2. **Add a "What does the map show" indicator** at the top of the
    right rail. The user has been confused by what's currently
    filtered. The `FilterStatus` component is half of this; the

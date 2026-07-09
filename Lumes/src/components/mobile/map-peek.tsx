@@ -30,7 +30,9 @@ export interface MapPeekProps {
   topIncidents: PeekIncident[];
   onTapIncident: (id: string) => void;
   onExpand: () => void;
+  onViewIncidents: () => void;
   lastUpdated?: Date | null;
+  compact?: boolean;
 }
 
 function formatRelative(date: Date, lang: string): string {
@@ -49,6 +51,8 @@ export function MapPeek({
   lastUpdated,
   onTapIncident,
   onExpand,
+  onViewIncidents,
+  compact = false,
 }: MapPeekProps) {
   const { language: lang } = useLanguage();
   const sevColor = (s: Severity) =>
@@ -59,10 +63,31 @@ export function MapPeek({
 
   return (
     <div className="h-full flex flex-col bg-[var(--ember-bg)]">
+      {compact ? (
+        <button
+          type="button"
+          onClick={onExpand}
+          className="h-full min-h-14 w-full px-4 flex items-center gap-3 text-left hover:bg-[var(--ember-surface-2)] transition-colors"
+          aria-label={lang === "pt" ? "Expandir resumo de incêndios" : "Expand fire summary"}
+        >
+          <Flame className="w-4 h-4 text-[var(--ember-critical)] flex-shrink-0" />
+          <span className="font-mono font-bold tabular-nums text-lg text-[var(--ember-text)]">{total}</span>
+          <span className="text-xs text-[var(--ember-text-muted)]">
+            {lang === "pt" ? "incêndios ativos" : "active fires"}
+          </span>
+          {critical > 0 && (
+            <span className="ml-auto text-xs font-medium text-[var(--ember-critical)] tabular-nums">
+              {critical} {lang === "pt" ? "crítico" : "critical"}
+            </span>
+          )}
+          <ChevronUp className="w-4 h-4 text-[var(--ember-text-faint)]" aria-hidden="true" />
+        </button>
+      ) : (
+        <>
       {/* Drag handle — bigger, more visible */}
       <button
         type="button"
-        onClick={onExpand}
+        onClick={onViewIncidents}
         className="flex flex-col items-center pt-2.5 pb-2 active:bg-[var(--ember-surface-2)] transition-colors"
         aria-label={lang === "pt" ? "Expandir painel" : "Expand panel"}
       >
@@ -181,6 +206,8 @@ export function MapPeek({
         </span>
         <ChevronUp className="w-3 h-3" />
       </button>
+        </>
+      )}
     </div>
   );
 }

@@ -1,32 +1,15 @@
-// useFetch — generic data-fetching hook (TASK E, refactor plan).
-//
-// Replaces the 14 useLiveData hooks in `use-live-data.ts` with a single
-// typed hook. Keeps the original "FROZEN" feature set:
-//   - Polling with TTL (refreshMs)
-//   - Lazy fetch (enabled)
-//   - Fallback data
-//   - revalidate() action
-//   - X-Source header for traces
-//
-// Why: each of the 14 useLiveData hooks (incidents, dashboard, fireRisk, ...)
-// is structurally identical. Inlining a single hook reduces ~600 LOC of
-// near-duplicate code and gives us a single place to add retry, backoff,
-// SWR-style revalidation, etc.
+// useFetch — shared data fetching with bounded polling and explicit trust state.
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createDataStateMeta, type DataStateMeta } from "@/lib/data-state";
+import { deriveDataTrust, type DataTrustState } from "@/lib/data-trust";
 
 export interface UseFetchOptions<T> {
-  /** Polling interval in ms. `null` = no polling (one-shot). */
   refreshMs?: number | null;
-  /** Skip the fetch entirely (e.g. only fetch when a layer is visible). */
   enabled?: boolean;
-  /** Fallback data when the fetch is in flight or has failed. */
   fallback?: T | null;
-  /** Transform the raw response before storing. */
-  transform?: (raw: any) => T;
-  /** Optional headers. */
+  transform?: (raw: unknown) => T;
   headers?: Record<string, string>;
-  /** Optional AbortSignal timeout (default 30s). */
   timeoutMs?: number;
 }
 
@@ -34,14 +17,31 @@ export interface UseFetchResult<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
-  /** Last successful fetch time. */
   refetchedAt: Date | null;
-  /** Force a re-fetch (bypasses cache). */
   refetch: () => void;
-  /** Manually set data (for optimistic updates). */
   setData: (data: T | null) => void;
-  /** True when fallback data is being shown (fetch failed or in-flight). */
   usingFallback: boolean;
+  dataState: DataStateMeta | null;
+  trust: DataTrustState;
+}
+
+/** Retained data remains useful, but a failed refresh must still be visible. */
+export function shouldMarkUsingFallback({
+  data,
+  loading,
+  error,
+}: {
+  data: unknown;
+  loading: boolean;
+  error: string | null;
+}): boolean {
+  return error !== null || (data === null && loading);
+}
+
+function isDataStateMeta(value: unknown): value is DataStateMeta {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Partial<DataStateMeta>;
+  return typeof candidate.state === "string" && typeof candidate.updatedAt === "string";
 }
 
 export function useFetch<T = unknown>(
@@ -57,29 +57,45 @@ export function useFetch<T = unknown>(
     timeoutMs = 30_000,
   } = opts;
 
-  const [data, setData] = useState<T | null>(fallback);
+  const [data, setStoredData] = useState<T | null>(fallback);
+  const dataRef = useRef<T | null>(fallback);
+  const fallbackRef = useRef<T | null>(fallback);
+  fallbackRef.current = fallback;
   const [loading, setLoading] = useState<boolean>(enabled && !!url);
   const [error, setError] = useState<string | null>(null);
   const [refetchedAt, setRefetchedAt] = useState<Date | null>(null);
+  const [dataState, setDataState] = useState<DataStateMeta | null>(null);
   const [tick, setTick] = useState(0);
   const cancelledRef = useRef(false);
 
   const refetch = useCallback(() => setTick((n) => n + 1), []);
+  const setData = useCallback((next: T | null) => {
+    dataRef.current = next;
+    setStoredData(next);
+  }, []);
 
   useEffect(() => {
     if (!enabled || !url) {
       setLoading(false);
       return;
     }
+
+    const endpoint = url;
     cancelledRef.current = false;
     let timer: ReturnType<typeof setInterval> | null = null;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let inFlight = false;
+    let activeController: AbortController | null = null;
 
     async function load() {
+      if (inFlight) return;
+      inFlight = true;
+      const controller = new AbortController();
+      activeController = controller;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
       try {
         setLoading(true);
-        const res = await fetch(url, {
+        const res = await fetch(endpoint, {
           cache: "default",
           signal: controller.signal,
           headers,
@@ -88,48 +104,49 @@ export function useFetch<T = unknown>(
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || `HTTP ${res.status}`);
         }
-        const json = await res.json();
+        const json: unknown = await res.json();
         if (cancelledRef.current) return;
         const next = transform ? transform(json) : (json as T);
         setData(next);
+        const responseMeta = isDataStateMeta((json as { dataState?: unknown }).dataState)
+          ? (json as { dataState: DataStateMeta }).dataState
+          : createDataStateMeta("healthy");
+        setDataState(responseMeta);
         setError(null);
         setRefetchedAt(new Date());
       } catch (err: unknown) {
         if (cancelledRef.current) return;
-        const msg = err instanceof Error ? err.message : String(err);
-        setError(msg);
-        // Keep fallback data if we had it
-        if (data === null) setData(fallback);
+        setError(err instanceof Error ? err.message : String(err));
+        setDataState((previous) => previous?.state === "fallback"
+          ? previous
+          : createDataStateMeta("retryable-error", "Unable to refresh this data"));
+        if (dataRef.current === null) setData(fallbackRef.current);
       } finally {
-        if (!cancelledRef.current) {
-          setLoading(false);
-          clearTimeout(timeoutId);
-        }
+        clearTimeout(timeoutId);
+        if (activeController === controller) activeController = null;
+        inFlight = false;
+        if (!cancelledRef.current) setLoading(false);
       }
     }
 
-    load();
-    if (refreshMs) {
-      timer = setInterval(load, refreshMs);
-    }
+    void load();
+    if (refreshMs) timer = setInterval(() => void load(), refreshMs);
 
     return () => {
       cancelledRef.current = true;
-      controller.abort();
-      clearTimeout(timeoutId);
+      activeController?.abort();
       if (timer) clearInterval(timer);
     };
-  }, [url, refreshMs, enabled, tick, transform, timeoutMs]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [url, refreshMs, enabled, headers, transform, timeoutMs, setData, tick]);
 
-  const usingFallback = data === null && (error !== null || loading);
-
-  return {
-    data,
+  const usingFallback = shouldMarkUsingFallback({ data, loading, error });
+  const trust = deriveDataTrust({
+    meta: dataState,
+    observedAt: refetchedAt ?? new Date(),
+    source: url ?? "unknown",
     loading,
     error,
-    refetchedAt,
-    refetch,
-    setData,
-    usingFallback,
-  };
+  });
+
+  return { data, loading, error, refetchedAt, refetch, setData, usingFallback, dataState, trust };
 }

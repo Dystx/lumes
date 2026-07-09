@@ -1,5 +1,41 @@
 // Shared types for live data connectors
 
+export type BasemapMode = "dark" | "light" | "satellite";
+
+export interface SatelliteDetection {
+  id: string;
+  sourceId: string;
+  observedAt: string;
+  geometry: { type: "Point"; coordinates: [number, number] };
+  properties: {
+    satellite: string;
+    instrument: string;
+    frp: number;
+    brightness: number;
+    confidence: number;
+  };
+  severity: string;
+  displayName: string;
+  sourceType?: SourceType;
+  trust?: LiveIncident["trust"];
+  eventType?: EventType;
+  incidentStatus?: IncidentStatus;
+  estimatedAreaHa?: number;
+  firstDetected?: string;
+  lastUpdated?: string;
+}
+
+export interface SatelliteResponse {
+  source: string;
+  sourceType: string;
+  fetchedAt: string;
+  count: number;
+  bbox: string;
+  dayRange: number;
+  detections: SatelliteDetection[];
+  cached?: boolean;
+}
+
 export type SourceType = "satellite" | "official" | "community" | "news" | "weather";
 export type VerificationStatus = "unverified" | "single-source" | "corroborated" | "officially-verified";
 export type IncidentStatus = "detected" | "active" | "contained" | "resolved" | "monitoring";
@@ -26,6 +62,7 @@ export interface LiveIncident {
     rasi?: string;
     naturezaText?: string;
     localidade?: string;
+    locality?: string;
     endereco?: string;
     municipality?: string;
     parish?: string;
@@ -54,6 +91,8 @@ export interface LiveIncident {
   firstDetected: string;
   lastUpdated: string;
 }
+
+export type Trust = LiveIncident["trust"];
 
 // IPMA fire risk record
 export interface FireRiskRecord {
@@ -113,10 +152,12 @@ export interface FireStation {
 }
 
 export interface FireStationsResponse {
-  source: "osm-overpass";
+  source: "osm-overpass" | "osm-overpass-fallback";
   fetchedAt: string;
   count: number;
   stations: FireStation[];
+  dataState?: "healthy" | "fallback";
+  sourceNote?: string;
 }
 
 // Source health

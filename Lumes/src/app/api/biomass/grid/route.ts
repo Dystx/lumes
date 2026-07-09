@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSyntheticBiomassGrid, gridInBbox } from "@/lib/biomass/synthetic-grid";
+import { cached } from "@/lib/api/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,9 +18,6 @@ function parseBbox(s: string | null): [number, number, number, number] | null {
 }
 
 const PORTUGAL_BBOX: [number, number, number, number] = [-9.5, 36.95, -6.0, 42.15];
-
-let cache: { bboxStr: string; ts: number; data: GeoJSONFeatureCollection } | null = null;
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 interface GeoJSONFeatureCollection {
   type: "FeatureCollection";
@@ -44,40 +42,34 @@ export async function GET(req: NextRequest) {
   const bbox = parseBbox(url.searchParams.get("bbox")) ?? PORTUGAL_BBOX;
   const bboxStr = bbox.join(",");
 
-  if (cache && cache.bboxStr === bboxStr && Date.now() - cache.ts < CACHE_TTL_MS) {
-    return NextResponse.json(cache.data, {
-      headers: {
-        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
+  const data = await cached(`biomass-grid-${bboxStr}`, 24 * 60 * 60 * 1000, async () => {
+    const allCells = getSyntheticBiomassGrid();
+    const cells = gridInBbox(allCells, bbox);
+
+    const features = cells.map((c) => ({
+      type: "Feature" as const,
+      geometry: {
+        type: "Point" as const,
+        coordinates: [c.lon, c.lat] as [number, number],
       },
-    });
-  }
+      properties: {
+        tonsPerHectare: c.tonsPerHectare,
+        species: c.dominantSpecies as any,
+        speciesLabel: c.profile.pt,
+        rateOfSpread: c.profile.rateOfSpread as any,
+        fuelModel: c.profile.fuelModel,
+      },
+    }));
 
-  const allCells = getSyntheticBiomassGrid();
-  const cells = gridInBbox(allCells, bbox);
-
-  const features = cells.map((c) => ({
-    type: "Feature" as const,
-    geometry: {
-      type: "Point" as const,
-      coordinates: [c.lon, c.lat],
-    },
-    properties: {
-      tonsPerHectare: c.tonsPerHectare,
-      species: c.dominantSpecies,
-      speciesLabel: c.profile.pt,
-      rateOfSpread: c.profile.rateOfSpread,
-      fuelModel: c.profile.fuelModel,
-    },
-  }));
-
-  const data: GeoJSONFeatureCollection = {
-    type: "FeatureCollection",
-    bbox,
-    cellCount: cells.length,
-    features,
-    source: "synthetic (replace with ICNF IFN5 when wired)",
-  };
-  cache = { bboxStr, ts: Date.now(), data };
+    const data: GeoJSONFeatureCollection = {
+      type: "FeatureCollection",
+      bbox,
+      cellCount: cells.length,
+      features,
+      source: "synthetic (replace with ICNF IFN5 when wired)",
+    };
+    return data;
+  });
 
   return NextResponse.json(data, {
     headers: {

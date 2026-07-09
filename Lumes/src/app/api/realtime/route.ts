@@ -8,7 +8,7 @@ import { NextRequest } from "next/server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -25,12 +25,12 @@ export async function GET(_request: NextRequest) {
       // Poll for changes every 30 seconds
       const interval = setInterval(async () => {
         try {
-          const res = await fetch("http://localhost:3000/api/incidents", {
+          const res = await fetch(new URL("/api/incidents", request.url), {
             headers: { "Cache-Control": "no-cache" },
           });
           if (!res.ok) return;
           const data = await res.json();
-          const currentIds = new Set((data.incidents || []).map((i: any) => i.id));
+          const currentIds = new Set<string>(((data as any).incidents || []).map((i: any) => i.id));
 
           // New incidents (in current but not in last)
           const newIds = Array.from(currentIds).filter((id) => !lastIncidentIds.has(id));
@@ -48,7 +48,7 @@ export async function GET(_request: NextRequest) {
 
           // Send new incidents
           for (const id of newIds) {
-            const inc = data.incidents.find((i: any) => i.id === id);
+            const inc = (data as any).incidents.find((i: any) => i.id === id);
             if (inc) {
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({
@@ -71,7 +71,7 @@ export async function GET(_request: NextRequest) {
             );
           }
 
-          lastIncidentIds = currentIds;
+          lastIncidentIds = currentIds as Set<string>;
           lastCount = data.count;
         } catch (err) {
           // Silently skip — will retry next interval
@@ -79,7 +79,7 @@ export async function GET(_request: NextRequest) {
       }, 30_000);
 
       // Clean up on close
-      _request.signal.addEventListener("abort", () => {
+      request.signal.addEventListener("abort", () => {
         clearInterval(interval);
         controller.close();
       });

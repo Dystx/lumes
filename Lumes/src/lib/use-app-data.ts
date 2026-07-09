@@ -9,11 +9,15 @@
 import { useFetch } from "./use-fetch";
 import { SAMPLE_INCIDENTS } from "./sample-data";
 import type { LiveIncident } from "./types";
+import type { DataStateMeta } from "./data-state";
 
 // Inline minimal adapter (we don't need the full adaptLiveToUI here —
 // the dashboard already does the heavy lifting via the API response).
 function adaptLiveToUI(live: any) {
-  return {
+  const lat = live.geometry?.coordinates?.[1] ?? live.latitude;
+  const lon = live.geometry?.coordinates?.[0] ?? live.longitude;
+
+  const base = {
     id: live.id,
     displayName: live.displayName,
     status: live.incidentStatus,
@@ -21,6 +25,8 @@ function adaptLiveToUI(live: any) {
     estimatedAreaHa: live.estimatedAreaHa ?? 0,
     firstDetected: live.firstDetected,
     lastUpdated: live.lastUpdated,
+    latitude: lat,
+    longitude: lon,
     geometry: live.geometry,
     properties: live.properties,
     municipality: live.properties?.municipality,
@@ -31,7 +37,26 @@ function adaptLiveToUI(live: any) {
     engines: live.properties?.assetsGround ?? 0,
     aircraft: live.properties?.assetsAerial ?? 0,
     isLive: true,
+    // Provide minimal timeline so map secondary layers (satellite/community dots)
+    // and evacuation zones have data to work with on live incidents.
+    timeline: [
+      {
+        id: `${live.id}-official`,
+        timestamp: live.observedAt || live.firstDetected,
+        sourceType: "official" as const,
+        sourceName: "ANEPC / Prociv",
+        type: "detection" as const,
+        title: live.displayName,
+        description: live.properties?.statusText || "Official report",
+        confidence: live.trust?.confidence ?? 0.9,
+        verification: "officially-verified" as const,
+      },
+    ],
+    evacuationOrder: false,
+    sourceCount: 1,
+    sourceTypes: ["official"] as const,
   };
+  return base;
 }
 
 // === Incidents ===
@@ -57,6 +82,8 @@ export function useLiveIncidentsNew() {
     error: r.error,
     usingFallback: r.usingFallback,
     refetchedAt: r.refetchedAt,
+    dataState: r.dataState,
+    trust: r.trust,
     distribution: r.data?.distribution,
     cached: r.data?.cached,
     latencyMs: r.data?.latencyMs,
@@ -90,7 +117,7 @@ export function useFireStationsNew(enabled = false) {
 
 // === Source Health ===
 export function useSourceHealthNew() {
-  return useFetch<{ sources: any[] } | null>("/api/source-health", {
+  return useFetch<{ sources: any[]; dataState?: DataStateMeta } | null>("/api/source-health", {
     refreshMs: 30_000,
     fallback: { sources: [] },
   });

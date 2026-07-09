@@ -4,6 +4,7 @@
 // share a single source of truth.
 
 import type { Language } from "@/lib/i18n";
+import type { EventType } from "@/lib/types";
 
 // ---------------- Severity ----------------
 
@@ -234,4 +235,65 @@ export function dedupeByLocation<T extends { geometry?: { coordinates?: [number,
     if (!dup) out.push(inc);
   }
   return out;
+}
+
+// ---------------- ANEPC normalization helpers (shared) ----------------
+// Used by both the ingest pipeline and the /api/incidents read path.
+// Pure functions to avoid duplication.
+
+export function mapEventType(rasi: string): EventType {
+  if (!rasi) return "other";
+  if (rasi.includes("Rurais")) return "wildfire";
+  if (rasi.includes("Urbanos")) return "urban_fire";
+  if (rasi.includes("Outros Incêndios")) return "other_fire";
+  return "other";
+}
+
+export function mapIncidentStatus(estadoAgrupado: string): IncidentStatus {
+  if (!estadoAgrupado) return "detected";
+  if (estadoAgrupado.includes("Despacho")) return "detected";
+  if (estadoAgrupado.includes("Curso")) return "active";
+  if (estadoAgrupado.includes("Resolu")) return "contained";
+  // "Em Conclusão" means "being concluded" — still active, not yet closed.
+  // Only fully terminated states (Encerrada / Encerrado / Falso Alarme) are resolved.
+  if (estadoAgrupado.includes("Encerrada") || estadoAgrupado.includes("Falso Alarme")) return "resolved";
+  if (estadoAgrupado.includes("Conclu")) return "contained";
+  if (estadoAgrupado.includes("Vigil")) return "monitoring";
+  return "detected";
+}
+
+export function mapSeverity(
+  personnelTotal: number,
+  assetsAerial: number,
+  eventType: EventType,
+  incidentStatus: IncidentStatus
+): Severity {
+  let peak: Severity;
+  if (eventType === "wildfire") {
+    if (assetsAerial >= 2 || personnelTotal >= 30) peak = "critical";
+    else if (assetsAerial >= 1 || personnelTotal >= 15) peak = "high";
+    else if (personnelTotal >= 5) peak = "medium";
+    else peak = "low";
+  } else if (eventType === "urban_fire") {
+    if (personnelTotal >= 20) peak = "high";
+    else if (personnelTotal >= 8) peak = "medium";
+    else peak = "low";
+  } else {
+    peak = personnelTotal >= 15 ? "medium" : "low";
+  }
+
+  switch (incidentStatus) {
+    case "resolved":
+      return peak === "critical" ? "medium" : "low";
+    case "contained":
+    case "monitoring":
+      return peak === "critical" ? "high" : peak === "high" ? "medium" : "low";
+    default:
+      return peak;
+  }
+}
+
+export function freshnessScore(observedAt: string): number {
+  const ageHr = (Date.now() - new Date(observedAt).getTime()) / 3_600_000;
+  return Math.max(0, 1 - ageHr / 24);
 }

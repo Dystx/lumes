@@ -50,7 +50,7 @@ interface IncidentRow {
   estimatedAreaHa: number;
 }
 
-export default async function Image({ params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let inc: IncidentRow | null = null;
   try {

@@ -41,11 +41,33 @@ export const translations = {
     "nasa-firms-viirs": { pt: "Satélite NASA FIRMS", en: "NASA FIRMS Satellite" },
   },
 
+  // Source type labels (for badges, timeline, etc.)
+  sourceTypes: {
+    satellite: { pt: "Satélite", en: "Satellite" },
+    official: { pt: "Oficial", en: "Official" },
+    community: { pt: "Comunidade", en: "Community" },
+    news: { pt: "Notícias", en: "News" },
+    weather: { pt: "Meteorologia", en: "Weather" },
+  },
+
+  // Trust / verification labels
+  trust: {
+    unverified: { pt: "Não verificado", en: "Unverified" },
+    "single-source": { pt: "Fonte única", en: "Single source" },
+    corroborated: { pt: "Confirmado", en: "Corroborated" },
+    "officially-verified": { pt: "Oficialmente verificado", en: "Officially verified" },
+  },
+
   // Top-bar / header common actions
   playback: {
+    title: { pt: "Reprodução Histórica", en: "Historical Playback" },
     now: { pt: "AGORA", en: "NOW" },
     nowLabel: { pt: "Saltar para o presente", en: "Jump to present" },
     past: { pt: "{n} horas atrás", en: "{n} hours ago" },
+    skipBack: { pt: "Recuar", en: "Skip back" },
+    skipForward: { pt: "Avançar", en: "Skip forward" },
+    play: { pt: "Reproduzir", en: "Play" },
+    pause: { pt: "Pausar", en: "Pause" },
   },
   error: {
     sectionTitle: { pt: "Não foi possível carregar", en: "Could not load" },
@@ -58,6 +80,11 @@ export const translations = {
     noFollowed: { pt: "Não segue nenhum incêndio", en: "Not following any incidents" },
     noFollowedDesc: { pt: "Toque em \"Seguir\" num incêndio para receber atualizações em tempo real.", en: "Tap \"Follow\" on an incident to get realtime updates." },
     noSources: { pt: "A verificar fontes de dados…", en: "Checking data sources…" },
+    title: { pt: "Algo correu mal", en: "Something went wrong" },
+    description: { pt: "A aplicação encontrou um erro inesperado. Tente novamente ou volte à página inicial.", en: "The application hit an unexpected error. Try again or return to the home page." },
+    technicalDetails: { pt: "Detalhes técnicos", en: "Technical details" },
+    tryAgain: { pt: "Tentar novamente", en: "Try again" },
+    goHome: { pt: "Ir ao início", en: "Go home" },
   },
   mobile: {
     notifications: { pt: "Notificações", en: "Notifications" },
@@ -192,9 +219,7 @@ export const translations = {
     recent: { pt: "Recentes", en: "Recent" },
     all: { pt: "Todos", en: "All" },
     details: { pt: "Detalhe", en: "Details" },
-    resourcesDeployed: { pt: "Meios Empenhados", en: "Resources Deployed" },
     operationalPhases: { pt: "Fases Operacionais", en: "Operational Phases" },
-    topPriority: { pt: "Incêndios Prioritários", en: "Top Priority Incidents" },
     topPriority: { pt: "Incêndios Prioritários", en: "Top Priority Incidents" },
     recentActivity: { pt: "Atividade Recente", en: "Recent Activity" },
     allActive: { pt: "Todos os Incêndios Ativos", en: "All Active Incidents" },
@@ -209,7 +234,6 @@ export const translations = {
     quickFilterCritical: { pt: "Críticos", en: "Critical" },
     quickFilterHigh: { pt: "Elevados+", en: "High+" },
     quickFilterActive: { pt: "Ativos", en: "Active" },
-    total: { pt: "no total", en: "total" },
   },
 
   // Incident detail
@@ -258,16 +282,6 @@ export const translations = {
     activeTap: { pt: "{count} incêndios ativos — toque para abrir o painel", en: "{count} active fires — tap to open dashboard" },
     totalLabel: { pt: "incêndios", en: "fires" },
     totalLabelCompact: { pt: "", en: "" },
-  },
-
-  // Playback
-  playback: {
-    title: { pt: "Reprodução Histórica", en: "Historical Playback" },
-    now: { pt: "AGORA", en: "NOW" },
-    skipBack: { pt: "Recuar", en: "Skip back" },
-    skipForward: { pt: "Avançar", en: "Skip forward" },
-    play: { pt: "Reproduzir", en: "Play" },
-    pause: { pt: "Pausar", en: "Pause" },
   },
 
   // History modal
@@ -377,6 +391,7 @@ export const translations = {
     satellite: { pt: "Deteção satélite", en: "Satellite detection" },
     community: { pt: "Comunicação cidadão", en: "Community report" },
     evacuation: { pt: "Zona de evacuação", en: "Evacuation zone" },
+    synthetic: { pt: "Camadas sintéticas (biomassa, risco composto) disponíveis em toggles avançados.", en: "Synthetic layers (biomass, composite risk) available via advanced toggles." },
   },
 
   // Advanced layer labels
@@ -401,18 +416,6 @@ export const translations = {
     minutesAgo: { pt: "min atrás", en: "m ago" },
     hoursAgo: { pt: "h atrás", en: "h ago" },
     daysAgo: { pt: "d atrás", en: "d ago" },
-  },
-
-  // Error boundary
-  error: {
-    title: { pt: "Algo correu mal", en: "Something went wrong" },
-    description: {
-      pt: "A aplicação encontrou um erro inesperado. Tente novamente ou volte à página inicial.",
-      en: "The application hit an unexpected error. Try again or return to the home page.",
-    },
-    technicalDetails: { pt: "Detalhes técnicos", en: "Technical details" },
-    tryAgain: { pt: "Tentar novamente", en: "Try again" },
-    goHome: { pt: "Ir ao início", en: "Go home" },
   },
 
 } as const;

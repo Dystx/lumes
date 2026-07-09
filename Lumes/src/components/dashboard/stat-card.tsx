@@ -4,12 +4,14 @@
 //
 // Hero metric style — large mono number + small icon + uppercase label.
 
-import type { LucideIcon } from "@/components/icons/phosphor-icons";
+import type { ComponentType, SVGProps } from "react";
+
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 export interface DashStatProps {
   label: string;
   value: number;
-  icon: LucideIcon;
+  icon: IconComponent;
   color: string;
   pulse?: boolean;
   active?: boolean;
@@ -63,7 +65,7 @@ export function DashStat({
 // ResourceStat — resources deployed card (Personnel / Engines / Aircraft).
 // Compact 3-column layout; clickable; renders active state.
 export interface ResourceStatProps {
-  icon: LucideIcon;
+  icon: IconComponent;
   value: number;
   label: string;
   active?: boolean;

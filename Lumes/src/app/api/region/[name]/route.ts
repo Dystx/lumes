@@ -12,16 +12,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { cached } from "@/lib/api/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: { name: string };
+  params: Promise<{ name: string }>;
 }
-
-const CACHE_TTL_MS = 30_000;
-const cache = new Map<string, { ts: number; data: unknown }>();
 
 function decode(name: string): string {
   try {
@@ -32,7 +30,8 @@ function decode(name: string): string {
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
-  const regionName = decode(params.name).trim();
+  const { name } = await params;
+  const regionName = decode(name).trim();
   if (!regionName) {
     return NextResponse.json({ error: "missing region name" }, { status: 400 });
   }
@@ -41,42 +40,35 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const url = new URL(req.url);
   const includeResolved = url.searchParams.get("resolved") === "1";
   const cacheKey = `${regionName.toLowerCase()}|${includeResolved}`;
-  const hit = cache.get(cacheKey);
-  if (hit && Date.now() - hit.ts < CACHE_TTL_MS) {
-    return NextResponse.json(hit.data, {
-      headers: {
-        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
-      },
-    });
-  }
 
   const statusFilter = includeResolved
     ? undefined
-    : { in: ["detected", "active", "contained", "monitoring"] as const };
+    : { in: ["detected", "active", "contained", "monitoring"] };
 
   try {
-    const incidents = await db.incident.findMany({
-      where: {
-        OR: [
-          { municipality: { contains: regionName } },
-          { district: { contains: regionName } },
-        ],
-        ...(statusFilter ? { status: statusFilter } : {}),
-      },
-      orderBy: { lastUpdated: "desc" },
-      take: 200,
+    const data = await cached(`region-${cacheKey}`, 30_000, async () => {
+      const incidents = await db.incident.findMany({
+        where: {
+          OR: [
+            { municipality: { contains: regionName } },
+            { district: { contains: regionName } },
+          ],
+          ...(statusFilter ? { status: statusFilter } : {}),
+        },
+        orderBy: { lastUpdated: "desc" },
+        take: 200,
+      });
+
+      return {
+        region: regionName,
+        source: "lumes-internal",
+        fetchedAt: new Date().toISOString(),
+        count: incidents.length,
+        incidents,
+        includeResolved,
+      };
     });
 
-    const data = {
-      region: regionName,
-      source: "lumes-internal",
-      fetchedAt: new Date().toISOString(),
-      count: incidents.length,
-      incidents,
-      includeResolved,
-    };
-
-    cache.set(cacheKey, { ts: Date.now(), data });
     return NextResponse.json(data, {
       headers: {
         "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",

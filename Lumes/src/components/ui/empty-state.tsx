@@ -12,12 +12,14 @@ import type { Language } from "@/lib/i18n";
 import { t } from "@/lib/i18n";
 
 export interface EmptyStateProps {
-  variant?: "no-incidents" | "no-results" | "no-news" | "no-fires-near";
+  variant?: "no-incidents" | "no-results" | "no-news" | "no-fires-near" | "no-data" | "error";
   lang: Language;
   onReset?: () => void;
+  compact?: boolean;
+  action?: { label: string; onClick: () => void };
 }
 
-export function EmptyState({ variant = "no-results", lang, onReset }: EmptyStateProps) {
+export function EmptyState({ variant = "no-results", lang, onReset, compact, action }: EmptyStateProps) {
   const config = {
     "no-incidents": {
       icon: Flame,
@@ -66,6 +68,15 @@ export function EmptyState({ variant = "no-results", lang, onReset }: EmptyState
           {t(lang, "common.clear")}
         </button>
       )}
+      {action && (
+        <button
+          type="button"
+          onClick={action.onClick}
+          className="mt-2 px-3 py-1.5 rounded-md bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)] text-xs font-medium hover:bg-[var(--ember-accent)]/15 transition-colors"
+        >
+          {action.label}
+        </button>
+      )}
     </div>
   );
 }
@@ -85,15 +96,6 @@ export function LoadingSkeleton({ rows = 3, height = 48 }: LoadingSkeletonProps)
           style={{ height: `${height}px` }}
         />
       ))}
-    </div>
-  );
-}
-
-export function CardSkeleton() {
-  return (
-    <div className="p-4 rounded-md bg-[var(--ember-surface-2)] border border-[var(--ember-border)] animate-pulse">
-      <div className="h-3 bg-[var(--ember-border)] rounded w-1/3 mb-3" />
-      <div className="h-6 bg-[var(--ember-border)] rounded w-1/2" />
     </div>
   );
 }

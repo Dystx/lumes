@@ -30,7 +30,6 @@ import {
   Zap,
   MapPin,
   Radio,
-  AlertTriangle,
   Plane,
   Trees,
   TrendingUp,
@@ -39,10 +38,9 @@ import {
   ChevronDown,
   RotateCcw,
   Moon,
-  Eye,
 } from "@/components/icons/phosphor-icons";
 import { t, type Language } from "@/lib/i18n";
-import type { Severity, SourceType } from "@/lib/incident-types";
+import type { Severity, SourceType } from "@/lib/types";
 import { FilterStatus, type FilterStatusItem } from "./filter-status";
 
 export interface FiltersPanelProps {
@@ -58,8 +56,7 @@ export interface FiltersPanelProps {
   // Severity
   severityFilter: Set<Severity>;
   toggleSeverity: (s: Severity) => void;
-  criticalOnly: boolean;
-  setCriticalOnly: (b: boolean) => void;
+  resetSeverityFilter: () => void;
   hideResolved: boolean;
   setHideResolved: (b: boolean) => void;
   // Source
@@ -79,8 +76,8 @@ export interface FiltersPanelProps {
   showCompositeRisk: boolean;
   setShowCompositeRisk: (b: boolean) => void;
   // Basemap
-  basemap: "dark" | "light" | "sat";
-  setBasemap: (b: "dark" | "light" | "sat") => void;
+  basemap: "dark" | "light" | "satellite";
+  setBasemap: (b: "dark" | "light" | "satellite") => void;
   // Data state
   fireRiskReady: boolean;
   fireRiskCount: number;
@@ -107,8 +104,7 @@ export function FiltersPanel({
   setQuickFilter,
   severityFilter,
   toggleSeverity,
-  criticalOnly,
-  setCriticalOnly,
+  resetSeverityFilter,
   hideResolved,
   setHideResolved,
   visibleSources,
@@ -148,41 +144,32 @@ export function FiltersPanel({
   const resetAll = () => {
     setSearchQuery("");
     setQuickFilter("all");
-    setCriticalOnly(false);
-    setHideResolved(false);
-    severityFilter.forEach((s) => toggleSeverity(s));
-    setShowFireRisk(false);
-    setShowFireStations(false);
-    setShowSatellite(false);
-    setShowAerial(false);
-    setShowBiomass(false);
-    setShowCompositeRisk(false);
-    setBasemap("dark");
+    setHideResolved(true);
+    // Reset severity filter back to default (all severities visible).
+    // If the set already contains all 4, the reset is a no-op.
+    if (severityFilter.size !== 4) {
+      resetSeverityFilter();
+    }
+    // Display settings are intentionally not incident-query filters.
   };
 
   const hasActiveFilters =
     searchQuery.length > 0 ||
     quickFilter !== "all" ||
-    criticalOnly ||
-    severityFilter.size > 0 ||
-    showFireRisk ||
-    showFireStations ||
-    showSatellite ||
-    showAerial ||
-    showBiomass ||
-    showCompositeRisk;
+    severityFilter.size !== 4 ||
+    !hideResolved;
 
   return (
     <div className="flex flex-col h-full bg-[var(--ember-bg)]">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-[var(--ember-border)] flex-shrink-0">
+      <div className="px-4 py-4 border-b border-[var(--ember-border)] flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-[var(--ember-accent-subtle)] flex items-center justify-center">
               <Sliders className="w-3.5 h-3.5 text-[var(--ember-accent)]" />
             </div>
             <div>
-              <h2 className="text-[14px] font-semibold text-[var(--ember-text)] leading-none">
+              <h2 className="text-[15px] font-semibold text-[var(--ember-text)] leading-none">
                 {lang === "pt" ? "Filtros" : "Filters"}
               </h2>
               <p className="text-[10px] text-[var(--ember-text-faint)] leading-none mt-1 tabular-nums">
@@ -205,28 +192,6 @@ export function FiltersPanel({
               {lang === "pt" ? "Limpar" : "Reset"}
             </button>
           )}
-        </div>
-
-        {/* Quick filter presets — one-tap common combinations */}
-        <div className="flex flex-wrap gap-1.5 mt-2.5">
-          {[
-            { id: "critical", label: lang === "pt" ? "Só críticos" : "Critical only", icon: AlertTriangle,
-              apply: () => { setQuickFilter("critical"); setCriticalOnly(true); } },
-            { id: "active", label: lang === "pt" ? "Em curso" : "Active", icon: Radio,
-              apply: () => { setQuickFilter("active"); setHideResolved(false); } },
-            { id: "hideresolved", label: lang === "pt" ? "Esconder resolvidos" : "Hide resolved", icon: Eye,
-              apply: () => { setHideResolved(true); } },
-          ].map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={preset.apply}
-              className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--ember-surface-2)] hover:bg-[var(--ember-accent-subtle)] border border-[var(--ember-border)] hover:border-[var(--ember-accent)] text-[10px] font-medium text-[var(--ember-text-muted)] hover:text-[var(--ember-accent)] transition-colors"
-            >
-              <preset.icon className="w-2.5 h-2.5" />
-              {preset.label}
-            </button>
-          ))}
         </div>
 
         {/* Tab switcher */}
@@ -259,7 +224,6 @@ export function FiltersPanel({
             id: f.id,
             label: f.label,
             onClear: f.onClear,
-            category: f.category,
           }))}
           onClearAll={resetAll}
           liveCount={liveCount}
@@ -373,17 +337,6 @@ export function FiltersPanel({
               <label className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-[var(--ember-surface-2)]">
                 <input
                   type="checkbox"
-                  checked={criticalOnly}
-                  onChange={(e) => setCriticalOnly(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-[var(--ember-critical)]"
-                />
-                <span className="text-xs text-[var(--ember-text)]">
-                  {lang === "pt" ? "Apenas críticos" : "Critical only"}
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-[var(--ember-surface-2)]">
-                <input
-                  type="checkbox"
                   checked={hideResolved}
                   onChange={(e) => setHideResolved(e.target.checked)}
                   className="w-3.5 h-3.5 accent-[var(--ember-accent)]"
@@ -444,13 +397,13 @@ export function FiltersPanel({
             {/* Basemap */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
-                {lang === "pt" ? "Mapa base" : "Basemap"}
+                {lang === "pt" ? "Mapa base" : "Basemap"} <span className="text-[var(--ember-accent)]">({basemap})</span>
               </label>
               <div className="grid grid-cols-3 gap-1.5">
                 {([
                   { v: "dark" as const, label: t(lang, "sidebar.dark"), icon: Moon },
                   { v: "light" as const, label: t(lang, "sidebar.light"), icon: Sparkles },
-                  { v: "sat" as const, label: t(lang, "sidebar.sat"), icon: Satellite },
+                  { v: "satellite" as const, label: t(lang, "sidebar.sat"), icon: Satellite },
                 ]).map((opt) => {
                   const Icon = opt.icon;
                   return (

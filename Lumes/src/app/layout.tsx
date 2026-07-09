@@ -8,6 +8,7 @@ import { Fraunces, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google"
 import "./globals.css";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { MotionProvider } from "@/components/motion-provider";
 import SWRegister from "@/components/sw-register";
 
 const fraunces = Fraunces({
@@ -74,8 +75,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Public routes are intentionally Portuguese-only until route-level locale
+  // negotiation is introduced; the map app still supports PT/EN.
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-PT" suppressHydrationWarning>
       <body
         className={`${fraunces.variable} ${bricolage.variable} ${jetbrainsMono.variable} font-sans antialiased bg-background text-foreground`}
       >
@@ -85,9 +88,10 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
-          <SWRegister />
-          <SonnerToaster
+          <MotionProvider>
+            {children}
+            <SWRegister />
+            <SonnerToaster
             position="top-center"
             richColors
             closeButton
@@ -99,7 +103,8 @@ export default function RootLayout({
                 color: "var(--ember-text)",
               },
             }}
-          />
+            />
+          </MotionProvider>
         </ThemeProvider>
       </body>
     </html>

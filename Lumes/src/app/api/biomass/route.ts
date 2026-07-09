@@ -5,19 +5,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSyntheticBiomassGrid, lookupCell } from "@/lib/biomass/synthetic-grid";
+import { cached } from "@/lib/api/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 h — biomass data is essentially static
-let cache: { ts: number; cells: ReturnType<typeof getSyntheticBiomassGrid> } | null = null;
-
-function getCells() {
-  if (cache && Date.now() - cache.ts < CACHE_TTL_MS) return cache.cells;
-  const cells = getSyntheticBiomassGrid();
-  cache = { ts: Date.now(), cells };
-  return cells;
-}
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -34,7 +25,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "lat/lon out of range" }, { status: 400 });
   }
 
-  const cell = lookupCell(getCells(), lat, lon);
+  const cells = await cached("biomass-cells", 24 * 60 * 60 * 1000, async () => getSyntheticBiomassGrid());
+  const cell = lookupCell(cells, lat, lon);
   if (!cell) {
     return NextResponse.json({ error: "no biomass data at that point" }, { status: 404 });
   }
