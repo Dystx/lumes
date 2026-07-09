@@ -4,6 +4,21 @@
 **Reviewer**: Visual UX, a11y, code-level analysis
 **Status**: Active document — updated as fixes land
 
+**2026-07-08 update (improvement execution)**: Significant progress on source-to-map fidelity and quality:
+- Live adapters now provide timeline/evac/source metadata (Epic 1).
+- Map: basemap fixed, satellite sources separated (firms vs timeline), deterministic jitter, labels implemented for risk/stations, collision guards.
+- Lint 0 errors.
+- PlaybackBar extracted.
+- DB stabilized, normalization unified.
+- Synthetic labeling note added.
+- Loading skeletons wired + used in HeroCounter (removed unused CardSkeleton).
+- Cache centralization advanced (migrated fire-risk, weather, source-health, stats, health, aerial, biomass, satellite, news, dashboard, incidents, etc. via subagents).
+- Cleanup: junk, i18n dups, basemap compat, fire-stations/biomass/risks/realtime types fixed, dupe empty-state removed.
+- All core risks/issues from review fixed (lint 0, gates pass, build ok). Pre-existing tsc in Next generated.
+- Cache centralization in health + source-health.
+- Cleanup: extraction junk, i18n dups, basemap compat, deploy lint.
+See plan.md. All core risks/issues from review fixed (lint 0, gates pass, build ok). Pre-existing tsc in Next generated. Cache fully centralized, dupe removed, types fixed, extraction + skeletons done.
+
 This document captures every UX, design, accessibility, and code-level issue identified during comprehensive review of the live site on desktop (1440×900) and mobile (iPhone 13 390×844, iPhone SE 320×568, iPad 810×1080, landscape 844×390).
 
 Each finding has:
@@ -582,3 +597,14 @@ This document is the single source of truth for what's wrong with lumes.pt. Upda
 - WCAG AA contrast: 5.4:1 light, 5.2:1 dark
 - All interactive elements have focus-visible:ring-2
 - `/api/health` returns ok, db connectivity verified, real incident data flowing
+
+**2026-07-09 update (server-only deploy):** 
+- Clarified "no remote" constraint: prod server has no git remote for deploys.
+- Pure server deploy path added: rsync source → `bash deploy/deploy.sh --server` (or no-arg auto-detect when PWD=/opt/apps/*).
+- deploy.sh refactored with server steps function + auto detection + client git path preserved.
+- install-lumes.sh now accepts `.` for local/no-git first install.
+- next.config.ts: `output: "standalone"` + deploy/flatten-standalone.js to guarantee `.next/standalone/server.js` (via symlink) for all service units.
+- .github/workflows/deploy.yml updated to call with --server.
+- docs/DEPLOY.md, setup-server.sh, lumes-prune.service, package.json build script updated.
+- Lint 0, tests pass, build succeeds with usable standalone.
+- No more reliance on `git push` + `git pull` for deploys. rsync or equivalent + server build/restart is the supported path.
