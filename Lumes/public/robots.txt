@@ -1,0 +1,23 @@
+# lumes.pt robots.txt
+#
+# Goal: allow indexing of public content, block indexing of API
+# routes, point to the sitemap.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /api/*
+
+# Specifically allow the homepage and other public routes
+Allow: /
+Allow: /status
+Allow: /privacy
+
+# Sitemap location
+Sitemap: https://lumes.pt/sitemap.xml
+
+# Help crawlers find the RSS feed
+# (not all crawlers honour this, but doesn't hurt)
+
+# Crawl-delay for politeness. Lumes.pt is a small site.
+Crawl-delay: 1

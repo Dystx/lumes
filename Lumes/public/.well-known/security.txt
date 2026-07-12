@@ -1,0 +1,15 @@
+Contact: mailto:security@lumes.pt
+Expires: 2027-12-31T23:59:59z
+Preferred-Languages: pt, en
+Canonical: https://lumes.pt/.well-known/security.txt
+
+# If you discover a security issue in lumes.pt, please email
+# security@lumes.pt with a clear description and reproduction
+# steps. We aim to acknowledge within 48 hours and to ship a
+# fix within 7 days for critical issues.
+#
+# Please do NOT file public GitHub issues for security bugs. We
+# follow coordinated disclosure.
+#
+# Thank you for keeping lumes.pt safe for the people who depend
+# on it during fire emergencies.
