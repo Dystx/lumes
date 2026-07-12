@@ -1,0 +1,33 @@
+{
+  "name": "lumes.pt — Incêndios florestais em Portugal",
+  "short_name": "lumes.pt",
+  "description": "Mapa de incêndios florestais em Portugal. Dados ANEPC, IPMA, NASA FIRMS, IPMA. Em tempo real.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c1821",
+  "theme_color": "#fb923c",
+  "orientation": "portrait-primary",
+  "lang": "pt-PT",
+  "categories": ["news", "weather", "utilities"],
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mapa de incêndios",
+      "url": "/?view=map",
+      "description": "Abrir mapa de incêndios ativos"
+    },
+    {
+      "name": "Estado do serviço",
+      "url": "/status",
+      "description": "Verificar se lumes.pt está operacional"
+    }
+  ]
+}
