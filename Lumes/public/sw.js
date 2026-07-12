@@ -4,7 +4,7 @@
 //   - HTML navigation: network-first, fallback to cached /offline.html
 //   - App chunks (/_next/static): bypassed so deploys always use the server's
 //     content-hashed response; Caddy/HTTP caching handles immutable chunks.
-//   - Other static assets (/static, /icon-*, /manifest): cache-first
+//   - Other static assets (/static, /icon-*): cache-first
 //   - /api/*: always network-owned so live/fire-health state keeps its server
 //     cache policy and stale data is never presented as current.
 //   - Cross-origin (tiles, ANEPC, FIRMS, etc.): bypass
@@ -17,7 +17,7 @@ const CACHE_NAME = "lumes-runtime";
 
 // Pre-cache the offline page and the static shell. The homepage
 // itself is too dynamic to precache — it's navigated to while online.
-const PRECACHE = ["/offline.html", "/manifest.json", "/status", "/privacy"];
+const PRECACHE = ["/offline.html", "/status", "/privacy"];
 
 const STATIC_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -86,7 +86,6 @@ self.addEventListener("fetch", (event) => {
 	// Static assets: cache-first with stale-while-revalidate.
 	const isStatic =
 		url.pathname.startsWith("/static/") ||
-		url.pathname === "/manifest.json" ||
 		url.pathname.startsWith("/icon-") ||
 		url.pathname === "/opengraph-image.png";
 	if (isStatic) {
