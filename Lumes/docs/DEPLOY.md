@@ -121,7 +121,7 @@ FIRMS_MAP_KEY=<32 hex chars>
 │   ├── css/
 │   └── media/
 ├── standalone/                      # deployable runtime bundle
-│   ├── server.js                    # the entrypoint
+│   ├── server.js                    # stable entrypoint (may link to <app>/server.js)
 │   ├── .next/                       # server files + copied static assets
 │   │   └── static/                  # copied by deploy.sh
 │   ├── public/                       # copied sw.js, manifest, offline assets
@@ -131,10 +131,12 @@ FIRMS_MAP_KEY=<32 hex chars>
 ```
 
 **Important:** Next does not copy browser chunks or `public/` into the
-standalone directory. `deploy/deploy.sh` copies `.next/static/` to
-`.next/standalone/.next/static/` and `public/` to `.next/standalone/public/`
-before restarting the service. Both copies are required: without them CSS,
-client chunks, or `/sw.js` return 404 from the standalone runtime.
+standalone directory. `deploy/deploy.sh` resolves the directory containing
+the runnable standalone `server.js` (including a nested
+`.next/standalone/<app>/server.js` layout), then copies `.next/static/` and
+`public/` beside that server before restarting the service. Both copies are
+required: without them CSS, client chunks, or `/sw.js` return 404 from the
+standalone runtime.
 
 ## Deploy flow
 
@@ -161,9 +163,10 @@ client chunks, or `/sw.js` return 404 from the standalone runtime.
    cd /opt/apps/lumes
    export PATH=/usr/local/bin:$PATH
    bun run build              # outputs to /opt/apps/lumes/.next/
-   mkdir -p .next/standalone/.next/static .next/standalone/public
-   cp -r .next/static/. .next/standalone/.next/static/
-   cp -r public/. .next/standalone/public/
+   RUNTIME_DIR="$(dirname "$(readlink -f .next/standalone/server.js)")"
+   mkdir -p "$RUNTIME_DIR/.next/static" "$RUNTIME_DIR/public"
+   cp -r .next/static/. "$RUNTIME_DIR/.next/static/"
+   cp -r public/. "$RUNTIME_DIR/public/"
    systemctl --user restart lumes.service
    sleep 5
    curl -fsS http://127.0.0.1:3001/api/source-health
@@ -260,6 +263,72 @@ no longer exists**.
 - **Add a "service worker update" prompt** in the UI (currently
   the SW does `skipWaiting()` immediately, which can race with
   active requests).
+
+### HTTPS release verification
+
+After an authorized deploy and restart, run the read-only verifier from the
+repository root:
+
+```bash
+bash deploy/verify-production.sh https://lumes.pt
+```
+
+It checks that the public HTML is `no-store`, every hashed CSS/JS URL emitted
+by the page returns `200` with immutable caching, `/manifest.json` and `/sw.js`
+are present with no-store caching, every icon declared by the manifest returns
+`200`, `/api/health` is healthy, and `/api/source-health` exposes a source
+array without a retryable-error headline.
+It performs GET requests only and never prints response bodies or secrets. A
+loopback URL such as `http://127.0.0.1:3001` is accepted for local standalone
+smoke checks; production verification must use HTTPS.
+
+The server-rendered public status fixtures have a separate opt-in browser
+matrix. It starts a temporary mock upstream and isolated Next process, covers
+healthy/degraded/empty/fallback plus malformed-success and invalid-source
+states in both themes at phone widths, and shuts both processes down afterward:
+
+```bash
+bun run test:e2e:status-fixtures
+```
+
+This is intentionally excluded from the default unit and browser gates because
+it starts an additional Next process.
+
+After a current production build exists, the same matrix can reuse the
+compiled `.next` artifact instead of starting a development compiler:
+
+```bash
+bun run build
+bun run test:e2e:status-fixtures:start
+```
+
+The `start` mode is still opt-in and uses the server-only
+`LUMES_STATUS_BASE_URL` override for its temporary upstream. It must not be
+run against a stale build; the normal development mode remains the fallback
+when a current build is unavailable.
+
+The deploy helper now fails before build/restart when any of
+`public/manifest.json`, its `/logo.svg` icon, `public/sw.js`, the precached
+`public/offline.html`, `public/robots.txt`, or
+`public/.well-known/security.txt` is missing from the payload. This is
+intentional: a healthy Next process is not a successful browser release if
+control assets still return 404.
+
+For a git-based release, run this from the Lumes checkout root before
+deploying. In the shared workspace that means `cd Lumes` first; a standalone
+server checkout uses its own repository root. The files must be tracked *and
+committed* because the git deploy path pushes `HEAD` and the server resets to
+`origin/main`:
+
+```bash
+git ls-files --error-unmatch public/manifest.json public/logo.svg public/sw.js public/offline.html public/robots.txt public/.well-known/security.txt
+git diff --quiet HEAD -- public/manifest.json public/logo.svg public/sw.js public/offline.html public/robots.txt public/.well-known/security.txt
+```
+
+If the command fails for any listed control asset, stage that asset through
+the normal release review, commit it, and push it before deploying; staged-only
+files are intentionally rejected by `deploy/deploy.sh`. For an rsync/server-only
+release, the filesystem preflight is used instead.
 
 ## Operational cheatsheet
 

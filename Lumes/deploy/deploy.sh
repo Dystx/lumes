@@ -19,6 +19,9 @@
 
 set -euo pipefail
 
+DEPLOY_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ASSET_PREFLIGHT="${DEPLOY_SCRIPT_DIR}/preflight-assets.sh"
+
 run_server_steps() {
   local SLUG="$1"
   local APP_DIR="/opt/apps/${SLUG}"
@@ -27,6 +30,9 @@ run_server_steps() {
   if [[ "$PWD" != "${APP_DIR}" && ! -f "package.json" ]]; then
     cd "${APP_DIR}" || { echo "!! Could not cd to ${APP_DIR}"; exit 1; }
   fi
+
+  # Fail before build/restart if any browser-facing control asset is absent.
+  bash "${ASSET_PREFLIGHT}" "${PWD}" filesystem
 
   echo "==> install (build dependencies)"
   bun install --frozen-lockfile
@@ -37,21 +43,30 @@ run_server_steps() {
   echo "==> build"
   bun run build
 
-  # Next's standalone server resolves /_next/static relative to its own
-  # `.next` directory, but the build leaves those browser assets at the
-  # project-level `.next/static`. Copy them into the runtime bundle so CSS
-  # and client chunks do not 404 after the service restarts.
+  # Next's standalone server resolves assets relative to the directory that
+  # contains the runnable server.js. Depending on the build root, that file
+  # may be `.next/standalone/server.js` or nested under `.next/standalone/<app>`.
+  # Resolve the real target so CSS, client chunks, and public assets do not
+  # 404 after the service restarts.
+  SERVER_ENTRY=".next/standalone/server.js"
+  if [[ -L "${SERVER_ENTRY}" ]]; then
+    RUNTIME_DIR="$(dirname "$(readlink -f "${SERVER_ENTRY}")")"
+  else
+    RUNTIME_DIR="$(dirname "${SERVER_ENTRY}")"
+  fi
+
+  echo "    runtime bundle: ${RUNTIME_DIR}"
   echo "==> bundle browser static assets"
-  mkdir -p .next/standalone/.next/static
-  cp -R .next/static/. .next/standalone/.next/static/
+  mkdir -p "${RUNTIME_DIR}/.next/static"
+  cp -R .next/static/. "${RUNTIME_DIR}/.next/static/"
 
   # Public files (including the service worker and manifest) are also outside
   # Next's standalone output. Keep them beside server.js so registrations and
   # offline assets continue to resolve after deployment.
   if [[ -d public ]]; then
     echo "==> bundle public assets"
-    mkdir -p .next/standalone/public
-    cp -R public/. .next/standalone/public/
+    mkdir -p "${RUNTIME_DIR}/public"
+    cp -R public/. "${RUNTIME_DIR}/public/"
   fi
 
   echo "==> restart service"
@@ -104,6 +119,8 @@ if ! git remote get-url origin >/dev/null 2>&1; then
   echo "!! No 'origin' git remote configured. Use rsync + server-only deploy instead (see docs/DEPLOY.md)."
   exit 1
 fi
+
+bash "${ASSET_PREFLIGHT}" "${PWD}" git
 
 cat <<CMD
 Deploying ${SLUG} → ${REMOTE} (git push + server pull)
