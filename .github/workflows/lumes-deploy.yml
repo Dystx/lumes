@@ -1,11 +1,23 @@
-name: Deploy
+name: Lumes Deploy
 
 on:
   push:
     branches: [main]
+    paths:
+      - "Lumes/**"
+      - ".github/workflows/lumes-ci.yml"
+      - ".github/workflows/lumes-deploy.yml"
+      - ".github/workflows/lumes-lighthouse.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  verify:
+    name: Require CI verification
+    uses: ./.github/workflows/lumes-ci.yml
+
   deploy:
     name: SSH → VPS → deploy.sh --server (no-git server-only)
     runs-on: ubuntu-latest
@@ -13,7 +25,7 @@ jobs:
     timeout-minutes: 10
     concurrency:
       group: deploy-${{ github.ref }}
-      cancel-in-progress: false  # don't kill an in-flight deploy
+      cancel-in-progress: false
 
     steps:
       - name: Trigger remote deploy
@@ -31,11 +43,3 @@ jobs:
         if: failure()
         run: |
           echo "::error::Deploy failed for ${{ github.ref }}"
-          # Optional: send a Slack/Discord webhook here.
-          # curl -fsS -X POST "${{ secrets.SLACK_WEBHOOK }}" \
-          #   -H "Content-Type: application/json" \
-          #   -d "{\"text\": \"🚨 lumes.pt deploy failed on ${{ github.sha }}\"}"
-
-  verify:
-    name: Require CI verification
-    uses: ./.github/workflows/ci.yml

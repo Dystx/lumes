@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("deployment packaging contract", () => {
+  const rootWorkflowDir = join(process.cwd(), "..", ".github", "workflows");
   const preflight = "deploy/preflight-assets.sh";
   const requiredAssets = [
     "public/manifest.json",
@@ -150,10 +151,26 @@ describe("deployment packaging contract", () => {
     const packageJson = readFileSync("package.json", "utf8");
     expect(packageJson).toContain('"packageManager": "bun@1.3.4"');
     expect(packageJson).toContain('"bun": "1.3.4"');
-    const ci = readFileSync(".github/workflows/ci.yml", "utf8");
+    const ci = readFileSync(join(rootWorkflowDir, "lumes-ci.yml"), "utf8");
     expect(ci).toContain("bun-version: 1.3.4");
     expect(ci).toContain("Prepare isolated empty database");
     expect(ci).toContain("bunx prisma db push --skip-generate");
+    expect(ci).toContain("working-directory: Lumes");
+  });
+
+  it("runs the root Lighthouse workflow against an isolated database", () => {
+    const lighthouse = readFileSync(join(rootWorkflowDir, "lumes-lighthouse.yml"), "utf8");
+    expect(lighthouse).toContain('DATABASE_URL: "file:./build-test.db"');
+    expect(lighthouse).toContain("Prepare isolated empty database");
+    expect(lighthouse).toContain("bun run test:perf");
+    expect(lighthouse).toContain("working-directory: Lumes");
+  });
+
+  it("keeps deployment verification at the repository root", () => {
+    const deploy = readFileSync(join(rootWorkflowDir, "lumes-deploy.yml"), "utf8");
+    expect(deploy).toContain('uses: ./.github/workflows/lumes-ci.yml');
+    expect(deploy).toContain('"Lumes/**"');
+    expect(deploy).toContain('".github/workflows/lumes-deploy.yml"');
   });
 
   it("keeps the browser security contract explicit for map providers", () => {
