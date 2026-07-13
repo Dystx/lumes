@@ -1,7 +1,9 @@
 // useUIStore — central UI state (filters, layers, modals, selection).
 //
 // TASK D (refactor plan): Extract 30+ useState hooks from page.tsx.
-// Data fetching state uses useAppData (in /lib/use-app-data.ts); use-live-data.ts is legacy for realtime/SSE and some helpers.
+// Data fetching state uses useAppData (in /lib/use-app-data.ts); realtime and
+// browser-local follow state use focused hooks in /lib/use-realtime-incidents
+// and /lib/use-followed-incidents.
 //
 // All setter functions are exposed as actions. This replaces prop
 // drilling and useState/UseEffect sprawl.
@@ -71,6 +73,8 @@ export interface UIState {
   setSortMode: (s: IncidentSort) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  /** Atomically replaces query filters while preserving map display state. */
+  replaceIncidentFilters: (filters: IncidentFilterState) => void;
   /** Restores the documented incident-query baseline only; map display is preserved. */
   resetIncidentFilters: () => void;
 
@@ -171,6 +175,14 @@ export const useUIStore = create<UIState>((set) => ({
   setSortMode: (s) => set({ sortMode: s }),
   searchQuery: "",
   setSearchQuery: (q) => set({ searchQuery: q }),
+  replaceIncidentFilters: (filters) => set({
+    severityFilter: new Set(filters.severities),
+    hideResolved: filters.hideResolved,
+    quickFilter: filters.quick,
+    phaseFilter: filters.phase,
+    resourceFilter: filters.resource,
+    searchQuery: filters.search,
+  }),
   resetIncidentFilters: () =>
     set({
       severityFilter: new Set(ALL_SEVERITIES),

@@ -1,8 +1,18 @@
 # Lumes.pt — Findings & Review
 
-**Date**: 2026-07-06
+**Date**: 2026-07-13
 **Reviewer**: Visual UX, a11y, code-level analysis
-**Status**: Active document — updated as fixes land
+**Status**: Historical review log — current implementation status is tracked in `docs/HANDOFF.md` and the executable plans
+
+**2026-07-13 reconciliation:** This file preserves the original review
+findings and their historical rationale. The current worktree has 148 test
+files / 716 tests, `src/app/page.tsx` at 1,354 lines, `src/components/ember-map.tsx`
+at 1,546 lines, no `src/lib/use-live-data.ts`, no `as any` casts in `src/`,
+and dynamic loading for the optional advanced-layer and news surfaces. The
+follow-up page-orchestration audit found no additional repeated prop boundary
+that is safe or valuable to extract. Treat any older `partial` or
+`in-progress` label below as historical unless the canonical handoff or plan
+reopens it.
 
 **2026-07-08 update (improvement execution)**: Significant progress on source-to-map fidelity and quality:
 - Live adapters now provide timeline/evac/source metadata (Epic 1).
@@ -377,10 +387,10 @@ Each finding has:
 - **Status**: ✅ by-design — useCallback added for hot-path handlers (handleRefresh, handleLocate, handleSelectIncidentFromMap); remaining inline handlers are scoped to small UI elements where re-render cost is negligible
 
 ### P-02 🟠 No Suspense / dynamic imports
-- **Where**: 4 dynamic imports in `src/app/page.tsx`
+- **Where**: optional surface loading in `src/app/page.tsx`
 - **Issue**: Heavy components (NewsSection, layers, etc.) are all loaded eagerly
 - **Fix**: Add `next/dynamic` to NewsSection, AdvancedMapLayers, DashboardPanel (already partially done)
-- **Status**: partially done
+- **Status**: ✅ resolved for current scope — `AdvancedMapLayers` and `NewsSection` are dynamically loaded; the remaining client-rendered shell does not use server Suspense
 
 ### P-03 🟠 0 `<Suspense>` boundaries
 - **Where**: Top level
@@ -421,7 +431,7 @@ Each finding has:
 - **Where**: News cards source attribution
 - **Issue**: Source name is hardcoded in mixed languages
 - **Fix**: Use `t(lang, \`dataSources.${src.sourceId}\`)` — already done in some places
-- **Status**: partial
+- **Status**: ✅ fixed — current news cards expose the outlet/source attribution directly
 
 ### I-05 🟢 Error messages from rate limit / zod are in English
 - **Where**: API error responses
@@ -449,7 +459,7 @@ Each finding has:
 - **Where**: `src/lib/incident-types.ts`
 - **Issue**: `properties?: IncidentProperties` is fine, but callers use `(inc as any).rawProperties` in some places
 - **Fix**: Audit and replace remaining `as any` with proper typing
-- **Status**: partial (most cleaned up)
+- **Status**: ✅ fixed — the current `src/` tree has no `as any` casts; domain raw properties remain explicitly typed where needed
 
 ---
 
@@ -486,10 +496,10 @@ Each finding has:
 - **Fix**: Add `@axe-core/playwright` to e2e tests
 - **Status**: ✅ fixed — tests/e2e/a11y.test.ts runs axe-core across 3 viewports × 4 pages; 0 violations on production
 ### Q-07 🟢 `useLiveData.ts` still has 600+ LOC of duplicated hook code
-- **Where**: `src/lib/use-live-data.ts`
+- **Where**: the former `src/lib/use-live-data.ts` boundary
 - **Issue**: After TASK E migration, this file can be deleted
 - **Fix**: Complete useLiveData → useAppData migration
-- **Status**: in-progress (most migrated; realtime kept;  useLiveData base for legacy)
+- **Status**: ✅ fixed — the legacy module is removed; typed `use-app-data` wrappers, realtime, and browser-local follow state have focused boundaries
 
 ### Q-08 🟢 No CI / linter for accessibility
 - **Where**: `.github/workflows/`
@@ -498,14 +508,13 @@ Each finding has:
 - **Status**: ✅ fixed — a11y tests run on production deploy via LUMES_URL=... bun test:e2e:a11y
 
 ### R-01 TASK E: Migrate 12 more useLiveData hooks to useFetch
-- **Status**: ✅ done (page and news updated to use-app-data; realtime is custom SSE kept in legacy; use-live-data.ts marked as legacy)
+- **Status**: ✅ done (page data uses `use-app-data`; realtime and browser-local follow state now have focused hooks; the legacy module was removed after call-site proof)
 - **Reference**: `src/lib/use-app-data.ts` exists with 13 wrappers
 - **Blocker**: none
 
 ### R-02 TASK C: Continue page.tsx split
-- **Current**: ~3800 lines in `src/app/page.tsx` (reduced from 4063)
-- **Target**: ~3,000 lines (DashboardPanel, Sidebar, IncidentDetailPanel extracted)
-- **Status**: 4 components extracted (DashStat, ResourceStat, OperationalPhases, CollapsibleLegend); padding alignment for visual; partial for epic 3 (more panels noted as next in plan).
+- **Current**: 1,354 lines in `src/app/page.tsx`; `src/components/ember-map.tsx` is 1,546 lines
+- **Status**: ✅ current tranche complete — Dashboard/rail/detail/map boundaries and typed adapters are in place; the follow-up audit found no additional repeated child contract worth extracting without a broader ownership change.
 
 ### R-03 TASK D: useUIStore migration
 - **Status**: ✅ done

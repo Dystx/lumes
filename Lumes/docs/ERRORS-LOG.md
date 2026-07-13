@@ -1,8 +1,14 @@
 # Lumes.pt — Past Errors and Their Root Causes
 
-> Last updated: 2026-07-09
+> Last updated: 2026-07-13
 > A log of every "page won't load" / "X is not defined" / "blank
 > screen" bug, with the actual cause and the actual fix.
+>
+> This is a historical incident record. For the current service-worker cache
+> contract, follow `docs/DEPLOY.md` and `docs/HANDOFF.md`: ordinary hashed Next
+> builds do not require a cache-name bump; bump only when the worker's own
+> precache/static-cache contract changes. The cache advice in incident #4 is
+> preserved as historical context, not current deploy policy.
 
 ---
 

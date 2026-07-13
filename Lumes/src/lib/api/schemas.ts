@@ -32,9 +32,9 @@ export const reportSchema = z.object({
   description: z.string().max(500).optional(),
   /** Reporter name (optional) */
   name: z.string().max(80).optional(),
-  /** Latitude / longitude, 6 decimal places max */
-  lat: z.number().min(-90).max(90).optional(),
-  lon: z.number().min(-180).max(180).optional(),
+  /** Latitude / longitude are required so every public report is mappable. */
+  lat: z.number().finite().min(36.95).max(42.15),
+  lon: z.number().finite().min(-9.5).max(-6),
   /** Optional municipality/parish hints */
   municipality: z.string().max(80).optional(),
   parish: z.string().max(80).optional(),

@@ -4,11 +4,24 @@
 // Server polls /api/incidents every 60s and pushes diffs.
 
 import { NextRequest } from "next/server";
+import { clientKey, rateLimit } from "@/lib/api/rate-limit";
+import { createDataStateMeta } from "@/lib/data-state";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+export function incidentFeedUrl(requestUrl: string): string {
+  return new URL("/api/incidents", requestUrl).toString();
+}
+
 export async function GET(request: NextRequest) {
+  const rl = rateLimit(clientKey(request), { limit: 10, windowMs: 60_000 });
+  if (!rl.ok) {
+    return new Response(JSON.stringify({ error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") }), {
+      status: 429,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Retry-After": String(rl.retryAfter) },
+    });
+  }
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -18,19 +31,34 @@ export async function GET(request: NextRequest) {
         encoder.encode(`data: ${JSON.stringify({ type: "connected", timestamp: new Date().toISOString() })}\n\n`)
       );
 
-      // Track last incident count to detect changes
-      let lastCount = 0;
+      // Track the last incident set to detect changes. Each poll has its own
+      // abort controller and deadline so a slow upstream cannot overlap the
+      // next tick or keep a disconnected stream alive.
       let lastIncidentIds: Set<string> = new Set();
+      let inFlight = false;
+      let closed = false;
+      let pollController: AbortController | null = null;
 
-      // Poll for changes every 30 seconds
-      const interval = setInterval(async () => {
+      const poll = async () => {
+        if (closed) return;
+        if (inFlight) return;
+        inFlight = true;
+        const currentController = new AbortController();
+        pollController = currentController;
+        const timeout = setTimeout(() => currentController.abort(), 10_000);
         try {
-          const res = await fetch(new URL("/api/incidents", request.url), {
+          const res = await fetch(incidentFeedUrl(request.url), {
             headers: { "Cache-Control": "no-cache" },
+            signal: currentController.signal,
           });
-          if (!res.ok) return;
-          const data = await res.json();
-          const currentIds = new Set<string>(((data as any).incidents || []).map((i: any) => i.id));
+          if (!res.ok || closed) return;
+          const raw: unknown = await res.json();
+          if (closed) return;
+          const payload = raw && typeof raw === "object" ? raw as { incidents?: unknown; count?: unknown } : {};
+          const incidents = Array.isArray(payload.incidents)
+            ? payload.incidents.filter((incident): incident is Record<string, unknown> & { id: string } => Boolean(incident && typeof incident === "object" && "id" in incident && typeof (incident as { id?: unknown }).id === "string"))
+            : [];
+          const currentIds = new Set<string>(incidents.map((incident) => incident.id));
 
           // New incidents (in current but not in last)
           const newIds = Array.from(currentIds).filter((id) => !lastIncidentIds.has(id));
@@ -42,13 +70,13 @@ export async function GET(request: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({
               type: "heartbeat",
               timestamp: new Date().toISOString(),
-              count: data.count,
+              count: typeof payload.count === "number" ? payload.count : currentIds.size,
             })}\n\n`)
           );
 
           // Send new incidents
           for (const id of newIds) {
-            const inc = (data as any).incidents.find((i: any) => i.id === id);
+            const inc = incidents.find((incident) => incident.id === id);
             if (inc) {
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({
@@ -71,17 +99,31 @@ export async function GET(request: NextRequest) {
             );
           }
 
-          lastIncidentIds = currentIds as Set<string>;
-          lastCount = data.count;
-        } catch (err) {
-          // Silently skip — will retry next interval
+          lastIncidentIds = currentIds;
+        } catch {
+          // Silently skip — will retry next interval. Aborts are expected when
+          // the client disconnects or the upstream exceeds its budget.
+        } finally {
+          clearTimeout(timeout);
+          if (pollController === currentController) pollController = null;
+          inFlight = false;
         }
-      }, 30_000);
+      };
+
+      // Poll for changes every 30 seconds.
+      const interval = setInterval(() => void poll(), 30_000);
+      void poll();
 
       // Clean up on close
       request.signal.addEventListener("abort", () => {
+        closed = true;
         clearInterval(interval);
-        controller.close();
+        pollController?.abort();
+        try {
+          controller.close();
+        } catch {
+          // The stream may already be closed by the runtime.
+        }
       });
     },
   });

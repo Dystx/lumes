@@ -3,10 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { t, type Language } from "@/lib/i18n";
+import { t, tFmt, type Language } from "@/lib/i18n";
 import { statusRawLabel } from "@/lib/incident";
+import { timeAgo } from "@/lib/relative-time";
 import { useMatchedIncidentNews } from "@/lib/use-app-data";
+import { fetchJsonWithTimeout } from "@/lib/use-fetch";
+import {
+  transformIncidentTimelineResponse,
+  type IncidentTimelineSnapshot,
+} from "@/lib/incident-timeline-client";
 import { OverlayDrawer } from "@/components/ui/overlay-drawer";
+import { DataTrustIndicator } from "@/components/ui/data-trust-indicator";
+import {
+  IncidentFocusControls,
+  type IncidentFocusUiState,
+} from "@/components/map/incident-focus-controls";
+import type { IncidentFocusCapability } from "@/lib/map/incident-focus-capability";
 import {
   X,
   MapPin,
@@ -44,16 +56,8 @@ import {
   type SourceType,
   type TimelineEvent,
   type VerificationStatus,
+  type IncidentNotification,
 } from "@/lib/sample-data";
-
-function timeAgo(iso: string, lang: Language): string {
-  const diffMinutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
-  if (diffMinutes < 1) return lang === "pt" ? "agora" : "just now";
-  if (diffMinutes < 60) return lang === "pt" ? `há ${diffMinutes} min` : `${diffMinutes}m ago`;
-  const hours = Math.round(diffMinutes / 60);
-  if (hours < 24) return lang === "pt" ? `há ${hours} h` : `${hours}h ago`;
-  return lang === "pt" ? `há ${Math.round(hours / 24)} d` : `${Math.round(hours / 24)}d ago`;
-}
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
@@ -80,44 +84,77 @@ const SOURCE_ICON: Record<SourceType, typeof Satellite> = {
 };
 
 // Full body moved from src/app/page.tsx (NS-1 extraction)
-function IncidentDetailPanel({
-  incident,
-  onClose,
-  isFollowed,
-  onToggleFollow,
-  lang,
-  isMobile = false,
-  hideHeader = false,
-  sourceHealthState = "healthy",
-  sourceHealthReason,
-}: {
+export type IncidentDetailPanelProps = {
   incident: Incident;
   onClose: () => void;
   isFollowed: boolean;
-  onToggleFollow: () => void;
+  onToggleFollow: () => void | Promise<void>;
+  followPending?: boolean;
+  followStorageState?: "loading" | "available" | "unavailable";
   lang: Language;
   isMobile?: boolean;
   hideHeader?: boolean;
   sourceHealthState?: "healthy" | "stale" | "fallback" | "empty" | "retryable-error";
   sourceHealthReason?: string;
-}) {
-  const Wrapper = hideHeader ? "div" : motion.aside;
-  const wrapperProps = hideHeader
-    ? { className: "h-full flex flex-col bg-transparent" }
-    : {
-        initial: { x: "-100%", opacity: 0.6 },
-        animate: { x: 0, opacity: 1 },
-        exit: { x: "-100%", opacity: 0 },
-        transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
-        className: "w-full md:w-[360px] h-full flex flex-col bg-[var(--ember-bg)] border-r border-[var(--ember-border)] flex-shrink-0 z-30 md:relative absolute left-0 top-0",
-      };
+  incidentFocus?: {
+    state: IncidentFocusUiState;
+    capability: IncidentFocusCapability;
+    onEnter: () => void;
+    onExit: () => void;
+    onReturnToOverview: () => void;
+  };
+};
+
+function IncidentDetailPanel({
+  incident,
+  onClose,
+  isFollowed,
+  onToggleFollow,
+  followPending = false,
+  followStorageState = "available",
+  lang,
+  isMobile = false,
+  hideHeader = false,
+  sourceHealthState = "healthy",
+  sourceHealthReason,
+  incidentFocus,
+}: IncidentDetailPanelProps) {
+  const [shareState, setShareState] = useState<"idle" | "copying" | "copied" | "error">("idle");
+  const handleShare = async () => {
+    if (shareState === "copying") return;
+    const url = `${window.location.origin}/?incident=${encodeURIComponent(incident.id)}`;
+    if (!navigator.clipboard?.writeText) {
+      setShareState("error");
+      toast.error(lang === "pt" ? "Partilha indisponível neste dispositivo." : "Sharing is unavailable on this device.");
+      return;
+    }
+    setShareState("copying");
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareState("copied");
+      toast.success(t(lang, "incident.shareCopied"), { description: t(lang, "incident.shareDescription") });
+    } catch {
+      setShareState("error");
+      toast.error(lang === "pt" ? "Não foi possível copiar a ligação." : "Unable to copy the link.");
+    }
+  };
 
   return (
-    <Wrapper {...(wrapperProps as any)}>
+    <motion.aside
+      initial={hideHeader ? undefined : { x: "-100%", opacity: 0.6 }}
+      animate={hideHeader ? undefined : { x: 0, opacity: 1 }}
+      exit={hideHeader ? undefined : { x: "-100%", opacity: 0 }}
+      transition={hideHeader ? undefined : { duration: 0.32, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
+      className={hideHeader
+        ? "h-full flex flex-col bg-transparent"
+        : "w-full md:w-[360px] h-full flex flex-col bg-[var(--ember-bg)] border-r border-[var(--ember-border)] flex-shrink-0 z-30 md:relative absolute left-0 top-0"}
+      data-testid="incident-detail-panel"
+      data-incident-surface={isMobile ? "mobile" : "desktop"}
+    >
       {/* Header */}
       <div className="px-4 py-4 border-b border-[var(--ember-border)] flex-shrink-0">
-        {isFollowed && (
-          <div className="mb-2 flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)] text-[10px] font-medium uppercase tracking-wider w-fit">
+        {incident.isLive !== false && isFollowed && (
+          <div className="mb-2 flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)] text-meta font-medium uppercase tracking-wider w-fit">
             <Bell className="w-3 h-3 fill-current" />
             <span>{t(lang, "incident.followingBadge")}</span>
           </div>
@@ -134,17 +171,12 @@ function IncidentDetailPanel({
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             <button
-              onClick={() => {
-                const url = `${window.location.origin}/?incident=${encodeURIComponent(incident.id)}`;
-                navigator.clipboard.writeText(url).then(() => {
-                  toast.success(t(lang, "incident.shareCopied"), { description: t(lang, "incident.shareDescription") });
-                }).catch(() => {
-                  toast(t(lang, "incident.shareTitle") + ": " + url);
-                });
-              }}
-              className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-accent)] hover:bg-[var(--ember-surface-2)] transition-colors"
+              onClick={handleShare}
+              disabled={shareState === "copying"}
+              aria-busy={shareState === "copying"}
+              className="w-9 h-9 rounded-md flex items-center justify-center text-[var(--ember-text-faint)] hover:text-[var(--ember-accent)] hover:bg-[var(--ember-surface-2)] transition-colors disabled:cursor-wait disabled:opacity-60"
               aria-label="Share incident"
-              title="Copy share link"
+              title={shareState === "copied" ? (lang === "pt" ? "Ligação copiada" : "Link copied") : "Copy share link"}
             >
               <Navigation className="w-4 h-4" />
             </button>
@@ -159,7 +191,7 @@ function IncidentDetailPanel({
         </div>
 
         {/* Status row — shows collapsed state group + raw operational phase */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[10px] uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-meta uppercase tracking-wider">
           <span
             className={`flex items-center gap-1.5 font-medium ${
               incident.status === "active" || incident.status === "detected"
@@ -178,12 +210,12 @@ function IncidentDetailPanel({
             />
             {STATUS_LABEL[incident.status]}
           </span>
-          {(incident as any).properties?.statusText && (incident as any).properties.statusText !== STATUS_LABEL[incident.status] && (
+          {incident.properties?.statusText && incident.properties.statusText !== STATUS_LABEL[incident.status] && (
             <span className="w-px h-3 bg-[var(--ember-border)]" />
           )}
-          {(incident as any).properties?.statusText && (incident as any).properties.statusText !== STATUS_LABEL[incident.status] && (
-            <span className="text-[var(--ember-text-muted)] normal-case tracking-normal font-mono text-[10px]">
-              {statusRawLabel((incident as any).properties.statusText, lang)}
+          {incident.properties?.statusText && incident.properties.statusText !== STATUS_LABEL[incident.status] && (
+            <span className="text-[var(--ember-text-muted)] normal-case tracking-normal font-mono text-meta">
+              {statusRawLabel(incident.properties.statusText, lang)}
             </span>
           )}
           <span className="w-px h-3 bg-[var(--ember-border)]" />
@@ -200,7 +232,8 @@ function IncidentDetailPanel({
         </div>
 
         {/* Trust badges */}
-        <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-wider">
+        <div className="flex flex-wrap gap-2 text-meta uppercase tracking-wider">
+          <DataTrustIndicator state={sourceHealthState} lang={lang} reason={sourceHealthReason} compact />
           <span className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)] font-medium">
             <ShieldCheck className="w-3 h-3" />
             {verificationLabel(incident.verification, lang)}
@@ -229,7 +262,7 @@ function IncidentDetailPanel({
             return (
               <span
                 key={st}
-                className="flex items-center gap-1 text-[10px] text-[var(--ember-text-faint)]"
+                className="flex items-center gap-1 text-meta text-[var(--ember-text-faint)]"
               >
                 <span
                   className="w-1.5 h-1.5 rounded-full"
@@ -252,16 +285,41 @@ function IncidentDetailPanel({
           })}
         </div>
 
-        <AnimatedButton
-          variant={isFollowed ? "accent" : "default"}
-          className={`mt-3 min-h-11 w-full text-[11px] uppercase tracking-wider font-medium ${
-            !isFollowed ? "bg-[var(--ember-surface-2)]" : ""
-          }`}
-          onClick={onToggleFollow}
-        >
-          <Bell className="w-3.5 h-3.5" />
-          {isFollowed ? t(lang, "incident.following") : t(lang, "incident.followIncident")}
-        </AnimatedButton>
+        {incident.isLive !== false && (
+          <>
+            <AnimatedButton
+              data-testid="incident-follow-toggle"
+              variant={isFollowed ? "accent" : "default"}
+              className={`mt-3 min-h-11 w-full text-[11px] uppercase tracking-wider font-medium ${
+                !isFollowed ? "bg-[var(--ember-surface-2)]" : ""
+              }`}
+              onClick={onToggleFollow}
+              loading={followPending}
+              disabled={followPending || followStorageState !== "available"}
+              aria-busy={followPending}
+            >
+              <Bell className="w-3.5 h-3.5" />
+              {isFollowed ? t(lang, "incident.following") : t(lang, "incident.followIncident")}
+            </AnimatedButton>
+            <p className="text-meta text-center text-[var(--ember-text-faint)]">
+              {followStorageState === "unavailable"
+                ? (lang === "pt" ? "Alertas indisponíveis neste dispositivo." : "Alerts are unavailable on this device.")
+                : followStorageState === "loading"
+                  ? (lang === "pt" ? "A preparar alertas locais…" : "Preparing local alerts…")
+                  : (lang === "pt" ? "Os alertas são guardados neste dispositivo." : "Alerts are saved on this device.")}
+            </p>
+          </>
+        )}
+
+        {incidentFocus && (
+          <IncidentFocusControls
+            lang={lang}
+            incidentName={incident.displayName}
+            placement="inspector"
+            isMobile={isMobile}
+            {...incidentFocus}
+          />
+        )}
       </div>
 
       {/* Scrollable body */}
@@ -298,7 +356,7 @@ function IncidentDetailPanel({
           </div>
         )}
       </div>
-    </Wrapper>
+    </motion.aside>
   );
 }
 
@@ -306,6 +364,10 @@ function IncidentDetailPanel({
 // Overview tab
 // ============================================================
 function OverviewTab({ incident, lang }: { incident: Incident; lang: Language }) {
+  const observedAt = incident.observedAt ?? incident.firstDetected;
+  const receivedAt = incident.receivedAt ?? incident.lastUpdated;
+  const hasIpmaRisk = incident.properties?.riskAvailable !== false;
+  const showTrustTimestamps = Math.abs(Date.parse(receivedAt) - Date.parse(observedAt)) > 2 * 60_000;
   const sevColor =
     incident.severity === "critical" ? "var(--ember-critical)"
     : incident.severity === "high" ? "var(--ember-warning)"
@@ -324,7 +386,7 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
 
       {/* Conditions — metric cards */}
       <div className="space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
+        <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
           {t(lang, "incident.conditions")}
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -353,7 +415,7 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
 
       {/* Resources deployed */}
       <div className="space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
+        <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
           {t(lang, "incident.resources")}
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -367,7 +429,7 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
       <div className="grid grid-cols-2 gap-2">
         {/* Area */}
         <div className="bg-[var(--ember-surface-2)] rounded-lg p-3 border border-[var(--ember-border)]">
-          <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] mb-1.5 font-medium">
+          <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] mb-1.5 font-medium">
             {t(lang, "incident.areaBurned")}
           </div>
           {incident.estimatedAreaHa > 0 ? (
@@ -376,9 +438,9 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
                 <span className="text-xl font-mono font-bold" style={{ color: sevColor }}>
                   {incident.estimatedAreaHa.toLocaleString()}
                 </span>
-                <span className="text-[10px] text-[var(--ember-text-faint)]">ha</span>
+                <span className="text-meta text-[var(--ember-text-faint)]">ha</span>
               </div>
-              <div className="text-[10px] text-[var(--ember-text-faint)] mt-0.5">
+              <div className="text-meta text-[var(--ember-text-faint)] mt-0.5">
                 ≈ {(incident.estimatedAreaHa * 0.01).toFixed(2)} km²
               </div>
             </>
@@ -391,38 +453,58 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
 
         {/* IPMA Risk */}
         <div className="bg-[var(--ember-surface-2)] rounded-lg p-3 border border-[var(--ember-border)]">
-          <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] mb-1.5 font-medium">
+          <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] mb-1.5 font-medium">
             {t(lang, "incident.fireRisk")}
           </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider"
-              style={{
-                background:
-                  incident.ipmaRisk === "maximum" ? "var(--ember-critical)"
-                  : incident.ipmaRisk === "very_high" ? "var(--ember-warning)"
-                  : incident.ipmaRisk === "high" ? "var(--ember-info)"
-                  : "var(--ember-success)",
-                color: incident.ipmaRisk === "maximum" || incident.ipmaRisk === "very_high" ? "white" : "var(--ember-text)",
-              }}
-            >
-              {t(lang, `risk.${incident.ipmaRisk === "very_high" ? "veryHigh" : incident.ipmaRisk}`)}
-            </span>
-          </div>
-          <div className="text-[10px] text-[var(--ember-text-faint)] mt-1 truncate">{t(lang, "incident.sourceIPMA")}</div>
+          {hasIpmaRisk ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span
+                  className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider"
+                  style={{
+                    background:
+                      incident.ipmaRisk === "maximum" ? "var(--ember-critical)"
+                      : incident.ipmaRisk === "very_high" ? "var(--ember-warning)"
+                      : incident.ipmaRisk === "high" ? "var(--ember-info)"
+                      : "var(--ember-success)",
+                    color: incident.ipmaRisk === "maximum" || incident.ipmaRisk === "very_high" ? "white" : "var(--ember-text)",
+                  }}
+                >
+                  {t(lang, `risk.${incident.ipmaRisk === "very_high" ? "veryHigh" : incident.ipmaRisk}`)}
+                </span>
+              </div>
+              <div className="text-meta text-[var(--ember-text-faint)] mt-1 truncate">{t(lang, "incident.sourceIPMA")}</div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm text-[var(--ember-text-muted)] italic">{t(lang, "incident.riskUnavailable")}</div>
+              <div className="text-meta text-[var(--ember-text-faint)] mt-1 truncate">{t(lang, "incident.sourceHistory")}</div>
+            </>
+          )}
         </div>
       </div>
 
       {/* First detected */}
-      <div className="flex items-center gap-2 text-[10px] text-[var(--ember-text-faint)]">
+      <div className="flex items-center gap-2 text-meta text-[var(--ember-text-faint)]">
         <Clock className="w-3 h-3" />
         {t(lang, "incident.firstDetected")} {formatDate(incident.firstDetected)} {formatTime(incident.firstDetected)} UTC
       </div>
 
+      {showTrustTimestamps && (
+        <div className="grid grid-cols-1 gap-1 text-meta text-[var(--ember-text-faint)]" data-testid="incident-trust-timestamps">
+          <span>
+            {lang === "pt" ? "Observado pela fonte" : "Observed by source"}: {formatDate(observedAt)} {formatTime(observedAt)} UTC
+          </span>
+          <span>
+            {lang === "pt" ? "Recebido pelo Lumes" : "Received by Lumes"}: {formatDate(receivedAt)} {formatTime(receivedAt)} UTC
+          </span>
+        </div>
+      )}
+
       {/* Road closures */}
       {incident.roadClosures && incident.roadClosures.length > 0 && (
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] mb-2 font-medium">
+          <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] mb-2 font-medium">
             {t(lang, "incident.roadClosures")}
           </div>
           <div className="space-y-1.5">
@@ -443,11 +525,11 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
       {matchedNews.data?.items && matchedNews.data.items.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center gap-1.5">
+            <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center gap-1.5">
               <Newspaper className="w-3 h-3" />
               {lang === "pt" ? "Imprensa sobre este local" : "Press for this location"}
             </div>
-            <span className="text-[10px] text-[var(--ember-text-faint)] tabular-nums">
+            <span className="text-meta text-[var(--ember-text-faint)] tabular-nums">
               {matchedNews.data.items.length} {lang === "pt" ? "artigos" : "articles"}
             </span>
           </div>
@@ -467,11 +549,11 @@ function OverviewTab({ incident, lang }: { incident: Incident; lang: Language })
                       {item.title}
                     </div>
                     {item.summary && (
-                      <div className="text-[10px] text-[var(--ember-text-muted)] mt-1 line-clamp-2 leading-relaxed">
+                      <div className="text-meta text-[var(--ember-text-muted)] mt-1 line-clamp-2 leading-relaxed">
                         {item.summary}
                       </div>
                     )}
-                    <div className="flex items-center gap-1.5 mt-1.5 text-[9px] text-[var(--ember-text-faint)]">
+                    <div className="flex items-center gap-1.5 mt-1.5 text-meta text-[var(--ember-text-faint)]">
                       <span className="font-semibold uppercase tracking-wider text-[var(--ember-accent)]">
                         {item.source}
                       </span>
@@ -521,7 +603,7 @@ function MetricCard({
         ? "bg-[var(--ember-accent-subtle)] border-[var(--ember-accent)]/30 hover:border-[var(--ember-accent)]/60"
         : "bg-[var(--ember-surface-2)] border-[var(--ember-border)] hover:border-[var(--ember-border-strong)]"
     }`}>
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1">
+      <div className="flex items-center gap-1 text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1">
         <Icon className="w-3 h-3" />
         {label}
       </div>
@@ -535,7 +617,7 @@ function MetricCard({
         >
           {value}
         </span>
-        {unit && <span className="text-[10px] text-[var(--ember-text-faint)]">{unit}</span>}
+        {unit && <span className="text-meta text-[var(--ember-text-faint)]">{unit}</span>}
       </div>
     </div>
   );
@@ -545,28 +627,38 @@ function MetricCard({
 // Timeline tab
 // ============================================================
 function TimelineTab({ incident, lang }: { incident: Incident; lang: Language }) {
-  const [snapshots, setSnapshots] = useState<any[]>([]);
+  const [snapshots, setSnapshots] = useState<IncidentTimelineSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timelineError, setTimelineError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
-    fetch(`/api/incidents/${encodeURIComponent(incident.id)}/timeline`)
-      .then((res) => res.json())
-      .then((data) => {
+    setTimelineError(false);
+    fetchJsonWithTimeout(`/api/incidents/${encodeURIComponent(incident.id)}/timeline`, {
+      timeoutMs: 10_000,
+    })
+      .then((data: unknown) => {
         if (!cancelled) {
-          setSnapshots(data.snapshots || []);
+          setSnapshots(transformIncidentTimelineResponse(incident.id)(data).snapshots);
           setLoading(false);
         }
       })
       .catch(() => {
+        if (!cancelled) {
+          setTimelineError(true);
+          setLoading(false);
+        }
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [incident.id]);
+  }, [incident.id, retryCount]);
 
-  // Combine persisted snapshots with any inline timeline events
+  // Combine persisted snapshots with inline timeline events
   const allEvents = useMemo(() => {
     const events: Array<{
       id: string;
@@ -591,12 +683,12 @@ function TimelineTab({ incident, lang }: { incident: Incident; lang: Language })
           : snap.statusText || snap.status,
         description: snap.note || `${snap.status} · ${snap.severity} · ${snap.personnelTotal} personnel`,
         confidence: 0.95,
-        note: snap.note,
+        note: snap.note ?? undefined,
       });
     }
 
     // Add inline timeline events (from the incident object itself)
-    for (const evt of (incident as Incident).timeline || []) {
+    for (const evt of incident.timeline || []) {
       events.push(evt);
     }
 
@@ -609,8 +701,8 @@ function TimelineTab({ incident, lang }: { incident: Incident; lang: Language })
   if (loading) {
     return (
       <div className="flex flex-col gap-3">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] mb-1 font-medium">
-          Loading timeline…
+        <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] mb-1 font-medium">
+          {t(lang, "incident.timelineLoading")}
         </div>
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="flex items-start gap-3">
@@ -627,18 +719,33 @@ function TimelineTab({ incident, lang }: { incident: Incident; lang: Language })
 
   return (
     <div className="flex flex-col gap-1">
+      {timelineError && (
+        <div
+          className="mb-3 flex items-center justify-between gap-3 rounded-md border border-[var(--ember-warning)]/30 bg-[var(--ember-warning-subtle)] px-3 py-2 text-xs text-[var(--ember-warning)]"
+          role="alert"
+        >
+          <span>{t(lang, "incident.timelineLoadFailed")}</span>
+          <button
+            type="button"
+            onClick={() => setRetryCount((count) => count + 1)}
+            className="min-h-9 rounded-md border border-current px-2 font-medium hover:bg-[var(--ember-warning)]/10"
+          >
+            {t(lang, "incident.timelineRetry")}
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
-          Activity timeline
+        <span className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
+          {t(lang, "incident.timelineHeading")}
         </span>
-        <span className="text-[10px] font-mono text-[var(--ember-text-faint)]">
-          {allEvents.length} events
+        <span className="text-meta font-mono text-[var(--ember-text-faint)]">
+          {tFmt(lang, allEvents.length === 1 ? "incident.timelineEvent" : "incident.timelineEvents", { count: allEvents.length })}
         </span>
       </div>
 
       {allEvents.length === 0 && (
         <div className="text-xs text-[var(--ember-text-faint)] text-center py-6">
-          No timeline events recorded yet.
+          {t(lang, "incident.timelineEmpty")}
         </div>
       )}
 
@@ -669,10 +776,10 @@ function TimelineTab({ incident, lang }: { incident: Incident; lang: Language })
                   </div>
 
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-mono text-[var(--ember-text-faint)]">
+                    <span className="text-meta font-mono text-[var(--ember-text-faint)]">
                       {formatDate(evt.timestamp)} {formatTime(evt.timestamp)} UTC
                     </span>
-                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-[var(--ember-border)] font-medium" style={{ color: dotColor }}>
+                    <span className="text-meta uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-[var(--ember-border)] font-medium" style={{ color: dotColor }}>
                       {sourceLabel(evt.sourceType, lang) || evt.sourceType}
                     </span>
                   </div>
@@ -683,7 +790,7 @@ function TimelineTab({ incident, lang }: { incident: Incident; lang: Language })
                   <p className="text-xs leading-relaxed text-[var(--ember-text-muted)]">
                     {evt.description}
                   </p>
-                  <div className="text-[10px] text-[var(--ember-text-faint)] mt-1">
+                  <div className="text-meta text-[var(--ember-text-faint)] mt-1">
                     {evt.sourceName} · {Math.round(evt.confidence * 100)}% confidence
                   </div>
                 </div>
@@ -711,8 +818,8 @@ function SourcesTab({ incident, lang }: { incident: Incident; lang: Language }) 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
-        Source breakdown ({incident.sourceCount} contributing sources)
+      <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
+        {tFmt(lang, "incident.sourceBreakdown", { count: incident.sourceCount })}
       </div>
 
       {Array.from(sourcesByType.entries()).map(([type, events]) => {
@@ -739,8 +846,8 @@ function SourcesTab({ incident, lang }: { incident: Incident; lang: Language }) 
                   {sourceLabel(type, lang)}
                 </span>
               </div>
-              <span className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)]">
-                {events.length} event{events.length !== 1 ? "s" : ""}
+              <span className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)]">
+                {tFmt(lang, events.length === 1 ? "incident.timelineEvent" : "incident.timelineEvents", { count: events.length })}
               </span>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -792,27 +899,31 @@ function NotificationsDrawer({
   onSelectIncident,
   lang,
 }: {
-  notifications: any[];
+  notifications: IncidentNotification[];
   onClose: () => void;
   onMarkAllRead: () => void;
   onSelectIncident: (id: string) => void;
   lang: Language;
 }) {
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const hasUnread = unreadCount > 0;
+
   return (
     <OverlayDrawer ariaLabel={t(lang, "header.viewNotifications")} onClose={onClose}>
         <div className="px-5 py-4 border-b border-[var(--ember-border)] flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-[var(--ember-text)]">
-              Notifications
+              {t(lang, "notifications.title")}
             </h2>
             <p className="text-xs text-[var(--ember-text-faint)] mt-0.5">
-              {notifications.filter((n) => !n.read).length} unread
+              {tFmt(lang, "notifications.unreadCount", { count: unreadCount })}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={onMarkAllRead}
-              className="text-xs text-[var(--ember-accent)] hover:underline"
+              disabled={!hasUnread}
+              className="text-xs text-[var(--ember-accent)] hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
               aria-label={t(lang, "a11y.markAllRead")}
             >
               {t(lang, "a11y.markAllRead")}
@@ -828,8 +939,13 @@ function NotificationsDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto ember-scroll p-3 flex flex-col gap-2">
-          <StaggerChildren stagger={0.06}>
-          {notifications.map((n) => {
+          {notifications.length === 0 ? (
+            <div className="flex min-h-32 items-center justify-center px-4 py-8 text-center text-sm text-[var(--ember-text-muted)]" role="status">
+              {t(lang, "notifications.empty")}
+            </div>
+          ) : (
+            <StaggerChildren stagger={0.06}>
+            {notifications.map((n) => {
             const incident = SAMPLE_INCIDENTS.find((i) => i.id === n.incidentId);
             const priorityColor =
               n.priority === "critical"
@@ -866,7 +982,7 @@ function NotificationsDrawer({
                     <p className="text-xs text-[var(--ember-text-muted)] leading-relaxed mb-1.5">
                       {n.body}
                     </p>
-                    <div className="flex items-center gap-2 text-[10px] text-[var(--ember-text-faint)]">
+                    <div className="flex items-center gap-2 text-meta text-[var(--ember-text-faint)]">
                       <span className="uppercase tracking-wider font-medium" style={{ color: priorityColor }}>
                         {n.priority}
                       </span>
@@ -884,12 +1000,13 @@ function NotificationsDrawer({
               </motion.button>
               </StaggerItem>
             );
-          })}
-          </StaggerChildren>
+            })}
+            </StaggerChildren>
+          )}
         </div>
 
-        <div className="p-3 border-t border-[var(--ember-border)] text-[10px] text-[var(--ember-text-faint)] text-center">
-          Notification engine · Critical alerts bypass quiet hours
+        <div className="p-3 border-t border-[var(--ember-border)] text-meta text-[var(--ember-text-faint)] text-center">
+          {t(lang, "notifications.bypassQuiet")}
         </div>
     </OverlayDrawer>
   );

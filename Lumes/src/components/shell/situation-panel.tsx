@@ -2,22 +2,35 @@
 
 import { motion } from "framer-motion";
 import { AlertTriangle, ChevronRight, Clock, Flame, Radio } from "@/components/icons/phosphor-icons";
+import { DataTrustIndicator } from "@/components/ui/data-trust-indicator";
 import { t, type Language } from "@/lib/i18n";
-import type { Incident } from "@/lib/sample-data";
+import type { Severity } from "@/lib/types";
 
 type TrustState = "healthy" | "stale" | "fallback" | "empty" | "retryable-error";
 
 export interface SituationPanelProps {
   lang: Language;
   incidentCount: number;
+  activeCount?: number;
+  containedCount?: number;
+  resolvedCount?: number;
   criticalCount: number;
-  priorityIncidents: Incident[];
+  priorityIncidents: SituationPriorityIncident[];
   selectedIncidentId: string | null;
   onSelectIncident: (id: string) => void;
   onOpenAllIncidents: () => void;
   trustState?: TrustState;
   trustReason?: string;
   updatedAt?: Date | string | null;
+}
+
+export interface SituationPriorityIncident {
+  id: string;
+  displayName: string;
+  severity: Severity;
+  municipality?: string | null;
+  district?: string | null;
+  geometry?: { coordinates: [number, number] };
 }
 
 function relativeTime(value: Date | string | null | undefined, lang: Language): string {
@@ -29,17 +42,12 @@ function relativeTime(value: Date | string | null | undefined, lang: Language): 
   return lang === "pt" ? `há ${hours} h` : `${hours}h ago`;
 }
 
-function trustCopy(state: TrustState, lang: Language): string {
-  if (state === "fallback") return lang === "pt" ? "dados alternativos" : "fallback data";
-  if (state === "stale") return lang === "pt" ? "dados desatualizados" : "stale data";
-  if (state === "retryable-error") return lang === "pt" ? "a tentar novamente" : "retrying";
-  if (state === "empty") return lang === "pt" ? "sem dados" : "no data";
-  return lang === "pt" ? "dados atualizados" : "updated data";
-}
-
 export function SituationPanel({
   lang,
   incidentCount,
+  activeCount = incidentCount,
+  containedCount = 0,
+  resolvedCount = 0,
   criticalCount,
   priorityIncidents,
   selectedIncidentId,
@@ -49,30 +57,26 @@ export function SituationPanel({
   trustReason,
   updatedAt,
 }: SituationPanelProps) {
-  const trustProblem = trustState !== "healthy";
   return (
     <aside className="flex h-full w-full flex-col bg-[var(--ember-bg)]" aria-label={lang === "pt" ? "Situação atual" : "Current situation"}>
       <header className="flex-shrink-0 border-b border-[var(--ember-border)] px-4 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--ember-text-faint)]">
+            <p className="text-meta font-medium uppercase tracking-[0.16em] text-[var(--ember-text-faint)]">
               {lang === "pt" ? "Situação" : "Situation"}
             </p>
-            <h2 className="mt-1 font-display text-lg font-semibold tracking-tight text-[var(--ember-text)]">
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--ember-text)]">
               {lang === "pt" ? "Agora em Portugal" : "Portugal right now"}
             </h2>
           </div>
-          <span className={`mt-1 inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider ${trustProblem ? "text-[var(--ember-warning)]" : "text-[var(--ember-success)]"}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${trustProblem ? "bg-[var(--ember-warning)]" : "bg-[var(--ember-success)]"}`} />
-            {trustCopy(trustState, lang)}
-          </span>
+          <DataTrustIndicator state={trustState} lang={lang} reason={trustReason} />
         </div>
-        <div className="mt-3 flex items-center gap-2 text-[10px] text-[var(--ember-text-faint)]">
+        <div className="mt-3 flex items-center gap-2 text-meta text-[var(--ember-text-faint)]">
           <Clock className="h-3 w-3" aria-hidden="true" />
           <span>{lang === "pt" ? "Atualizado" : "Updated"} {relativeTime(updatedAt, lang)}</span>
         </div>
-        {trustReason && trustProblem && (
-          <p className="mt-2 rounded-md border border-[var(--ember-warning)]/30 bg-[var(--ember-warning)]/10 px-2 py-1.5 text-[10px] leading-relaxed text-[var(--ember-warning)]">
+        {trustReason && trustState !== "healthy" && (
+          <p className="mt-2 rounded-md border border-[var(--ember-warning)]/30 bg-[var(--ember-warning)]/10 px-2 py-1.5 text-[length:var(--type-secondary)] leading-relaxed text-[var(--ember-warning)]">
             {trustReason}
           </p>
         )}
@@ -80,30 +84,35 @@ export function SituationPanel({
 
       <div className="flex-1 overflow-y-auto ember-scroll">
         <section className="border-b border-[var(--ember-border)] px-4 py-5" aria-labelledby="situation-headline">
-          <p id="situation-headline" className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--ember-text-faint)]">
+          <p id="situation-headline" className="text-meta font-medium uppercase tracking-[0.16em] text-[var(--ember-text-faint)]">
             {lang === "pt" ? "Incidentes visíveis" : "Visible incidents"}
           </p>
           <div className="mt-2 flex items-end gap-3">
             <div className="flex items-center gap-2">
               <Flame className="h-5 w-5 text-[var(--ember-accent)]" aria-hidden="true" />
-              <span className="font-display text-4xl font-semibold tabular-nums tracking-tight text-[var(--ember-text)]">{incidentCount}</span>
+              <span className="font-mono text-4xl font-semibold tabular-nums tracking-tight text-[var(--ember-text)]">{incidentCount}</span>
             </div>
             <span className="mb-1 inline-flex items-center gap-1 text-xs text-[var(--ember-critical)]">
               <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
               {criticalCount} {lang === "pt" ? "críticos" : "critical"}
             </span>
           </div>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-meta text-[var(--ember-text-muted)]">
+            <span>{activeCount} {lang === "pt" ? "ativos" : "active"}</span>
+            <span>{containedCount} {lang === "pt" ? "contidos" : "contained"}</span>
+            <span>{resolvedCount} {lang === "pt" ? "resolvidos" : "resolved"}</span>
+          </div>
         </section>
 
         <section className="px-4 py-4" aria-labelledby="situation-priority">
           <div className="mb-2 flex items-center justify-between">
-            <h3 id="situation-priority" className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--ember-text-faint)]">
+            <h3 id="situation-priority" className="text-meta font-medium uppercase tracking-[0.16em] text-[var(--ember-text-faint)]">
               {lang === "pt" ? "Prioridade" : "Priority"}
             </h3>
             <Radio className="h-3 w-3 text-[var(--ember-text-faint)]" aria-hidden="true" />
           </div>
           {priorityIncidents.length === 0 ? (
-            <p className="rounded-md border border-[var(--ember-border)] px-3 py-4 text-center text-[11px] text-[var(--ember-text-faint)]">
+            <p data-testid="situation-empty" className="rounded-md border border-[var(--ember-border)] px-3 py-4 text-center text-[11px] text-[var(--ember-text-faint)]">
               {t(lang, "error.noPriorityDesc")}
             </p>
           ) : (
@@ -115,6 +124,10 @@ export function SituationPanel({
                   <motion.button
                     key={incident.id}
                     type="button"
+                    data-testid="situation-incident"
+                    data-incident-id={incident.id}
+                    data-incident-lon={incident.geometry?.coordinates[0]}
+                    data-incident-lat={incident.geometry?.coordinates[1]}
                     whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={() => onSelectIncident(incident.id)}
@@ -123,7 +136,7 @@ export function SituationPanel({
                     <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: color }} aria-hidden="true" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-medium text-[var(--ember-text)]">{incident.displayName}</span>
-                      <span className="mt-0.5 block truncate text-[10px] text-[var(--ember-text-faint)]">{incident.municipality || incident.district || "—"}</span>
+                      <span className="mt-0.5 block truncate text-meta text-[var(--ember-text-faint)]">{incident.municipality || incident.district || "—"}</span>
                     </span>
                     <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-[var(--ember-text-faint)]" aria-hidden="true" />
                   </motion.button>

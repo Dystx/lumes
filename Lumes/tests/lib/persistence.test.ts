@@ -85,6 +85,19 @@ describe("persistence", () => {
     expect(snapshots[1].status).toBe("contained");
   });
 
+  it("can skip stale-incident cleanup when the provider response is incomplete", async () => {
+    await persistIncidents([mkLiveIncident("stale", "active")]);
+    await db.incident.update({
+      where: { id: "stale" },
+      data: { lastSeen: new Date(Date.now() - 3 * 60 * 60 * 1000) },
+    });
+
+    await persistIncidents([mkLiveIncident("fresh", "active")], { allowStaleResolution: false });
+
+    const stale = await db.incident.findUnique({ where: { id: "stale" } });
+    expect(stale?.status).toBe("active");
+  });
+
   it("filters persisted incidents by status", async () => {
     await persistIncidents([
       mkLiveIncident("a", "active"),

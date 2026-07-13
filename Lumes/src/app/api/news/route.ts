@@ -16,26 +16,12 @@
 
 import { NextResponse } from "next/server";
 import { cached } from "@/lib/api/cache";
+import { classifyDataState, createDataStateMeta } from "@/lib/data-state";
+import { logServerFailure } from "@/lib/observability";
+import type { NewsItem, NewsResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-interface NewsItem {
-  id: string;
-  title: string;
-  source: string;
-  sourceUrl: string;
-  publishedAt: string;
-  category: "incident" | "official" | "press" | "weather";
-  summary?: string;
-  severity?: string;
-  municipality?: string;
-  parish?: string;
-  locality?: string;
-  district?: string;
-  href?: string;
-  matched?: boolean;
-}
 
 // Portuguese fire-related keywords (lowercased).
 // Each item is a single fire-specific token. We require AT LEAST 1 of these
@@ -189,6 +175,10 @@ const OFFICIAL_SOURCES: NewsItem[] = [
     summary: "Serviço público de notícias — fonte primária para ANEPC e proteção civil.",
   },
 ];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 // Minimal RSS 2.0 parser — extracts <item> blocks and a few well-known fields.
 // Robust enough for the feeds we use; doesn't depend on heavy XML libs.
@@ -360,39 +350,58 @@ async function loadIncidentNews(): Promise<{ items: NewsItem[]; places: string[]
       cache: "no-store",
     });
     if (!r.ok) return { items: [], places: [] };
-    const data = await r.json();
+    const data: unknown = await r.json();
     const items: NewsItem[] = [];
-    const incidents = data.incidents ?? [];
+    const incidents = isRecord(data) && Array.isArray(data.incidents)
+      ? data.incidents.filter(isRecord)
+      : [];
     const places: string[] = [];
     for (const inc of incidents) {
-      const sev = inc.severity;
+      const id = typeof inc.id === "string" ? inc.id : null;
+      const sev = typeof inc.severity === "string" ? inc.severity : "";
+      if (!id) continue;
       if (sev !== "critical" && sev !== "high") continue;
-      const props = inc.properties ?? {};
-      const statusText = props.statusText || props.statusGroup || "Ocorrência ativa";
-      const where = props.municipality || inc.displayName || "Portugal";
+      const props = isRecord(inc.properties) ? inc.properties : {};
+      const statusText = (typeof props.statusText === "string" && props.statusText)
+        || (typeof props.statusGroup === "string" && props.statusGroup)
+        || "Ocorrência ativa";
+      const displayName = typeof inc.displayName === "string" ? inc.displayName : "";
+      const municipality = typeof props.municipality === "string" ? props.municipality : undefined;
+      const parish = typeof props.parish === "string" ? props.parish : undefined;
+      const locality = typeof props.locality === "string" ? props.locality : undefined;
+      const district = typeof props.region === "string" ? props.region : undefined;
+      const where = municipality || displayName || "Portugal";
+      let hasStructuredPlace = false;
       items.push({
-        id: `inc-${inc.id}`,
+        id: `inc-${id}`,
         title: `${statusText} — ${where}`,
         source: "ANEPC (via Lumes)",
         sourceUrl: `https://lumes.pt/`,
-        publishedAt: inc.firstDetected || inc.observedAt || new Date().toISOString(),
+        publishedAt: (typeof inc.firstDetected === "string" && inc.firstDetected)
+          || (typeof inc.observedAt === "string" && inc.observedAt)
+          || new Date().toISOString(),
         category: "incident",
-        summary: inc.displayName || where,
+        summary: displayName || where,
         severity: sev,
-        municipality: props.municipality,
-        parish: props.parish,
-        locality: props.locality,
-        district: props.region,
-        href: `/?incident=${inc.id}`,
+        municipality,
+        parish,
+        locality,
+        district,
+        href: `/?incident=${id}`,
       });
       // Collect all place names we can cross-match against — parish + municipality + district + locality
       for (const k of ["municipality", "parish", "locality", "region"] as const) {
-        const v = (props as any)[k];
-        if (v && typeof v === "string" && v.length >= 3) places.push(v.trim());
+        const v = props[k];
+        if (v && typeof v === "string" && v.length >= 3) {
+          places.push(v.trim());
+          hasStructuredPlace = true;
+        }
       }
-      // Also add display name components
-      const dn = (inc.displayName || "").trim();
-      if (dn) places.push(dn);
+      // Use the display name only when no structured locality is available.
+      // Otherwise a longer label such as "Incêndio em Sintra" can cause the
+      // deduper to discard the useful municipality "Sintra" and miss a match.
+      const dn = displayName.trim();
+      if (dn && !hasStructuredPlace) places.push(dn);
     }
     items.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
     return { items: items.slice(0, 6), places: dedupePlaces(places) };
@@ -434,7 +443,7 @@ function dedupePlaces(places: string[]): string[] {
 function crossMatch(
   pressItems: NewsItem[],
   activePlaces: string[],
-): { matched: NewsItem[]; unmatchedPlaces: string[] } {
+): { matched: NewsItem[]; matchedPlaces: string[]; unmatchedPlaces: string[] } {
   const matched: NewsItem[] = [];
   const matchedPlaceIds = new Set<string>();
   for (const item of pressItems) {
@@ -450,34 +459,71 @@ function crossMatch(
     }
   }
   const unmatched = activePlaces.filter((p) => !matchedPlaceIds.has(p));
-  return { matched, unmatchedPlaces: unmatched };
+  return {
+    matched,
+    matchedPlaces: activePlaces.filter((p) => matchedPlaceIds.has(p)),
+    unmatchedPlaces: unmatched,
+  };
 }
 
 export async function GET() {
-  const data = await cached("news", 5 * 60 * 1000, async () => {
-    const [pressNews, incidentResult] = await Promise.all([
-      loadPressNews(),
-      loadIncidentNews(),
-    ]);
-    const { matched, unmatchedPlaces } = crossMatch(pressNews, incidentResult.places);
-    return {
-      source: "lumes-curated",
-      fetchedAt: new Date().toISOString(),
-      matched,
-      incidents: incidentResult.items,
-      press: pressNews.filter((p) => !matched.some((m) => m.id === p.id)).slice(0, 6),
-      sources: OFFICIAL_SOURCES,
-      placesTracked: incidentResult.places,
-      placesMatched: unmatchedPlaces,
-      counts: {
+  try {
+    const data = await cached("news", 5 * 60 * 1000, async () => {
+      const [pressNews, incidentResult] = await Promise.all([
+        loadPressNews(),
+        loadIncidentNews(),
+      ]);
+      const { matched, matchedPlaces, unmatchedPlaces } = crossMatch(pressNews, incidentResult.places);
+      const fetchedAt = new Date().toISOString();
+      const counts = {
         matched: matched.length,
         incidents: incidentResult.items.length,
         press: pressNews.length,
         sources: OFFICIAL_SOURCES.length,
-      },
+      };
+      const body: NewsResponse = {
+        source: "lumes-curated",
+        fetchedAt,
+        matched,
+        incidents: incidentResult.items,
+        press: pressNews.filter((p) => !matched.some((m) => m.id === p.id)).slice(0, 6),
+        sources: OFFICIAL_SOURCES,
+        placesTracked: incidentResult.places,
+        placesMatched: matchedPlaces,
+        placesUnmatched: unmatchedPlaces,
+        counts,
+        dataState: createDataStateMeta(
+          classifyDataState({ count: counts.matched + counts.incidents + counts.press + counts.sources }),
+          undefined,
+          fetchedAt,
+          "lumes-curated-news",
+        ),
+      };
+      return body;
+    });
+    return NextResponse.json(data, {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    });
+  } catch (err: unknown) {
+    logServerFailure("news.fetch", err, { route: "/api/news", retryable: true });
+    const fetchedAt = new Date().toISOString();
+    const counts = { matched: 0, incidents: 0, press: 0, sources: OFFICIAL_SOURCES.length };
+    const fallback: NewsResponse = {
+      source: "lumes-curated",
+      fetchedAt,
+      matched: [],
+      incidents: [],
+      press: [],
+      sources: OFFICIAL_SOURCES,
+      placesTracked: [],
+      placesMatched: [],
+      placesUnmatched: [],
+      counts,
+      dataState: createDataStateMeta("retryable-error", "News source unavailable", fetchedAt, "lumes-curated-news"),
     };
-  });
-  return NextResponse.json(data, {
-    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
-  });
+    return NextResponse.json(
+      { ...fallback, error: "News data is temporarily unavailable." },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

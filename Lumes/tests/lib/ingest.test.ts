@@ -87,6 +87,144 @@ describe("runIngest", () => {
     expect(vi.mocked(persistIncidents)).toHaveBeenCalledOnce();
   });
 
+  it("does not persist ANEPC rows with malformed operational scalars", async () => {
+    const payload = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [-9.1, 38.7] },
+          properties: {
+            ID_oc: 1, Numero: "1", CodEstadoOcorrencia: 1, EstadoOcorrencia: "Em Curso",
+            EstadoAgrupado: "Em Curso", DataInicioOcorrencia: "01/07/2026 12:00",
+            RASI: "Incêndios Rurais DECIR", Natureza: "Incêndio", Regiao: "Lisboa", SubRegiao: "—",
+            Concelho: "Lisboa", Freguesia: "—", Localidade: "Test", Endereco: "—",
+            OperacionaisTerrestres: 5, OPAereos: 0, Operacionais: 5, MeiosTerrestres: 1,
+            MeiosAereos: 0, Latitude: 38.7, Longitude: -9.1, DuracaoMinutos: 60,
+          },
+        },
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [-9.2, 38.8] },
+          properties: {
+            ID_oc: 2, Numero: "2", CodEstadoOcorrencia: 1, EstadoOcorrencia: "Em Curso",
+            EstadoAgrupado: "Em Curso", DataInicioOcorrencia: "01/07/2026 12:00",
+            RASI: "Incêndios Rurais DECIR", Natureza: "Incêndio", Regiao: "Lisboa", SubRegiao: "—",
+            Concelho: "Lisboa", Freguesia: "—", Localidade: "Invalid", Endereco: "—",
+            OperacionaisTerrestres: 5, OPAereos: 0, Operacionais: "NaN", MeiosTerrestres: 1,
+            MeiosAereos: 0, Latitude: 38.8, Longitude: -9.2, DuracaoMinutos: 60,
+          },
+        },
+      ],
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(payload))));
+
+    const result = await runIngest();
+
+    expect(result.upserted).toBe(1);
+    expect(vi.mocked(persistIncidents)).toHaveBeenCalledWith([
+      expect.objectContaining({ id: "anepc-1", properties: expect.objectContaining({ personnelTotal: 5 }) }),
+    ], { allowStaleResolution: false });
+  });
+
+  it("fails closed and skips persistence when every provider feature is invalid", async () => {
+    const payload = {
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-9.1, 38.7] },
+        properties: { ID_oc: 1, Operacionais: "NaN" },
+      }],
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(payload))));
+
+    const result = await runIngest();
+
+    expect(result.totalRaw).toBe(1);
+    expect(result.upserted).toBe(0);
+    expect(result.errors).toContain("ANEPC response contained no valid features");
+    expect(vi.mocked(persistIncidents)).not.toHaveBeenCalled();
+  });
+
+  it("does not invoke persistence for an empty provider collection", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ type: "FeatureCollection", features: [] }))));
+
+    const result = await runIngest();
+
+    expect(result.totalRaw).toBe(0);
+    expect(result.upserted).toBe(0);
+    expect(result.errors).toEqual([]);
+    expect(vi.mocked(persistIncidents)).not.toHaveBeenCalled();
+  });
+
+  it("reports schema drift when valid rows contain no fire incidents", async () => {
+    const payload = {
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-9.1, 38.7] },
+        properties: {
+          ID_oc: 1,
+          Numero: "1",
+          CodEstadoOcorrencia: 1,
+          EstadoOcorrencia: "Em Curso",
+          EstadoAgrupado: "Em Curso",
+          DataInicioOcorrencia: "01/07/2026 12:00",
+          RASI: "Busca e Salvamento",
+          Natureza: "Busca e Salvamento",
+          Regiao: "Lisboa",
+          SubRegiao: "—",
+          Concelho: "Lisboa",
+          Freguesia: "—",
+          Localidade: "Non-fire row",
+          Endereco: "—",
+          OperacionaisTerrestres: 5,
+          OPAereos: 0,
+          Operacionais: 5,
+          MeiosTerrestres: 1,
+          MeiosAereos: 0,
+          Latitude: 38.7,
+          Longitude: -9.1,
+          DuracaoMinutos: 60,
+        },
+      }],
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(payload))));
+
+    const result = await runIngest();
+
+    expect(result.totalRaw).toBe(1);
+    expect(result.upserted).toBe(0);
+    expect(result.errors).toContain("ANEPC response contained no fire incidents after normalization");
+    expect(vi.mocked(persistIncidents)).not.toHaveBeenCalled();
+  });
+
+  it("does not persist ANEPC rows with a fabricated freshness timestamp", async () => {
+    const payload = {
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [-9.1, 38.7] },
+        properties: {
+          ID_oc: 1, Numero: "1", CodEstadoOcorrencia: 1, EstadoOcorrencia: "Em Curso",
+          EstadoAgrupado: "Em Curso", DataInicioOcorrencia: "not-a-date",
+          RASI: "Incêndios Rurais DECIR", Natureza: "Incêndio", Regiao: "Lisboa", SubRegiao: "—",
+          Concelho: "Lisboa", Freguesia: "—", Localidade: "Invalid date", Endereco: "—",
+          OperacionaisTerrestres: 5, OPAereos: 0, Operacionais: 5, MeiosTerrestres: 1,
+          MeiosAereos: 0, Latitude: 38.7, Longitude: -9.1, DuracaoMinutos: 60,
+        },
+      }],
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(payload))));
+
+    const result = await runIngest();
+
+    expect(result.totalRaw).toBe(1);
+    expect(result.upserted).toBe(0);
+    expect(result.errors).toContain("ANEPC response contained no valid features");
+    expect(vi.mocked(persistIncidents)).not.toHaveBeenCalled();
+  });
+
   it("handles malformed payload without crashing", async () => {
     vi.stubGlobal(
       "fetch",

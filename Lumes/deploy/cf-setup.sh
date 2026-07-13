@@ -142,6 +142,10 @@ upsert_cache_rule "Cache API read endpoints" \
   '(http.request.method eq "GET") and (http.request.uri.path in {"/api/incidents" "/api/dashboard" "/api/source-health" "/api/weather" "/api/weather-warnings" "/api/fire-risk" "/api/satellite" "/api/fire-stations" "/api/regional-commands" "/api/stats" "/api/history"})' \
   '{"kind":"cache","cache":true,"edge_ttl":{"mode":"override","default":120}}'
 
+upsert_cache_rule "Bypass public HTML and control assets" \
+  '(http.request.method eq "GET") and (http.request.uri.path in {"/" "/status" "/privacy" "/newsletter" "/manifest.json" "/sw.js"})' \
+  '{"kind":"cache","cache":false,"origin_error_page_passthru":true}'
+
 upsert_cache_rule "Bypass mutations" \
   '(http.request.uri.path in {"/api/cron/ingest" "/api/follow" "/api/reports" "/api/alerts" "/api/realtime"}) or ((http.request.method ne "GET") and (http.request.uri.path matches "^/api/.*$"))' \
   '{"kind":"cache","cache":false}'

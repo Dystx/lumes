@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { resetRateLimit } from "@/lib/api/rate-limit";
+import { rateLimit, resetRateLimit } from "@/lib/api/rate-limit";
 
 const { db } = vi.hoisted(() => ({ db: {
   communityReport: {
@@ -43,11 +43,99 @@ describe("public action route contracts", () => {
     }));
   });
 
+  it("does not return reporter identity or precise report details after submission", async () => {
+    db.communityReport.create.mockResolvedValue({
+      id: "report-private",
+      reportType: "smoke",
+      latitude: 38.72,
+      longitude: -9.14,
+      description: "Exact private observation",
+      reporterName: "Ana",
+      reporterTier: "anonymous",
+      confidence: 0.3,
+      status: "pending_review",
+    });
+
+    const request = new NextRequest("http://localhost/api/reports", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "http://localhost" },
+      body: JSON.stringify({
+        type: "smoke",
+        lat: 38.72,
+        lon: -9.14,
+        name: "Ana",
+        description: "Exact private observation",
+      }),
+    });
+
+    const response = await postReport(request);
+    const payload = await response.json();
+
+    expect(payload).toMatchObject({
+      ok: true,
+      report: { id: "report-private", status: "pending_review" },
+    });
+    expect(payload.report).not.toHaveProperty("reporterName");
+    expect(payload.report).not.toHaveProperty("latitude");
+    expect(payload.report).not.toHaveProperty("longitude");
+    expect(payload.report).not.toHaveProperty("description");
+    expect(payload.report).not.toHaveProperty("reporterTier");
+    expect(payload.report).not.toHaveProperty("confidence");
+  });
+
   it("rejects a malformed report before touching persistence", async () => {
     const request = new NextRequest("http://localhost/api/reports", {
       method: "POST",
       headers: { "content-type": "application/json", origin: "http://localhost" },
       body: JSON.stringify({ reportType: "smoke" }),
+    });
+
+    const response = await postReport(request);
+    expect(response.status).toBe(400);
+    expect(db.communityReport.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized report body before JSON parsing or persistence", async () => {
+    const request = new NextRequest("http://localhost/api/reports", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": "20000",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify({ type: "smoke", lat: 38.72, lon: -9.14 }),
+    });
+
+    const response = await postReport(request);
+    expect(response.status).toBe(413);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toMatchObject({
+      dataState: { state: "empty" },
+    });
+    expect(db.communityReport.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an oversized chunked report body without trusting content length", async () => {
+    const request = new NextRequest("http://localhost/api/reports", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "http://localhost",
+      },
+      body: JSON.stringify({ type: "smoke", lat: 38.72, lon: -9.14, description: "x".repeat(17_000) }),
+    });
+
+    const response = await postReport(request);
+    expect(response.status).toBe(413);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(db.communityReport.create).not.toHaveBeenCalled();
+  });
+
+  it("requires a Portugal coordinate for every public report", async () => {
+    const request = new NextRequest("http://localhost/api/reports", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "http://localhost" },
+      body: JSON.stringify({ type: "smoke", description: "No location" }),
     });
 
     const response = await postReport(request);
@@ -78,6 +166,8 @@ describe("public action route contracts", () => {
 
     const response = await deleteFollow(request);
     expect(response.status).toBe(403);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toMatchObject({ dataState: { state: "empty" } });
     expect(db.followedIncident.delete).not.toHaveBeenCalled();
   });
 
@@ -106,5 +196,28 @@ describe("public action route contracts", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toMatchObject({ dataState: { state: "retryable-error" } });
     expect(db.followedIncident.upsert).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits unfollow requests before returning the unavailable state", async () => {
+    for (let index = 0; index < 30; index += 1) {
+      rateLimit("follow-delete-test", { limit: 30 });
+    }
+
+    const request = new NextRequest("http://localhost/api/follow", {
+      method: "DELETE",
+      headers: {
+        "content-type": "application/json",
+        origin: "http://localhost",
+        "x-real-ip": "follow-delete-test",
+      },
+      body: JSON.stringify({ incidentId: "incident-1" }),
+    });
+
+    const response = await deleteFollow(request);
+    expect(response.status).toBe(429);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("retry-after")).toBeTruthy();
+    await expect(response.json()).resolves.toMatchObject({ dataState: { state: "retryable-error" } });
+    expect(db.followedIncident.delete).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,7 @@ import { newsletterSubscribeSchema, validateBody } from "@/lib/api/schemas";
 import { rateLimit, clientKey } from "@/lib/api/rate-limit";
 import { assertSafeOrigin } from "@/lib/api/csrf";
 import { createDataStateMeta } from "@/lib/data-state";
+import { logServerFailure } from "@/lib/observability";
 
 export const runtime = "nodejs";
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" } }
     );
   }
 
@@ -80,54 +81,70 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Look up existing
-  const existing = await db.newsletterSubscriber.findUnique({
-    where: { emailHash },
-  });
+  try {
+    // Look up existing
+    const existing = await db.newsletterSubscriber.findUnique({
+      where: { emailHash },
+    });
 
-  if (existing?.confirmedAt && !existing.unsubscribedAt) {
+    if (existing?.confirmedAt && !existing.unsubscribedAt) {
+      return NextResponse.json({
+        ok: true,
+        status: "already_subscribed",
+        dataState: createDataStateMeta("healthy"),
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    // Always rotate the bearer token when a pending/unsubscribed address asks
+    // again. Re-subscribing requires a fresh confirmation, never silent reactivation.
+    const confirmToken = crypto.randomBytes(24).toString("hex");
+    const subscriber =
+      existing ??
+      (await db.newsletterSubscriber.create({
+        data: { email, emailHash, confirmToken, locale, ipHash },
+      }));
+
+    // Update confirmed/sent timestamps
+    if (existing) {
+      await db.newsletterSubscriber.update({
+        where: { id: subscriber.id },
+        data: {
+          confirmToken,
+          confirmedAt: null,
+          unsubscribedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    // Send confirmation email
+    const confirmUrl = `${SITE_URL}/api/newsletter/confirm?token=${encodeURIComponent(confirmToken)}`;
+    const msg = buildConfirmationEmail({
+      to: email,
+      confirmUrl,
+      locale,
+    });
+    const sent = await sendEmail(msg);
+
+    if (!sent.ok) {
+      return NextResponse.json({
+        ok: false,
+        status: "pending_confirmation",
+        dataState: createDataStateMeta("retryable-error", "Confirmation email could not be sent"),
+      }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
+
     return NextResponse.json({
       ok: true,
-      status: "already_subscribed",
+      status: "pending_confirmation",
       dataState: createDataStateMeta("healthy"),
     }, { headers: { "Cache-Control": "no-store" } });
+  } catch (err: unknown) {
+    logServerFailure("newsletter.subscribe", err, { route: "/api/newsletter/subscribe", retryable: true });
+    return NextResponse.json(
+      { error: "Newsletter subscription is temporarily unavailable.", dataState: createDataStateMeta("retryable-error", "Newsletter service unavailable") },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
-
-  // Always rotate the bearer token when a pending/unsubscribed address asks
-  // again. Re-subscribing requires a fresh confirmation, never silent reactivation.
-  const confirmToken = crypto.randomBytes(24).toString("hex");
-  const subscriber =
-    existing ??
-    (await db.newsletterSubscriber.create({
-      data: { email, emailHash, confirmToken, locale, ipHash },
-    }));
-
-  // Update confirmed/sent timestamps
-  if (existing) {
-    await db.newsletterSubscriber.update({
-      where: { id: subscriber.id },
-      data: {
-        confirmToken,
-        confirmedAt: null,
-        unsubscribedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-  }
-
-  // Send confirmation email
-  const confirmUrl = `${SITE_URL}/api/newsletter/confirm?token=${encodeURIComponent(confirmToken)}`;
-  const msg = buildConfirmationEmail({
-    to: email,
-    confirmUrl,
-    locale,
-  });
-  const sent = await sendEmail(msg);
-
-  return NextResponse.json({
-    ok: sent.ok,
-    status: "pending_confirmation",
-    dataState: createDataStateMeta(sent.ok ? "healthy" : "retryable-error", sent.ok ? undefined : "Confirmation email could not be sent"),
-  }, { headers: { "Cache-Control": "no-store" } });
 }

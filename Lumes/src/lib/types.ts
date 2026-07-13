@@ -1,5 +1,8 @@
 // Shared types for live data connectors
 
+import type { DataState, DataStateMeta } from "@/lib/data-state";
+import type { SourceTier, SourceTrustStatus } from "@/lib/source-trust";
+
 export type BasemapMode = "dark" | "light" | "satellite";
 
 export interface SatelliteDetection {
@@ -33,7 +36,194 @@ export interface SatelliteResponse {
   bbox: string;
   dayRange: number;
   detections: SatelliteDetection[];
+  dataState?: DataStateMeta;
   cached?: boolean;
+}
+
+/** Wire shape returned by the persisted incident history endpoint. */
+export interface HistoryIncident {
+  id: string;
+  sourceId: string;
+  sourceInternalId: string;
+  displayName: string;
+  eventType: string;
+  status: string;
+  severity: string;
+  latitude: number;
+  longitude: number;
+  estimatedAreaHa: number;
+  municipality: string | null;
+  parish: string | null;
+  district: string | null;
+  personnelTotal: number;
+  assetsGround: number;
+  assetsAerial: number;
+  confidence: number;
+  rasi: string | null;
+  naturezaText: string | null;
+  statusText: string | null;
+  firstSeen: string;
+  lastSeen: string;
+  firstDetected: string;
+  lastUpdated: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HistoryResponse {
+  count: number;
+  total: number;
+  incidents: HistoryIncident[];
+  fetchedAt: string;
+  dataState?: DataStateMeta;
+}
+
+export type NewsCategory = "incident" | "official" | "press" | "weather";
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  source: string;
+  sourceUrl: string;
+  publishedAt: string;
+  category: NewsCategory;
+  summary?: string;
+  severity?: string;
+  municipality?: string;
+  parish?: string;
+  locality?: string;
+  district?: string;
+  href?: string;
+  matched?: boolean;
+}
+
+export interface NewsResponse {
+  source: string;
+  fetchedAt: string;
+  matched: NewsItem[];
+  incidents: NewsItem[];
+  press: NewsItem[];
+  sources: NewsItem[];
+  placesTracked: string[];
+  placesMatched: string[];
+  placesUnmatched: string[];
+  counts: {
+    matched: number;
+    incidents: number;
+    press: number;
+    sources: number;
+  };
+  dataState?: DataStateMeta;
+}
+
+export interface DashboardIncidentProperties {
+  statusText?: string;
+  statusGroup?: string;
+  naturezaText?: string;
+  rasi?: string;
+  personnelTotal?: number;
+  assetsGround?: number;
+  assetsAerial?: number;
+  municipality?: string;
+  region?: string;
+  parish?: string;
+  latitude?: number;
+  longitude?: number;
+  displayName?: string;
+}
+
+export interface DashboardIncidentRecord {
+  id: string;
+  severity: string;
+  status?: string;
+  incidentStatus?: string;
+  estimatedAreaHa?: number;
+  firstDetected?: string;
+  displayName?: string;
+  municipality?: string | null;
+  district?: string | null;
+  parish?: string | null;
+  geometry?: { type: "Point"; coordinates: [number, number] };
+  properties?: DashboardIncidentProperties;
+}
+
+export interface DashboardPriorityIncident {
+  id: string;
+  displayName: string;
+  severity: Severity;
+  status: string;
+  municipality: string | null;
+  district: string | null;
+  estimatedAreaHa: number;
+  personnel: number;
+  firstDetected?: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface DashboardResponse {
+  source: string;
+  dataState: DataStateMeta;
+  fetchedAt: string;
+  summary: {
+    total: number;
+    activeCount: number;
+    criticalCount: number;
+    highCount: number;
+    personnel: number;
+    aircraft: number;
+    engines: number;
+    areaHa: number;
+  };
+  distribution: {
+    byType: Record<string, number>;
+    byStatus: Record<string, number>;
+    byStatusGroup: Record<string, number>;
+  };
+  topPriority: DashboardPriorityIncident[];
+  persistence: {
+    total: number;
+    active: number;
+    resolved: number;
+    snapshots: number;
+  } | null;
+}
+
+/** Aggregate counts returned by the persistence statistics service. */
+export interface PersistenceStatsCounts {
+  total: number;
+  active: number;
+  resolved: number;
+  snapshots: number;
+}
+
+/** Client-facing envelope returned by `/api/stats` on success. */
+export interface PersistenceStatsResponse extends PersistenceStatsCounts {
+  fetchedAt: string;
+  dataState?: DataStateMeta;
+}
+
+export type RegionalCommandCoordinate = number | RegionalCommandCoordinate[];
+
+export interface RegionalCommandGeometry {
+  type: string;
+  coordinates: RegionalCommandCoordinate[];
+}
+
+export interface RegionalCommand {
+  id: string;
+  name: string;
+  region: string;
+  area?: number;
+  geometry: RegionalCommandGeometry | null;
+}
+
+export interface RegionalCommandsResponse {
+  source: string;
+  fetchedAt: string;
+  count: number;
+  commands: RegionalCommand[];
+  dataState?: DataStateMeta;
 }
 
 export type SourceType = "satellite" | "official" | "community" | "news" | "weather";
@@ -165,8 +355,13 @@ export interface SourceHealth {
   sourceId: string;
   sourceName: string;
   status: "ok" | "stale" | "error" | "disabled";
+  tier?: SourceTier;
+  state?: SourceTrustStatus;
+  dataState?: DataState | "disabled";
   lastSuccess: string | null;
   lastError: string | null;
   recordCount: number;
   latencyMs: number | null;
+  sourceUpdatedAt?: string | null;
+  receivedAt?: string | null;
 }

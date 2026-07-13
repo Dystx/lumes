@@ -74,11 +74,14 @@ export const translations = {
     sectionMessage: { pt: "Verifique a sua ligação e tente novamente.", en: "Check your connection and try again." },
     retry: { pt: "Tentar novamente", en: "Retry" },
     noIncidents: { pt: "Sem incêndios ativos", en: "No active fires" },
+    noResults: { pt: "Sem resultados", en: "No results" },
     noIncidentsDesc: { pt: "Não há incêndios ativos no momento. Boa notícia.", en: "There are no active fires right now. Good news." },
     noPriority: { pt: "Sem incêndios prioritários", en: "No priority incidents" },
     noPriorityDesc: { pt: "Nenhum incêndio crítico ou elevado no momento.", en: "No critical or high-severity incidents at the moment." },
     noFollowed: { pt: "Não segue nenhum incêndio", en: "Not following any incidents" },
     noFollowedDesc: { pt: "Toque em \"Seguir\" num incêndio para receber atualizações em tempo real.", en: "Tap \"Follow\" on an incident to get realtime updates." },
+    noFollowedMatch: { pt: "Nenhum incêndio seguido visível", en: "No followed incidents are visible" },
+    noFollowedMatchDesc: { pt: "Os filtros atuais ocultam os incêndios que segue.", en: "The current filters hide the incidents you follow." },
     noSources: { pt: "A verificar fontes de dados…", en: "Checking data sources…" },
     title: { pt: "Algo correu mal", en: "Something went wrong" },
     description: { pt: "A aplicação encontrou um erro inesperado. Tente novamente ou volte à página inicial.", en: "The application hit an unexpected error. Try again or return to the home page." },
@@ -102,6 +105,7 @@ export const translations = {
     shareText: { pt: "Mapa de incêndios em Portugal", en: "Portugal wildfire map" },
     linkCopied: { pt: "Link copiado", en: "Link copied" },
     unread: { pt: "não lidas", en: "unread" },
+    alertsWithUnread: { pt: "Alertas, {count} não lidas", en: "Alerts, {count} unread" },
   },
   a11y: {
     skipToMap: { pt: "Saltar para o mapa", en: "Skip to map" },
@@ -135,6 +139,14 @@ export const translations = {
     save: { pt: "Guardar", en: "Save" },
     edit: { pt: "Editar", en: "Edit" },
     delete: { pt: "Eliminar", en: "Delete" },
+  },
+
+  // Active query-filter chip labels.
+  filterLabels: {
+    includingResolved: { pt: "Incluir resolvidos", en: "Including resolved" },
+    withPersonnel: { pt: "Com pessoal", en: "With personnel" },
+    withEngines: { pt: "Com veículos", en: "With engines" },
+    withAircraft: { pt: "Com aeronaves", en: "With aircraft" },
   },
 
   // Sidebar — brand
@@ -230,6 +242,8 @@ export const translations = {
     activityPriority: { pt: "Prioridade", en: "Priority" },
     activityRecent: { pt: "Recentes", en: "Recent" },
     activityAll: { pt: "Todos", en: "All" },
+    activityFollowing: { pt: "A seguir", en: "Following" },
+    activityFollowingUnread: { pt: "novas atualizações", en: "new updates" },
     quickFilterAll: { pt: "Todos", en: "All" },
     quickFilterCritical: { pt: "Críticos", en: "Critical" },
     quickFilterHigh: { pt: "Elevados+", en: "High+" },
@@ -240,6 +254,14 @@ export const translations = {
   incident: {
     overview: { pt: "Resumo", en: "Overview" },
     timeline: { pt: "Cronologia", en: "Timeline" },
+    timelineLoading: { pt: "A carregar a linha temporal…", en: "Loading timeline…" },
+    timelineHeading: { pt: "Linha temporal de atividade", en: "Activity timeline" },
+    timelineEvent: { pt: "{count} evento", en: "{count} event" },
+    timelineEvents: { pt: "{count} eventos", en: "{count} events" },
+    timelineEmpty: { pt: "Ainda não existem eventos na linha temporal.", en: "No timeline events recorded yet." },
+    timelineLoadFailed: { pt: "Não foi possível carregar a linha temporal.", en: "The timeline could not be loaded." },
+    timelineRetry: { pt: "Tentar novamente", en: "Retry" },
+    sourceBreakdown: { pt: "Discriminação das fontes ({count} fontes contribuintes)", en: "Source breakdown ({count} contributing sources)" },
     sources: { pt: "Fontes", en: "Sources" },
     conditions: { pt: "Condições", en: "Conditions" },
     wind: { pt: "Vento", en: "Wind" },
@@ -254,8 +276,12 @@ export const translations = {
     resources: { pt: "Meios empenhados", en: "Resources deployed" },
     areaBurned: { pt: "Área ardida", en: "Area burned" },
     notEstimated: { pt: "Não estimada", en: "Not estimated" },
+    unnamed: { pt: "Incêndio sem localização", en: "Unnamed incident" },
+    unknownState: { pt: "Estado desconhecido", en: "Unknown state" },
     fireRisk: { pt: "Risco de Incêndio", en: "Fire risk" },
     sourceIPMA: { pt: "Fonte: IPMA", en: "Source: IPMA" },
+    riskUnavailable: { pt: "Risco IPMA não disponível para este registo histórico", en: "IPMA risk is unavailable for this historical record" },
+    sourceHistory: { pt: "Fonte: histórico de ocorrências", en: "Source: incident history" },
     firstDetected: { pt: "Primeira deteção", en: "First detected" },
     roadClosures: { pt: "Encerramentos de estradas", en: "Road closures" },
     followIncident: { pt: "Seguir este incêndio", en: "Follow this incident" },
@@ -271,16 +297,45 @@ export const translations = {
     shareCopied: { pt: "Link copiado", en: "Link copied" },
   },
 
+  // Optional incident-local inspection mode. Hidden when its feature flag is off.
+  incidentFocus: {
+    exploreArea: { pt: "Explorar área em 3D", en: "Explore area in 3D" },
+    exploreThisArea: { pt: "Explorar esta área em 3D", en: "Explore this area in 3D" },
+    status: { pt: "Foco 3D", en: "3D focus" },
+    entering: { pt: "A abrir foco 3D…", en: "Opening 3D focus…" },
+    exiting: { pt: "A sair do foco 3D…", en: "Exiting 3D focus…" },
+    exit: { pt: "Sair do foco 3D", en: "Exit 3D focus" },
+    returnOverview: { pt: "Voltar à vista de Portugal", en: "Return to Portugal overview" },
+    unavailable: { pt: "Foco 3D indisponível", en: "3D focus unavailable" },
+    unavailableWebgl: { pt: "O navegador não suporta este modo 3D.", en: "This browser does not support 3D focus." },
+    unavailableMap: { pt: "O mapa ainda está a carregar.", en: "The map is still loading." },
+    unavailableGeometry: { pt: "Este incidente não tem uma localização válida.", en: "This incident has no valid location." },
+    unavailableLow: { pt: "Será usada a vista 3D simples neste dispositivo.", en: "A camera-only 3D view will be used on this device." },
+    localContext: { pt: "Contexto local do incidente; a vista 2D continua a ser a referência operacional.", en: "Local incident context; the 2D view remains the operational reference." },
+    announcementEntering: { pt: "A abrir foco 3D do incidente", en: "Opening 3D incident focus" },
+    announcementActive: { pt: "Foco 3D ativo", en: "3D focus active" },
+    announcementExiting: { pt: "A restaurar a vista 2D", en: "Restoring the 2D view" },
+  },
+
   // Map controls
   map: {
-    incidentsVisible: { pt: "incêndios", en: "incidents" },
+    incidentsVisible: { pt: "incidentes", en: "incidents" },
+    whatMapShows: { pt: "O que o mapa mostra", en: "What the map shows" },
+    visibleSummary: { pt: "O mapa mostra {count} {unit}", en: "Map shows {count} {unit}" },
+    filteredSummary: { pt: "A mostrar {count} {unit}", en: "Showing {count} {unit}" },
+    incidentUnit: { pt: "incidente", en: "incident" },
+    incidentsUnit: { pt: "incidentes", en: "incidents" },
+    activeFilter: { pt: "{count} filtro ativo", en: "{count} active filter" },
+    activeFilters: { pt: "{count} filtros ativos", en: "{count} active filters" },
+    noFilterMatches: { pt: "Nenhum incidente corresponde aos filtros", en: "No incidents match the filters" },
+    noVisibleIncidents: { pt: "Não há incidentes visíveis", en: "No incidents visible" },
     zoomIn: { pt: "Ampliar", en: "Zoom in" },
     zoomOut: { pt: "Reduzir", en: "Zoom out" },
     resetView: { pt: "Repor vista de Portugal", en: "Reset view to Portugal" },
     locate: { pt: "Centrar no incidente selecionado", en: "Center map on selected incident" },
-    total: { pt: "Total: {count} incêndios", en: "Total: {count} fires" },
-    activeTap: { pt: "{count} incêndios ativos — toque para abrir o painel", en: "{count} active fires — tap to open dashboard" },
-    totalLabel: { pt: "incêndios", en: "fires" },
+    total: { pt: "Total: {count} incidentes", en: "Total: {count} incidents" },
+    activeTap: { pt: "{count} incidentes visíveis — toque para abrir o painel", en: "{count} visible incidents — tap to open dashboard" },
+    totalLabel: { pt: "incidentes", en: "incidents" },
     totalLabelCompact: { pt: "", en: "" },
   },
 
@@ -289,6 +344,8 @@ export const translations = {
     title: { pt: "Histórico de Incêndios", en: "Incident History" },
     subtitle: { pt: "incidentes registados · ordenados por mais recentes", en: "incidents tracked · sorted by most recent" },
     search: { pt: "Procurar nome, concelho…", en: "Search name, municipality…" },
+    emptyTitle: { pt: "Ainda não há histórico", en: "No incident history yet" },
+    emptyDescription: { pt: "Os incidentes registados aparecerão aqui.", en: "Recorded incidents will appear here." },
     all: { pt: "todos", en: "all" },
     showing: { pt: "A mostrar", en: "Showing" },
     of: { pt: "de", en: "of" },
@@ -333,6 +390,8 @@ export const translations = {
   notifications: {
     title: { pt: "Notificações", en: "Notifications" },
     unread: { pt: "não lidas", en: "unread" },
+    unreadCount: { pt: "{count} não lidas", en: "{count} unread" },
+    empty: { pt: "Não há notificações neste momento.", en: "There are no notifications right now." },
     markAllRead: { pt: "Marcar todas como lidas", en: "Mark all read" },
     bypassQuiet: { pt: "Motor de notificações · Alertas críticos ignoram horas de descanso", en: "Notification engine · Critical alerts bypass quiet hours" },
   },
@@ -348,6 +407,8 @@ export const translations = {
     fallbackDesc: { pt: "A usar dados de exemplo. Verifique a saúde das fontes.", en: "Falling back to sample data. Check source health." },
     liveRestored: { pt: "Dados em direto restaurados", en: "Live data restored" },
     followed: { pt: "A seguir incidente", en: "Following incident" },
+    followedLocal: { pt: "Incidente guardado neste dispositivo", en: "Incident saved on this device" },
+    followedLocalDescription: { pt: "{name} — guardado neste dispositivo", en: "{name} — saved on this device" },
     unfollowed: { pt: "Deixou de seguir", en: "Unfollowed" },
     linkCopied: { pt: "Link copiado", en: "Link copied" },
     reportSubmitted: { pt: "Comunicação enviada", en: "Report submitted" },
@@ -355,6 +416,9 @@ export const translations = {
     locationCaptured: { pt: "Localização capturada", en: "Location captured" },
     locationFailed: { pt: "Não foi possível obter a localização", en: "Could not get location" },
     centeredOn: { pt: "Centrado em", en: "Centered on" },
+    centeredOnDescription: { pt: "{place} · incidente ampliado", en: "{place} · zoomed to incident" },
+    alertsUnavailable: { pt: "Alertas indisponíveis neste dispositivo.", en: "Alerts are unavailable on this device." },
+    followUpdateFailed: { pt: "Não foi possível atualizar o alerta.", en: "Unable to update the alert." },
     resetView: { pt: "Vista repost para Portugal", en: "Reset view to Portugal" },
     showingAll: { pt: "A mostrar todos os incidentes", en: "Showing all incidents" },
   },
@@ -423,12 +487,18 @@ export const translations = {
 // Helper function to get a translation
 export function t(lang: Language, path: string): string {
   const keys = path.split(".");
-  let val: any = translations;
+  let val: unknown = translations;
   for (const k of keys) {
-    val = val?.[k];
-    if (val == null) break;
+    if (typeof val !== "object" || val === null || !(k in val)) {
+      val = undefined;
+      break;
+    }
+    val = (val as Record<string, unknown>)[k];
   }
-  if (val && typeof val === "object" && val[lang]) return val[lang];
+  if (typeof val === "object" && val !== null) {
+    const localized = (val as Record<string, unknown>)[lang];
+    if (typeof localized === "string") return localized;
+  }
   return path; // Fallback to the key itself
 }
 

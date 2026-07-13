@@ -13,7 +13,7 @@
 
 import { useRef, useState, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
-import { trapFocus } from "@/lib/focus-trap";
+import { useBlockingOverlay } from "@/lib/blocking-overlay";
 
 export interface BottomSheetProps {
   open: boolean;
@@ -52,6 +52,8 @@ export function BottomSheet({
   const y = useMotionValue(0);
   const [isDragging, setIsDragging] = useState(false);
 
+  useBlockingOverlay(open, sheetRef, onClose);
+
   // Body scroll lock when open
   useEffect(() => {
     if (!open) return;
@@ -63,16 +65,6 @@ export function BottomSheet({
       document.body.style.overflow = original;
       openerRef.current?.focus();
     };
-  }, [open]);
-
-  // Escape to close
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (sheetRef.current) trapFocus(sheetRef.current, e);
-    };
-    window.addEventListener("keydown", handler, true);
-    return () => window.removeEventListener("keydown", handler, true);
   }, [open]);
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
@@ -133,7 +125,7 @@ export function BottomSheet({
             dragElastic={{ top: 0, bottom: 0.6 }}
             onDragStart={() => setIsDragging(true)}
             onDragEnd={handleDragEnd}
-            style={{ y, maxHeight: `${snapVh}vh` }}
+            style={{ y, height: `${snapVh}vh`, maxHeight: `${snapVh}vh` }}
             tabIndex={-1}
             className={`absolute inset-x-0 bottom-0 bg-[var(--ember-bg)] border-t border-[var(--ember-border)] rounded-t-xl shadow-[0_-8px_24px_rgba(0,0,0,0.3)] flex flex-col outline-none ${panelClassName}`}
           >

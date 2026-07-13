@@ -1,11 +1,11 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildReportPayload, persistFollowChange } from "@/lib/public-actions";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import { buildReportPayload } from "@/lib/public-actions";
+
+const source = readFileSync(resolve(process.cwd(), "src/lib/public-actions.ts"), "utf8");
 
 describe("public action contracts", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it("maps report form fields to the report API schema", () => {
     expect(buildReportPayload({
       reportType: "smoke",
@@ -22,26 +22,8 @@ describe("public action contracts", () => {
     });
   });
 
-  it("rejects an unsuccessful follow response and preserves its error", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
-      JSON.stringify({ error: "Rate limit exceeded" }),
-      { status: 429, headers: { "Content-Type": "application/json" } },
-    )));
-
-    await expect(persistFollowChange("incident-1", true)).rejects.toThrow("Rate limit exceeded");
-  });
-
-  it("uses DELETE to unfollow and only resolves a successful API response", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(persistFollowChange("incident-1", false)).resolves.toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledWith("/api/follow", expect.objectContaining({
-      method: "DELETE",
-      body: JSON.stringify({ incidentId: "incident-1" }),
-    }));
+  it("keeps server follow persistence out of the public action module", () => {
+    expect(source).not.toContain("persistFollowChange");
+    expect(source).not.toContain("/api/follow");
   });
 });

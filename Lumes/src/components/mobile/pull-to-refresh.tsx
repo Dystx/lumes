@@ -95,7 +95,7 @@ export function PullToRefresh({
             }}
           >
             <div
-              className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider ${
+              className={`flex items-center gap-1.5 text-meta uppercase tracking-wider ${
                 refreshing ? "text-[var(--ember-accent)]" : "text-[var(--ember-text-faint)]"
               }`}
               style={{

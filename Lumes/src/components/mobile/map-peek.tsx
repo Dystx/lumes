@@ -12,6 +12,8 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
 import { SEVERITY_LABEL, type Severity } from "@/lib/incident";
+import type { DataTrustState } from "@/lib/data-trust";
+import { DataTrustIndicator } from "@/components/ui/data-trust-indicator";
 
 export interface PeekIncident {
   id: string;
@@ -25,6 +27,7 @@ export interface PeekIncident {
 
 export interface MapPeekProps {
   total: number;
+  activeCount?: number;
   critical: number;
   high: number;
   topIncidents: PeekIncident[];
@@ -32,7 +35,13 @@ export interface MapPeekProps {
   onExpand: () => void;
   onViewIncidents: () => void;
   lastUpdated?: Date | null;
+  dataTrust?: DataTrustState;
+  optionalLayerWarning?: string;
   compact?: boolean;
+}
+
+export function mapPeekActiveLabel(lang: "pt" | "en"): string {
+  return lang === "pt" ? "ativos" : "active";
 }
 
 function formatRelative(date: Date, lang: string): string {
@@ -45,6 +54,7 @@ function formatRelative(date: Date, lang: string): string {
 
 export function MapPeek({
   total,
+  activeCount = total,
   critical,
   high,
   topIncidents,
@@ -53,6 +63,8 @@ export function MapPeek({
   onExpand,
   onViewIncidents,
   compact = false,
+  dataTrust,
+  optionalLayerWarning,
 }: MapPeekProps) {
   const { language: lang } = useLanguage();
   const sevColor = (s: Severity) =>
@@ -60,6 +72,15 @@ export function MapPeek({
     s === "high" ? "var(--ember-warning)" :
     s === "medium" ? "var(--ember-info)" :
     "var(--ember-success)";
+  const trustWarning = dataTrust && dataTrust.state !== "fresh" && dataTrust.state !== "updating"
+    ? dataTrust.state === "fallback"
+      ? (lang === "pt" ? "A mostrar dados alternativos" : "Showing fallback data")
+      : dataTrust.state === "stale"
+        ? (lang === "pt" ? "Dados desatualizados" : "Data may be stale")
+        : dataTrust.state === "empty"
+          ? (lang === "pt" ? "Sem dados disponíveis" : "No data available")
+          : (lang === "pt" ? "A atualização falhou" : "Refresh failed")
+    : null;
 
   return (
     <div className="h-full flex flex-col bg-[var(--ember-bg)]">
@@ -71,10 +92,15 @@ export function MapPeek({
           aria-label={lang === "pt" ? "Expandir resumo de incêndios" : "Expand fire summary"}
         >
           <Flame className="w-4 h-4 text-[var(--ember-critical)] flex-shrink-0" />
-          <span className="font-mono font-bold tabular-nums text-lg text-[var(--ember-text)]">{total}</span>
+          <span className="font-mono font-bold tabular-nums text-lg text-[var(--ember-text)]">{activeCount}</span>
           <span className="text-xs text-[var(--ember-text-muted)]">
-            {lang === "pt" ? "incêndios ativos" : "active fires"}
+            {mapPeekActiveLabel(lang)}
           </span>
+          {total !== activeCount && (
+            <span className="text-meta text-[var(--ember-text-faint)]">
+              · {total} {lang === "pt" ? "visíveis" : "visible"}
+            </span>
+          )}
           {critical > 0 && (
             <span className="ml-auto text-xs font-medium text-[var(--ember-critical)] tabular-nums">
               {critical} {lang === "pt" ? "crítico" : "critical"}
@@ -92,8 +118,8 @@ export function MapPeek({
         aria-label={lang === "pt" ? "Expandir painel" : "Expand panel"}
       >
         <div className="w-12 h-1.5 rounded-full bg-[var(--ember-border-strong)] mb-1.5" />
-        <span className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-semibold">
-          {lang === "pt" ? "Incêndios" : "Fires"}
+        <span className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-semibold">
+          {lang === "pt" ? "Incidentes" : "Incidents"}
         </span>
       </button>
 
@@ -102,13 +128,18 @@ export function MapPeek({
         <div className="flex items-baseline gap-1.5">
           <Flame className="w-4 h-4 text-[var(--ember-critical)]" />
           <span className="text-2xl font-bold font-mono tabular-nums text-[var(--ember-text)]">
-            {total}
+            {activeCount}
           </span>
-          <span className="text-[10px] text-[var(--ember-text-faint)] uppercase tracking-wider">
-            {lang === "pt" ? "ativos" : "active"}
+          <span className="text-meta text-[var(--ember-text-faint)] uppercase tracking-wider">
+            {mapPeekActiveLabel(lang)}
           </span>
+          {total !== activeCount && (
+            <span className="text-meta text-[var(--ember-text-faint)]">
+              · {total} {lang === "pt" ? "visíveis" : "visible"}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-1.5 ml-auto text-[10px]">
+        <div className="flex items-center gap-1.5 ml-auto text-meta">
           {lastUpdated && (
             <span className="flex items-center gap-1 text-[var(--ember-text-faint)] tabular-nums">
               <Clock className="w-3 h-3" />
@@ -117,6 +148,7 @@ export function MapPeek({
               </span>
             </span>
           )}
+          <DataTrustIndicator state={dataTrust?.state ?? "fresh"} lang={lang} reason={dataTrust?.reason} compact />
           {critical > 0 && (
             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--ember-critical)]/15 text-[var(--ember-critical)] font-medium">
               <AlertTriangle className="w-3 h-3" />
@@ -130,6 +162,13 @@ export function MapPeek({
           )}
         </div>
       </div>
+
+      {(trustWarning || optionalLayerWarning) && (
+        <div className="mx-3 mb-2 rounded-md border border-[var(--ember-warning)]/30 bg-[var(--ember-warning-subtle)] px-2 py-1 text-meta text-[var(--ember-warning)]" role="status">
+          {trustWarning ?? optionalLayerWarning}
+          {trustWarning && optionalLayerWarning ? ` · ${optionalLayerWarning}` : ""}
+        </div>
+      )}
 
       {/* Top 3 priority incidents — scrollable horizontal cards */}
       {topIncidents.length > 0 ? (
@@ -149,7 +188,7 @@ export function MapPeek({
                     aria-hidden
                   />
                   <span
-                    className="text-[9px] uppercase tracking-wider font-semibold flex-1 truncate"
+                    className="text-meta uppercase tracking-wider font-semibold flex-1 truncate"
                     style={{ color: sevColor(inc.severity) }}
                   >
                     {SEVERITY_LABEL[inc.severity][lang]}
@@ -159,11 +198,11 @@ export function MapPeek({
                   {inc.displayName}
                 </p>
                 {inc.municipality && (
-                  <p className="text-[10px] text-[var(--ember-text-faint)] truncate">
+                  <p className="text-[length:var(--type-secondary)] text-[var(--ember-text-faint)] truncate">
                     {inc.municipality}
                   </p>
                 )}
-                <div className="mt-auto flex items-center justify-between text-[9px] text-[var(--ember-text-faint)]">
+                <div className="mt-auto flex items-center justify-between text-meta text-[var(--ember-text-faint)]">
                   {inc.personnel !== undefined && inc.personnel > 0 && (
                     <span>👤 {inc.personnel}</span>
                   )}
@@ -188,7 +227,7 @@ export function MapPeek({
             <p className="text-[11px] font-medium text-[var(--ember-text)]">
               {t(lang, "error.noIncidents")}
             </p>
-            <p className="text-[10px] text-[var(--ember-text-faint)] mt-0.5 max-w-[200px]">
+            <p className="text-[length:var(--type-secondary)] text-[var(--ember-text-faint)] mt-0.5 max-w-[200px]">
               {t(lang, "error.noIncidentsDesc")}
             </p>
           </motion.div>
@@ -199,7 +238,7 @@ export function MapPeek({
       <button
         type="button"
         onClick={onExpand}
-        className="w-full flex items-center justify-center gap-1 py-1.5 border-t border-[var(--ember-border)] text-[10px] text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
+        className="w-full flex items-center justify-center gap-1 py-1.5 border-t border-[var(--ember-border)] text-[length:var(--type-secondary)] text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors"
       >
         <span className="uppercase tracking-wider font-semibold">
           {lang === "pt" ? "Ver todos" : "See all"}

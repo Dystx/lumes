@@ -1,7 +1,7 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "PORT=3001 bun run start",
+      "startServerCommand": "PORT=3001 bun .next/standalone/server.js",
       "url": [
         "http://localhost:3001/",
         "http://localhost:3001/status",

@@ -1,6 +1,6 @@
 // IncidentSummary — single canonical type for incident data.
 //
-// TASK F (refactor plan): Eliminate `(i as any).rawProperties` casts and
+// TASK F (refactor plan): Eliminate unsafe raw-property casts and
 // the dual-shape problem (LiveIncident vs adapted Incident) by defining
 // one type and having all consumers use it.
 
@@ -85,18 +85,17 @@ export interface IncidentSummary {
   aircraft?: number;
   /** Original ANEPC properties (for advanced lookups) */
   properties?: IncidentProperties;
-  /** Display labels (post-i18n) — populated by use-live-data */
+  /** Display labels (post-i18n) — populated by the app-data adapters */
   statusLabel?: { pt: string; en: string };
   severityLabel?: { pt: string; en: string };
 }
 
 /** Type guard: confirm an object looks like an IncidentSummary */
 export function isIncidentSummary(x: unknown): x is IncidentSummary {
-  return (
-    typeof x === "object" &&
-    x !== null &&
-    typeof (x as any).id === "string" &&
-    typeof (x as any).severity === "string" &&
-    typeof (x as any).geometry === "object"
-  );
+  if (typeof x !== "object" || x === null) return false;
+  const candidate = x as Partial<IncidentSummary>;
+  return typeof candidate.id === "string"
+    && typeof candidate.severity === "string"
+    && typeof candidate.geometry === "object"
+    && candidate.geometry !== null;
 }

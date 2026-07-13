@@ -4,7 +4,7 @@
 // Why Phosphor (not Lucide/Tabler/Heroicons):
 // - 9000+ icons with 6 weights (thin/light/regular/bold/fill/duotone)
 // - Distinctive, less overused in 2025-2026 AI projects (anti-AI design)
-// - Variable weight allows expressive design at any size
+// - Variable weight allows expressive design at every size
 // - Open source, MIT, well-maintained
 //
 // This file re-exports every icon we use, with compatible props
@@ -129,10 +129,11 @@ import {
   DotsThree as PMoreHorizontal,
 } from "@phosphor-icons/react";
 import type { SVGProps } from "react";
+import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-function makeIcon(PhosphorIcon: any) {
+function makeIcon(PhosphorIcon: PhosphorIcon) {
   return function Icon({ size = 18, className, ...rest }: IconProps) {
     return <PhosphorIcon size={size} weight="regular" className={className} {...rest} />;
   };

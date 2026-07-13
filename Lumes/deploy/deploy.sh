@@ -49,6 +49,11 @@ run_server_steps() {
   # Resolve the real target so CSS, client chunks, and public assets do not
   # 404 after the service restarts.
   SERVER_ENTRY=".next/standalone/server.js"
+  if [[ ! -f "${SERVER_ENTRY}" ]]; then
+    echo "    !! Standalone server entry is missing after build: ${SERVER_ENTRY}" >&2
+    echo "       Refusing to copy assets or restart the service." >&2
+    return 1
+  fi
   if [[ -L "${SERVER_ENTRY}" ]]; then
     RUNTIME_DIR="$(dirname "$(readlink -f "${SERVER_ENTRY}")")"
   else

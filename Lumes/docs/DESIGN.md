@@ -20,7 +20,12 @@ Map:
 Sources:
 - --ember-source-satellite, --ember-source-official, etc.
 
-Typography: font-sans, font-mono, font-display (Bricolage).
+Typography:
+- `font-sans` maps to IBM Plex Sans (`--font-ui`) for application UI.
+- `font-mono` maps to IBM Plex Mono (`--font-data`) for counts, timestamps, and codes.
+- `font-display` is reserved for the lumes.pt brand mark (Fraunces only); application headings use `font-sans`.
+- `--type-body` is 14px, `--type-secondary` is 12px, and `--type-meta` is 11px.
+- Use `text-meta` for compact metadata instead of raw 9px/10px utilities. Portuguese diacritics must remain intact in both font and system fallback stacks.
 
 ## Components
 
@@ -35,7 +40,7 @@ Typography: font-sans, font-mono, font-display (Bricolage).
 - Tablet (768–1279px): map-first; Situation, Explore, and detail use drawers/sheets rather than permanent rails.
 - Mobile (<768px): fixed map canvas, 56px collapsed situation summary, expandable 52vh summary, and a 92vh detail sheet.
 - Use a 4/8px rhythm: 16px panel padding, 24px section separation, 40px desktop controls, and 44px touch targets.
-- Text scale: 14px normal body/data, 12px secondary, 10px timestamps only. Reserve all-caps labels for compact metadata.
+- Text scale: 14px normal body/data, 12px secondary, and 11px metadata/timestamps. Reserve all-caps labels for compact metadata.
 - Default Situation content is freshness, one headline count, 3–5 priority incidents, and an all-incidents entry. Filters/layers belong to Explore; source diagnostics and history are secondary.
 
 ## Map Layers
@@ -43,6 +48,21 @@ Typography: font-sans, font-mono, font-display (Bricolage).
 - Add via addEmberSourcesAndLayers in ember-map.
 - Toggle in ui-store + filters.
 - Data via use*New hooks.
+
+### Optional 3D Incident Focus
+
+- The national map remains the default, top-down operational view.
+- `NEXT_PUBLIC_LUMES_3D_INCIDENT_FOCUS=1` gates the optional camera-only
+  incident focus mode; the production default is off.
+- Phase 1 changes only camera pitch/zoom for a selected incident. It does not
+  add buildings, terrain, a second basemap, rotation, or touch pitching.
+- The Inspector owns the entry action; the map chrome owns local exit and
+  Portugal-overview reset. All actions use existing Ember tokens and 44px
+  targets.
+- Incident markers, evacuation boundaries, risk, stations, satellite, aerial,
+  biomass, composite-risk, news, and community layers remain above any future
+  context layer. A future building/terrain layer must be disabled if it cannot
+  preserve that ordering or provider attribution.
 
 ## Errors
 
@@ -56,6 +76,8 @@ Typography: font-sans, font-mono, font-display (Bricolage).
 - Focus ring via tailwind.
 - Keyboard support for filters/map (limited by maplibre).
 - Only the topmost blocking overlay responds to Escape; restore focus to the opener when it closes.
+- While Incident Focus is active, Escape exits the mode only when no higher-
+  priority blocking overlay owns the key.
 - Respect `prefers-reduced-motion`; persistent motion is reserved for newly critical incidents or live-connection changes.
 
 ## Public route locale contract

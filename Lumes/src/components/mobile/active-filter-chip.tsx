@@ -30,7 +30,7 @@ export function ActiveFilterChips({
       exit={{ opacity: 0, y: -8 }}
       className="sticky top-[3.5rem] z-20 px-3 py-2 bg-[var(--ember-bg)] border-b border-[var(--ember-border)] flex items-center gap-2 overflow-x-auto ember-scroll"
     >
-      <span className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex-shrink-0">
+      <span className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex-shrink-0">
         {t(lang, "dashboard.activeFilter")}:
       </span>
       {filters.map((f) => (

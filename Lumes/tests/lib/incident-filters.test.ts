@@ -187,6 +187,31 @@ describe("useUIStore incident-filter actions", () => {
     expect(next.visibleSources.has("official")).toBe(false);
   });
 
+  it("hydrates all query filters atomically without changing map display state", () => {
+    const store = useUIStore.getState();
+    store.setShowFireRisk(true);
+    store.toggleSource("official");
+
+    store.replaceIncidentFilters({
+      severities: new Set(["critical"]),
+      hideResolved: false,
+      quick: "active",
+      phase: "Em Curso",
+      resource: "aircraft",
+      search: "loule",
+    });
+
+    const next = useUIStore.getState();
+    expect(next.severityFilter).toEqual(new Set(["critical"]));
+    expect(next.hideResolved).toBe(false);
+    expect(next.quickFilter).toBe("active");
+    expect(next.phaseFilter).toBe("Em Curso");
+    expect(next.resourceFilter).toBe("aircraft");
+    expect(next.searchQuery).toBe("loule");
+    expect(next.showFireRisk).toBe(true);
+    expect(next.visibleSources.has("official")).toBe(false);
+  });
+
   it("clears selection and map fly-to when filtering hides the selected incident", () => {
     const store = useUIStore.getState();
     store.setSelectedIncidentId("hidden");

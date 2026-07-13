@@ -16,6 +16,7 @@ import { Funnel, FileText, Newspaper, X } from "@/components/icons/phosphor-icon
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
 import { IconButton } from "@/components/ui/icon-button";
+import { useOverlayEscape } from "@/lib/blocking-overlay";
 
 export type RightSidebarTab = "explore" | "inspector" | "updates";
 
@@ -27,12 +28,16 @@ export interface RightSidebarProps {
   selectedIncidentId?: string | null;
   /** Active filter count (shown as badge on the rail) */
   activeFilterCount?: number;
-  /** Unread notification count (shown as badge on bell) */
-  unreadCount?: number;
   /** Open the panel by default (used for detail auto-open) */
   defaultOpenTab?: RightSidebarTab | null;
   /** Called when user clicks the X on the detail tab */
   onCloseDetail?: () => void;
+  /** Optional higher-priority escape action for an active map mode. */
+  onEscape?: () => void;
+  /** Let a tracked modal/sheet receive Escape before this non-modal rail. */
+  escapeEnabled?: boolean;
+  /** Publish the rail/drawer geometry so map chrome can reserve it. */
+  onLayoutChange?: (layout: { open: boolean; width: number }) => void;
 }
 
 export function RightSidebar({
@@ -41,19 +46,37 @@ export function RightSidebar({
   news,
   selectedIncidentId,
   activeFilterCount = 0,
-  unreadCount = 0,
   defaultOpenTab = null,
   onCloseDetail,
+  onEscape,
+  escapeEnabled = true,
+  onLayoutChange,
 }: RightSidebarProps) {
   const { language: lang } = useLanguage();
   const [openTab, setOpenTab] = useState<RightSidebarTab | null>(defaultOpenTab);
   const panelRef = useRef<HTMLElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const onEscapeRef = useRef(onEscape);
+  const onLayoutChangeRef = useRef(onLayoutChange);
+
+  useEffect(() => {
+    onEscapeRef.current = onEscape;
+  }, [onEscape]);
+
+  useEffect(() => {
+    onLayoutChangeRef.current = onLayoutChange;
+  }, [onLayoutChange]);
 
   // Auto-open detail tab when an incident is selected (if not already open).
   // This is an intentional "prop change -> UI state" side effect (common for auto-opening panels).
   useEffect(() => {
     if (selectedIncidentId && openTab !== "inspector") {
+      // Selection can come from a Situation list, dashboard card, or map
+      // canvas rather than the rail itself. Capture that control so closing
+      // the inspector can return focus to the user's point of origin.
+      if (document.activeElement instanceof HTMLElement && !panelRef.current?.contains(document.activeElement)) {
+        openerRef.current = document.activeElement;
+      }
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpenTab("inspector");
     }
@@ -63,24 +86,32 @@ export function RightSidebar({
   const hasNews = !!news;
   const isOpen = openTab !== null;
 
+  useEffect(() => {
+    onLayoutChangeRef.current?.({ open: isOpen, width: isOpen ? 360 : 48 });
+  }, [isOpen]);
+
   // The rail is a non-modal drawer, but it still owns focus while open and
-  // returns focus to the button that opened it. Escape is handled in capture
-  // phase so it wins over lower-priority page shortcuts/selected detail.
+  // returns focus to the button that opened it. Escape participates in the
+  // shared overlay ordering without trapping Tab focus.
   useEffect(() => {
     if (!isOpen) {
       openerRef.current?.focus();
       return;
     }
     requestAnimationFrame(() => panelRef.current?.focus());
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      setOpenTab(null);
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [isOpen]);
+
+  useOverlayEscape(isOpen && escapeEnabled, () => {
+    if (onEscapeRef.current) onEscapeRef.current();
+    else setOpenTab(null);
+  });
+
+  useEffect(() => {
+    if (!selectedIncidentId && openTab === "inspector") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOpenTab(null);
+    }
+  }, [openTab, selectedIncidentId]);
 
   const handleTabClick = (tab: RightSidebarTab) => {
     if (openTab === null) {
@@ -137,6 +168,7 @@ export function RightSidebar({
             exit={{ x: "100%", opacity: 0 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             className="hidden xl:flex flex-col absolute right-12 top-0 bottom-0 w-[360px] bg-[var(--ember-bg)] border-l border-[var(--ember-border)] z-30 shadow-[-8px_0_24px_rgba(0,0,0,0.3)]"
+            data-testid="right-sidebar-drawer"
             ref={panelRef}
             role="dialog"
             aria-modal="false"
@@ -160,8 +192,11 @@ export function RightSidebar({
                 </h2>
               </div>
               <IconButton
-                onClick={() => setOpenTab(null)}
-                className="min-h-9 min-w-9"
+                onClick={() => {
+                  if (openTab === "inspector") onCloseDetail?.();
+                  setOpenTab(null);
+                }}
+                className="min-h-11 min-w-11"
                 label={t(lang, "a11y.closePanel")}
               >
                 <X size={14} />
@@ -245,7 +280,7 @@ function RailButton({
       {icon}
       {badge && badge !== "0" && badge !== 0 && (
         <span
-          className={`absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center tabular-nums ${
+          className={`absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 rounded-full text-meta font-bold flex items-center justify-center tabular-nums ${
             badge === "●"
               ? "bg-[var(--ember-accent)] text-white w-2 h-2 min-w-0 p-0"
               : active

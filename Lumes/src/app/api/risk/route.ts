@@ -15,14 +15,17 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const lat = parseFloat(url.searchParams.get("lat") ?? "");
-  const lon = parseFloat(url.searchParams.get("lon") ?? "");
+  const lat = Number(url.searchParams.get("lat") ?? "");
+  const lon = Number(url.searchParams.get("lon") ?? "");
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < 36.95 || lat > 42.15 || lon < -9.5 || lon > -6) {
-    return NextResponse.json({ error: "lat and lon must be finite Portugal coordinates" }, { status: 400 });
+    return NextResponse.json({ error: "lat and lon must be finite Portugal coordinates", dataState: createDataStateMeta("empty", "Invalid Portugal coordinates") }, { status: 400, headers: { "Cache-Control": "no-store" } });
   }
   const rl = rateLimit(clientKey(req), { limit: 30 });
   if (!rl.ok) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
+    return NextResponse.json(
+      { error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" } },
+    );
   }
 
   const cell = lookupCell(
@@ -33,7 +36,7 @@ export async function GET(req: NextRequest) {
     lon,
   );
   if (!cell) {
-    return NextResponse.json({ error: "no biomass data" }, { status: 404 });
+    return NextResponse.json({ error: "no biomass data", dataState: createDataStateMeta("empty", "No biomass data") }, { status: 404, headers: { "Cache-Control": "no-store" } });
   }
   const species = cell.dominantSpecies;
   const profile = BIOMASS_PROFILES[species];
@@ -45,7 +48,7 @@ export async function GET(req: NextRequest) {
     logServerFailure("risk.fetch", err, { route: "/api/risk", retryable: true });
     return NextResponse.json(
       { error: "Weather data is temporarily unavailable.", dataState: createDataStateMeta("retryable-error", "Weather source unavailable") },
-      { status: 502 }
+      { status: 502, headers: { "Cache-Control": "no-store" } }
     );
   }
 

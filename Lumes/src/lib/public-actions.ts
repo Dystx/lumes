@@ -16,11 +16,6 @@ export interface ReportRequestPayload {
   name?: string;
 }
 
-interface ApiActionResponse {
-  ok?: boolean;
-  error?: string;
-}
-
 export function buildReportPayload(values: ReportFormValues): ReportRequestPayload {
   return {
     type: values.reportType,
@@ -29,16 +24,4 @@ export function buildReportPayload(values: ReportFormValues): ReportRequestPaylo
     description: values.description || undefined,
     name: values.reporterName || undefined,
   };
-}
-
-export async function persistFollowChange(incidentId: string, shouldFollow: boolean): Promise<void> {
-  const response = await fetch("/api/follow", {
-    method: shouldFollow ? "POST" : "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ incidentId }),
-  });
-  const payload = await response.json().catch(() => ({})) as ApiActionResponse;
-  if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || `Unable to ${shouldFollow ? "follow" : "unfollow"} this incident.`);
-  }
 }

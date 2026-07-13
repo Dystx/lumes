@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { trapFocus } from "@/lib/focus-trap";
+import { useBlockingOverlay } from "@/lib/blocking-overlay";
 
 interface OverlayDrawerProps {
   ariaLabel: string;
@@ -13,19 +13,21 @@ export function OverlayDrawer({ ariaLabel, children, onClose }: OverlayDrawerPro
   const drawerRef = useRef<HTMLElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
+  useBlockingOverlay(true, drawerRef, onClose);
+
   useEffect(() => {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const priorOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    drawerRef.current?.focus();
     requestAnimationFrame(() => drawerRef.current?.focus());
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (drawerRef.current) trapFocus(drawerRef.current, event);
-    };
-    window.addEventListener("keydown", onKeyDown, true);
     return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
       document.body.style.overflow = priorOverflow;
-      openerRef.current?.focus();
+      const restoreFocus = () => {
+        if (openerRef.current?.isConnected) openerRef.current.focus();
+      };
+      restoreFocus();
+      requestAnimationFrame(restoreFocus);
     };
   }, []);
 

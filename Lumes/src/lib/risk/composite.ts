@@ -93,6 +93,56 @@ export interface OpenMeteoResponse {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Normalize the untrusted Open-Meteo JSON before it reaches computeRisk().
+ * Missing precipitation remains compatible with the provider's optional
+ * response shape and is treated as zero; malformed values are rejected.
+ */
+export function normalizeOpenMeteoSnapshot(value: unknown): WeatherSnapshot | null {
+  if (!isRecord(value) || !isRecord(value.current)) return null;
+
+  const current = value.current;
+  const temperatureC = finiteNumber(current.temperature_2m);
+  const relativeHumidityPct = finiteNumber(current.relative_humidity_2m);
+  const windSpeedKmh = finiteNumber(current.wind_speed_10m);
+  const windFromDeg = finiteNumber(current.wind_direction_10m);
+  const precipitationMm24h = current.precipitation === undefined || current.precipitation === null
+    ? 0
+    : finiteNumber(current.precipitation);
+
+  if (
+    temperatureC === null
+    || relativeHumidityPct === null
+    || windSpeedKmh === null
+    || windFromDeg === null
+    || precipitationMm24h === null
+    || relativeHumidityPct < 0
+    || relativeHumidityPct > 100
+    || windSpeedKmh < 0
+    || windFromDeg < 0
+    || windFromDeg > 360
+    || precipitationMm24h < 0
+  ) {
+    return null;
+  }
+
+  return {
+    temperatureC,
+    relativeHumidityPct,
+    windSpeedKmh,
+    windFromDeg,
+    precipitationMm24h,
+  };
+}
+
 export async function fetchOpenMeteoWeather(lat: number, lon: number): Promise<WeatherSnapshot> {
   const params = new URLSearchParams({
     latitude: String(lat),
@@ -104,14 +154,7 @@ export async function fetchOpenMeteoWeather(lat: number, lon: number): Promise<W
 
   const r = await fetch(url, { signal: AbortSignal.timeout(8_000) });
   if (!r.ok) throw new Error(`Open-Meteo HTTP ${r.status}`);
-  const json = (await r.json()) as OpenMeteoResponse;
-  const c = json.current;
-  if (!c) throw new Error("Open-Meteo returned no current snapshot");
-  return {
-    temperatureC: c.temperature_2m,
-    relativeHumidityPct: c.relative_humidity_2m,
-    windSpeedKmh: c.wind_speed_10m,
-    windFromDeg: c.wind_direction_10m,
-    precipitationMm24h: c.precipitation ?? 0,
-  };
+  const snapshot = normalizeOpenMeteoSnapshot(await r.json());
+  if (!snapshot) throw new Error("Open-Meteo returned an invalid current snapshot");
+  return snapshot;
 }

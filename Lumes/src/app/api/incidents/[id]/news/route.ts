@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { cached } from "@/lib/api/cache";
+import { createDataStateMeta } from "@/lib/data-state";
+import { logServerFailure } from "@/lib/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -127,11 +129,16 @@ export async function GET(
   const { id } = await params;
 
   // Look up the incident in the DB to get location info
-  let incident: any = null;
+  let incident: { parish: string | null; municipality: string | null; district: string | null } | null = null;
+  let incidentLookupFailed = false;
   try {
-    incident = await db.incident.findUnique({ where: { id } });
+    incident = await db.incident.findUnique({
+      where: { id },
+      select: { parish: true, municipality: true, district: true },
+    });
   } catch {
     // If DB is unavailable, try live incidents
+    incidentLookupFailed = true;
   }
 
   // Build place names to match against
@@ -142,10 +149,24 @@ export async function GET(
     if (incident.district) places.push(incident.district);
   }
   if (places.length === 0) {
-    return NextResponse.json({ incidentId: id, count: 0, items: [] });
+    return NextResponse.json(
+      {
+        incidentId: id,
+        count: 0,
+        items: [],
+        dataState: createDataStateMeta("empty", incidentLookupFailed ? "Incident location unavailable" : "Incident not found", undefined, "incident-news"),
+      },
+      {
+        headers: {
+          "Cache-Control": incidentLookupFailed ? "no-store" : "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      },
+    );
   }
 
-  const items = await cached<NewsItem[]>(`incident-news-${id}`, 5 * 60 * 1000, async () => {
+  let items: NewsItem[];
+  try {
+    items = await cached<NewsItem[]>(`incident-news-${id}`, 5 * 60 * 1000, async () => {
     // Fetch all RSS feeds
     const allItems: Array<{
       title: string;
@@ -218,12 +239,28 @@ export async function GET(
     }
 
     matchedItems.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-    return matchedItems;
-  });
+      return matchedItems;
+    });
+  } catch (err: unknown) {
+    logServerFailure("incident-news.fetch", err, { route: "/api/incidents/[id]/news", retryable: true });
+    return NextResponse.json(
+      {
+        error: "Incident news is temporarily unavailable.",
+        incidentId: id,
+        count: 0,
+        items: [],
+        dataState: createDataStateMeta("retryable-error", "Incident news unavailable", undefined, "incident-news"),
+      },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   return NextResponse.json({
     incidentId: id,
     count: items.length,
     items,
+    dataState: createDataStateMeta(items.length === 0 ? "empty" : "healthy", undefined, new Date().toISOString(), "incident-news"),
+  }, {
+    headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
   });
 }

@@ -14,20 +14,32 @@ import { cached } from "@/lib/api/cache";
 import { createDataStateMeta } from "@/lib/data-state";
 import { logServerFailure } from "@/lib/observability";
 import type { DataState } from "@/lib/data-state";
+import type {
+  DashboardIncidentRecord,
+  DashboardPriorityIncident,
+  DashboardResponse,
+  Severity,
+} from "@/lib/types";
+import { normalizeDashboardDbRow, normalizeDashboardIncident } from "@/lib/dashboard/normalizer";
 
-const SEVERITY_RANK: Record<string, number> = {
-  critical: 0, high: 1, medium: 2, low: 3,
-};
-const STATUS_RANK: Record<string, number> = {
-  active: 0, detected: 1, monitoring: 2, contained: 3, resolved: 4,
-};
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-// Coarse group from the raw status text (used when statusGroup is not persisted).
-// Implementation lives in src/lib/incident.ts as mapStatusGroup().
-import { mapStatusGroup as toStatusGroup } from "@/lib/incident";
+const DATA_STATES = new Set<DataState>(["healthy", "stale", "fallback", "empty", "retryable-error"]);
+
+function readDataState(value: unknown): DataState | undefined | null {
+  if (value === undefined) return undefined;
+  const state = typeof value === "string"
+    ? value
+    : isRecord(value) && typeof value.state === "string"
+      ? value.state
+      : null;
+  return state !== null && DATA_STATES.has(state as DataState) ? state as DataState : null;
+}
 
 // Fetch live incidents from /api/incidents. Returns null on failure.
-async function fetchLiveIncidents(): Promise<any[] | null> {
+async function fetchLiveIncidents(): Promise<{ incidents: DashboardIncidentRecord[]; dataState?: DataState } | null> {
   // Internal calls are always plain HTTP — Caddy terminates TLS at the edge.
   // Using https://localhost would fail because the local Node process has no cert.
   const port = process.env.PORT ?? "3000";
@@ -38,8 +50,16 @@ async function fetchLiveIncidents(): Promise<any[] | null> {
       headers: { "x-internal-call": "dashboard" },
     });
     if (!r.ok) return null;
-    const data = await r.json();
-    return Array.isArray(data.incidents) ? data.incidents : null;
+    const data: unknown = await r.json();
+    if (!isRecord(data) || !Array.isArray(data.incidents)) return null;
+    const dataState = readDataState(data.dataState);
+    if (dataState === null || dataState === "retryable-error") return null;
+    return {
+      incidents: data.incidents
+      .map(normalizeDashboardIncident)
+      .filter((incident): incident is DashboardIncidentRecord => incident !== null),
+      ...(dataState === undefined ? {} : { dataState }),
+    };
   } catch {
     return null;
   }
@@ -47,7 +67,7 @@ async function fetchLiveIncidents(): Promise<any[] | null> {
 
 // DB fallback: incidents first detected in the last 24h AND still active.
 // `firstDetected` is stable (set from source data, not bumped by re-ingest).
-async function fetchDbIncidents(): Promise<any[]> {
+async function fetchDbIncidents(): Promise<DashboardIncidentRecord[] | null> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   try {
     const rows = await db.incident.findMany({
@@ -65,36 +85,11 @@ async function fetchDbIncidents(): Promise<any[]> {
         displayName: true, latitude: true, longitude: true,
       },
     });
-    return rows.map((row) => {
-      const properties = {
-        statusText: row.statusText ?? undefined,
-        statusGroup: toStatusGroup(row.statusText, row.status),
-        naturezaText: row.naturezaText ?? undefined,
-        rasi: row.rasi ?? undefined,
-        personnelTotal: row.personnelTotal,
-        assetsGround: row.assetsGround,
-        assetsAerial: row.assetsAerial,
-        municipality: row.municipality ?? undefined,
-        region: row.district ?? undefined,
-        parish: row.parish ?? undefined,
-        latitude: row.latitude,
-        longitude: row.longitude,
-        displayName: row.displayName,
-      };
-      return {
-        id: row.id,
-        severity: row.severity,
-        incidentStatus: row.status,
-        estimatedAreaHa: row.estimatedAreaHa ?? 0,
-        firstDetected: row.firstDetected?.toISOString(),
-        properties,
-        municipality: row.municipality,
-        district: row.district,
-        parish: row.parish,
-      };
-    });
+    return rows
+      .map(normalizeDashboardDbRow)
+      .filter((incident): incident is DashboardIncidentRecord => incident !== null);
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -102,13 +97,16 @@ export async function GET() {
   try {
     const data = await cached("dashboard", 60_000, async () => {
       // Try live first (most accurate, ~25-30 incidents for Portugal)
-      let incidents = await fetchLiveIncidents();
+      const liveResult = await fetchLiveIncidents();
+      let incidents = liveResult?.incidents ?? null;
       let source = "anepc-prociv-arcgis-live";
-      let dataState: DataState = "healthy";
+      let dataState: DataState = liveResult?.dataState ?? "healthy";
 
-      if (!incidents || incidents.length === 0) {
+      if (!incidents || incidents.length === 0 || dataState === "empty") {
         // Fallback: DB query with stable filters
-        incidents = await fetchDbIncidents();
+        const dbIncidents = await fetchDbIncidents();
+        if (dbIncidents === null) throw new Error("Dashboard database fallback unavailable");
+        incidents = dbIncidents;
         source = "anepc-prociv-arcgis-db";
         dataState = incidents.length > 0 ? "fallback" : "empty";
       }
@@ -149,15 +147,15 @@ export async function GET() {
 
       // ---------- top 5 priority ----------
       // Use shared ranker (TASK A) + dedupe near-coincident markers (~50m)
-      const ranked = rankIncidents(
-        dedupeByLocation(incidents as any[], 0.001),
-      ).slice(0, 5);
+      const ranked = rankIncidents(dedupeByLocation(incidents, 0.001)).slice(0, 5);
 
-      const topPriority = ranked.map((inc: any) => ({
+      const topPriority: DashboardPriorityIncident[] = ranked.map((inc) => ({
         id: inc.id,
         displayName: inc.displayName ?? inc.properties?.displayName ?? inc.municipality ?? inc.id,
-        severity: inc.severity,
-        status: inc.incidentStatus,
+        severity: inc.severity === "critical" || inc.severity === "high" || inc.severity === "medium" || inc.severity === "low"
+          ? inc.severity
+          : "low" as Severity,
+        status: inc.incidentStatus ?? inc.status ?? "unknown",
         municipality: inc.municipality ?? inc.properties?.municipality ?? null,
         district: inc.district ?? inc.properties?.region ?? null,
         estimatedAreaHa: inc.estimatedAreaHa || 0,
@@ -200,7 +198,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({
+    const body: DashboardResponse = {
       ...data,
       dataState: createDataStateMeta(
         data.dataState,
@@ -208,7 +206,8 @@ export async function GET() {
         data.fetchedAt,
         data.source,
       ),
-    }, {
+    };
+    return NextResponse.json(body, {
       headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120" },
     });
   } catch (err: unknown) {

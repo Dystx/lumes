@@ -17,7 +17,7 @@ const stateClass: Record<StatusIndicatorProps["state"], string> = {
 
 export function StatusIndicator({ label, state, pulse = false }: StatusIndicatorProps) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-[var(--ember-text-muted)]">
+    <span className="inline-flex items-center gap-1.5 text-meta font-medium uppercase tracking-wider text-[var(--ember-text-muted)]">
       <span className={`h-1.5 w-1.5 rounded-full ${stateClass[state]} ${pulse ? "animate-pulse" : ""}`} aria-hidden="true" />
       {label}
     </span>

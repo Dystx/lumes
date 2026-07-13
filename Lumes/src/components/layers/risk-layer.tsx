@@ -5,27 +5,23 @@
 // we hit /api/risk once per viewport (with the viewport's center) and
 // show that. The cell-level rendering is reserved for the per-incident
 // variant that uses /api/risk?lat=&lon=&incidentId=.
-//
-// Visualisation: a single red glow at the viewport center scaled by
-// current risk; an info chip in the corner summarising the value.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import type { Map as MaplibreMap } from "maplibre-gl";
+import { fetchJsonWithTimeout } from "@/lib/use-fetch";
+import { setGeoJSONSourceData } from "@/lib/map/map-source";
+import { normalizeRiskOverlayResponse, type RiskOverlaySnapshot } from "@/lib/risk/overlay";
+import type { Language } from "@/lib/i18n";
 
 interface Props {
   map: MaplibreMap | null;
   enabled: boolean;
+  lang: Language;
 }
 
-interface RiskSnapshot {
-  score: number;
-  category: "low" | "moderate" | "high" | "very_high" | "extreme";
-  fetchedAt: string;
-  ignition: number;
-  intensity: number;
-}
+type RiskLayerState = "loading" | "healthy" | "empty" | "error";
 
-const RISK_COLORS: Record<RiskSnapshot["category"], string> = {
+const RISK_COLORS: Record<RiskOverlaySnapshot["category"], string> = {
   low: "#22c55e",
   moderate: "#eab308",
   high: "#ea580c",
@@ -35,88 +31,157 @@ const RISK_COLORS: Record<RiskSnapshot["category"], string> = {
 
 const SOURCE_ID = "risk-overlay";
 const POINT_LAYER = "risk-point";
+const INCIDENT_SYMBOL_LAYER = "ember-incidents-fill";
+const REQUEST_TIMEOUT_MS = 10_000;
 
-export default function RiskLayer({ map, enabled }: Props) {
-  const [snapshot, setSnapshot] = useState<RiskSnapshot | null>(null);
+function statusCopy(state: Exclude<RiskLayerState, "healthy">, lang: Language): string {
+  if (state === "loading") return lang === "pt" ? "A carregar risco…" : "Loading risk…";
+  if (state === "empty") return lang === "pt" ? "Sem dados de risco nesta área" : "No risk data for this area";
+  return lang === "pt"
+    ? "Risco composto indisponível · altere a camada para tentar novamente"
+    : "Composite risk unavailable · toggle the layer to retry";
+}
 
-  // Fetch risk snapshot for the current map center.
+function statusSurface(message: string): ReactElement {
+  return (
+    <div
+      className="pointer-events-auto absolute left-4 bottom-20 z-30 max-w-xs rounded-lg border border-[var(--ember-warning)]/30 bg-[var(--ember-surface)]/95 px-3 py-2 text-[length:var(--type-secondary)] text-[var(--ember-warning)] shadow-[var(--ember-shadow-sm)] backdrop-blur"
+      data-testid="risk-layer-status"
+      role="status"
+      aria-live="polite"
+    >
+      {message}
+    </div>
+  );
+}
+
+export default function RiskLayer({ map, enabled, lang }: Props) {
+  const [snapshot, setSnapshot] = useState<RiskOverlaySnapshot | null>(null);
+  const [state, setState] = useState<RiskLayerState>("loading");
+
   useEffect(() => {
     if (!map || !enabled) return;
     let cancelled = false;
+    let inFlight = false;
+    let activeController: AbortController | null = null;
     let interval: ReturnType<typeof setInterval> | null = null;
 
-    const fetchRisk = async () => {
+    const clearRiskOverlay = (): void => {
+      try {
+        if (map.getLayer(POINT_LAYER)) map.removeLayer(POINT_LAYER);
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+      } catch {
+        // The style may be transitioning; the restoration boundary owns it.
+      }
+    };
+
+    const fetchRisk = async (): Promise<void> => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      const controller = new AbortController();
+      activeController = controller;
       const c = map.getCenter();
       try {
-        const r = await fetch(`/api/risk?lat=${c.lat}&lon=${c.lng}`);
-        if (!r.ok) return;
-        const data = await r.json();
+        const data = await fetchJsonWithTimeout(
+          `/api/risk?lat=${c.lat}&lon=${c.lng}`,
+          { controller, timeoutMs: REQUEST_TIMEOUT_MS },
+        );
         if (cancelled) return;
-        const risk = data?.risk;
-        if (!risk) return;
-        const snap: RiskSnapshot = {
-          score: risk.score,
-          category: risk.category,
-          fetchedAt: data.fetchedAt ?? new Date().toISOString(),
-          ignition: risk.ignitionLikelihood ?? 0,
-          intensity: risk.intensityPotential ?? 0,
-        };
-        setSnapshot(snap);
-        // Place a marker at the viewport center on the map.
-        const feature = {
-          type: "Feature" as const,
+
+        const normalized = normalizeRiskOverlayResponse(data, new Date().toISOString());
+        if (normalized.state === "empty") {
+          clearRiskOverlay();
+          setSnapshot(null);
+          setState("empty");
+          return;
+        }
+        if (normalized.state === "invalid") {
+          clearRiskOverlay();
+          setSnapshot(null);
+          setState("error");
+          return;
+        }
+
+        const snap = normalized.snapshot;
+        const feature: GeoJSON.Feature<GeoJSON.Point> = {
+          type: "Feature",
           geometry: {
-            type: "Point" as const,
+            type: "Point",
             coordinates: [c.lng, c.lat],
           },
           properties: { score: snap.score, category: snap.category },
         };
-        const src = map.getSource(SOURCE_ID) as { setData: (d: unknown) => void } | undefined;
-        if (src) {
-          src.setData({ type: "FeatureCollection", features: [feature] });
-          return;
+        const geojson: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+          type: "FeatureCollection",
+          features: [feature],
+        };
+        const sourceExists = !!map.getSource(SOURCE_ID);
+        if (sourceExists) {
+          if (!setGeoJSONSourceData(map, SOURCE_ID, geojson)) {
+            clearRiskOverlay();
+            setSnapshot(null);
+            setState("error");
+            return;
+          }
+        } else {
+          map.addSource(SOURCE_ID, { type: "geojson", data: geojson });
+          map.addLayer({
+            id: POINT_LAYER,
+            type: "circle",
+            source: SOURCE_ID,
+            paint: {
+              "circle-radius": 24,
+              "circle-color": RISK_COLORS[snap.category],
+              "circle-opacity": 0.5,
+              "circle-stroke-color": RISK_COLORS[snap.category],
+              "circle-stroke-width": 2,
+              "circle-stroke-opacity": 0.8,
+            },
+          }, map.getLayer(INCIDENT_SYMBOL_LAYER) ? INCIDENT_SYMBOL_LAYER : undefined);
         }
-        map.addSource(SOURCE_ID, { type: "geojson", data: { type: "FeatureCollection", features: [feature] } });
-        map.addLayer({
-          id: POINT_LAYER,
-          type: "circle",
-          source: SOURCE_ID,
-          paint: {
-            "circle-radius": 24,
-            "circle-color": RISK_COLORS[snap.category],
-            "circle-opacity": 0.5,
-            "circle-stroke-color": RISK_COLORS[snap.category],
-            "circle-stroke-width": 2,
-            "circle-stroke-opacity": 0.8,
-          },
-        });
-      } catch {
-        // silent
+
+        setSnapshot(snap);
+        setState("healthy");
+      } catch (error: unknown) {
+        if (!cancelled && !(error instanceof DOMException && error.name === "AbortError")) {
+          clearRiskOverlay();
+          setSnapshot(null);
+          setState("error");
+        }
+      } finally {
+        if (activeController === controller) activeController = null;
+        inFlight = false;
       }
     };
 
+    setSnapshot(null);
+    setState("loading");
     void fetchRisk();
-    interval = setInterval(fetchRisk, 5 * 60 * 1000); // refresh every 5 min
+    interval = setInterval(() => void fetchRisk(), 5 * 60 * 1000);
     const onMove = () => void fetchRisk();
     map.on("moveend", onMove);
 
     return () => {
       cancelled = true;
+      activeController?.abort();
       if (interval) clearInterval(interval);
       map.off("moveend", onMove);
-      try {
-        if (map.getLayer(POINT_LAYER)) map.removeLayer(POINT_LAYER);
-        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
-      } catch {
-        // ignored
-      }
+      clearRiskOverlay();
     };
+
   }, [map, enabled]);
 
-  if (!enabled || !snapshot) return null;
+  if (!enabled) return null;
+  if (state !== "healthy") return statusSurface(statusCopy(state, lang));
+  if (!snapshot) return statusSurface(statusCopy("error", lang));
 
   return (
-    <div className="pointer-events-auto absolute left-4 bottom-20 z-30 max-w-xs rounded-lg bg-zinc-900/90 px-3 py-2 text-zinc-100 shadow-lg ring-1 ring-zinc-700 backdrop-blur">
+    <div
+      className="pointer-events-auto absolute left-4 bottom-20 z-30 max-w-xs rounded-lg bg-zinc-900/90 px-3 py-2 text-zinc-100 shadow-lg ring-1 ring-zinc-700 backdrop-blur"
+      data-testid="risk-layer-status"
+      role="status"
+      aria-live="polite"
+    >
       <div className="flex items-baseline gap-2">
         <span
           className="text-2xl font-bold tabular-nums"
@@ -125,11 +190,11 @@ export default function RiskLayer({ map, enabled }: Props) {
           {snapshot.score.toFixed(0)}
         </span>
         <span className="text-xs uppercase tracking-wider text-zinc-400">
-          risk score
+          {lang === "pt" ? "pontuação de risco" : "risk score"}
         </span>
       </div>
       <div className="mt-1 text-xs text-zinc-300">
-        categoria{" "}
+        {lang === "pt" ? "categoria" : "category"}{" "}
         <span
           className="font-medium"
           style={{ color: RISK_COLORS[snapshot.category] }}
@@ -137,15 +202,15 @@ export default function RiskLayer({ map, enabled }: Props) {
           {snapshot.category}
         </span>
         {" · "}
-        ignição{" "}
+        {lang === "pt" ? "ignição" : "ignition"}{" "}
         <span className="font-medium">{Math.round(snapshot.ignition * 100)}%</span>
         {" · "}
-        intensidade{" "}
+        {lang === "pt" ? "intensidade" : "intensity"}{" "}
         <span className="font-medium">{Math.round(snapshot.intensity * 100)}%</span>
       </div>
-      <div className="mt-1 text-[10px] text-zinc-500">
-        bioma × meteorologia ao centro do mapa · atualizado{" "}
-        {new Date(snapshot.fetchedAt).toLocaleTimeString("pt-PT")}
+      <div className="mt-1 text-meta text-zinc-500">
+        {lang === "pt" ? "bioma × meteorologia no centro do mapa · atualizado" : "biomass × weather at map center · updated"}{" "}
+        {new Date(snapshot.fetchedAt).toLocaleTimeString(lang === "pt" ? "pt-PT" : "en-GB")}
       </div>
     </div>
   );

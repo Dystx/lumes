@@ -26,6 +26,7 @@ export interface MobileLegendProps {
   counts?: Partial<Record<Severity, number>>;
   onToggleSeverity?: (severity: Severity) => void;
   activeSeverities?: Set<Severity>;
+  topOffset?: number;
 }
 
 export function MobileLegend({
@@ -33,6 +34,7 @@ export function MobileLegend({
   counts,
   onToggleSeverity,
   activeSeverities,
+  topOffset = 64,
 }: MobileLegendProps) {
   const [expanded, setExpanded] = useState(false);
   const severities: Severity[] = ["critical", "high", "medium", "low"];
@@ -45,7 +47,8 @@ export function MobileLegend({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.3 }}
-      className="absolute left-3 top-16 z-20 pointer-events-auto"
+      className="absolute left-3 z-20 pointer-events-auto"
+      style={{ top: topOffset }}
     >
       <div className="bg-[var(--ember-surface)]/95 backdrop-blur-md border border-[var(--ember-border)] rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] overflow-hidden">
         <button
@@ -55,11 +58,12 @@ export function MobileLegend({
           aria-label={expanded
             ? (lang === "pt" ? "Recolher legenda" : "Collapse legend")
             : (lang === "pt" ? "Expandir legenda" : "Expand legend")}
+          data-testid="mobile-legend-toggle"
           className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--ember-text)] hover:bg-[var(--ember-surface-2)] transition-colors w-full"
         >
           <span>{t(lang, "sidebar.legend")}</span>
           {total > 0 && (
-            <span className="text-[9px] text-[var(--ember-text-faint)] tabular-nums font-mono">
+            <span className="text-meta text-[var(--ember-text-faint)] tabular-nums font-mono">
               {total}
             </span>
           )}
@@ -100,16 +104,16 @@ export function MobileLegend({
                         aria-pressed={isActive}
                       >
                         <span
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          className={`flex h-2.5 w-2.5 flex-shrink-0 items-center justify-center text-[7px] font-bold text-white ${s === "critical" ? "rounded-sm" : "rounded-full"}`}
                           style={{ background: color }}
                           aria-hidden
-                        />
-                        <span className="text-[10px] text-[var(--ember-text)] flex-1">
+                        >{s === "critical" ? "!" : ""}</span>
+                        <span className="text-meta text-[var(--ember-text)] flex-1">
                           {SEVERITY_LABEL[s][lang]}
                         </span>
                         {count > 0 && (
                           <span
-                            className="text-[10px] font-mono tabular-nums font-semibold"
+                            className="text-meta font-mono tabular-nums font-semibold"
                             style={{ color }}
                           >
                             {count}

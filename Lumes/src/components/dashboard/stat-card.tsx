@@ -39,7 +39,7 @@ export function DashStat({
       }`}
     >
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
+        <span className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
           {label}
         </span>
         <Icon className="w-3 h-3" style={{ color }} />
@@ -98,7 +98,7 @@ export function ResourceStat({
       <div className="text-base font-mono font-bold tabular-nums text-[var(--ember-text)]">
         {value}
       </div>
-      <div className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mt-0.5">
+      <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mt-0.5">
         {label}
       </div>
     </button>

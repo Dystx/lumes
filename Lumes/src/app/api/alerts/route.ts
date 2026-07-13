@@ -3,7 +3,6 @@
 // within the radius, the SSE realtime service pushes notifications.
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { rateLimit, clientKey } from "@/lib/api/rate-limit";
 import { assertSafeOrigin } from "@/lib/api/csrf";
 import { createDataStateMeta } from "@/lib/data-state";
@@ -28,8 +27,8 @@ export async function POST(request: NextRequest) {
   const rl = rateLimit(clientKey(request), { limit: 10 });
   if (!rl.ok) {
     return NextResponse.json(
-      { error: "Rate limit exceeded" },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" } }
     );
   }
 
@@ -49,8 +48,8 @@ export async function DELETE(request: NextRequest) {
   const rl = rateLimit(clientKey(request), { limit: 10 });
   if (!rl.ok) {
     return NextResponse.json(
-      { error: "Rate limit exceeded" },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" } }
     );
   }
 
@@ -69,36 +68,10 @@ export async function checkAlertTriggers(incident: {
   severity: string;
   displayName: string;
 }) {
-  try {
-    const subscriptions = await db.alertSubscription.findMany({
-      where: { active: true },
-    });
-
-    const triggered: Array<{ subscription: any; distanceKm: number }> = [];
-
-    for (const sub of subscriptions) {
-      // Haversine distance
-      const R = 6371;
-      const dLat = ((incident.latitude - sub.latitude) * Math.PI) / 180;
-      const dLon = ((incident.longitude - sub.longitude) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos((sub.latitude * Math.PI) / 180) *
-          Math.cos((incident.latitude * Math.PI) / 180) *
-          Math.sin(dLon / 2) ** 2;
-      const distanceKm = 2 * R * Math.asin(Math.sqrt(a));
-
-      if (distanceKm <= sub.radiusKm) {
-        // Check if alert type matches
-        const alertTypes = sub.alertTypes.split(",");
-        if (alertTypes.includes("all") || alertTypes.includes(incident.eventType)) {
-          triggered.push({ subscription: sub, distanceKm });
-        }
-      }
-    }
-
-    return triggered;
-  } catch {
-    return [];
-  }
+  // Until alert ownership is backed by an authenticated account/session,
+  // never query or evaluate the shared subscription table. This helper is
+  // intentionally fail-closed so a future notifier cannot leak or trigger
+  // another visitor's subscriptions by accident.
+  void incident;
+  return [];
 }

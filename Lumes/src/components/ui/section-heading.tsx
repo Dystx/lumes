@@ -12,7 +12,7 @@ export function SectionHeading({ title, action, description, variant = "compact"
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         {variant === "display" ? (
-          <h1 className="font-display text-3xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
         ) : (
           <h2 className="text-[11px] font-medium uppercase tracking-wider text-[var(--ember-text-muted)]">{title}</h2>
         )}

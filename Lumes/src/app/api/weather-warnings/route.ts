@@ -5,6 +5,9 @@
 
 import { NextResponse } from "next/server";
 import { cached } from "@/lib/api/cache";
+import { classifyDataState, createDataStateMeta } from "@/lib/data-state";
+import { logServerFailure } from "@/lib/observability";
+import { normalizeWeatherWarnings } from "@/lib/weather/warnings";
 
 const WARNINGS_URL =
   "https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json";
@@ -28,36 +31,44 @@ export async function GET() {
     const data = await cached("weather-warnings", 10 * 60 * 1000, async () => {
       const res = await fetch(WARNINGS_URL, {
         headers: { "User-Agent": "lumes.pt-Platform/0.1 (wildfire-intel)" },
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (!res.ok) {
         throw new Error(`IPMA HTTP ${res.status}`);
       }
 
-      const raw: any[] = await res.json();
+      const raw: unknown = await res.json();
+      const normalizedWarnings = normalizeWeatherWarnings(raw);
+      if (normalizedWarnings === null) {
+        throw new Error("Invalid IPMA warnings payload");
+      }
 
       // Normalize and filter to active warnings (exclude "green" = no warning)
-      const warnings = raw
-        .filter((w) => w.awarenessLevelID && w.awarenessLevelID !== "green")
-        .map((w) => ({
-          id: `${w.idAreaAviso}-${w.awarenessTypeName}-${w.startTime}`,
-          area: w.idAreaAviso,
-          areaName: AREA_NAMES[w.idAreaAviso] || w.idAreaAviso,
-          type: w.awarenessTypeName,
-          text: w.text,
-          level: w.awarenessLevelID, // yellow, orange, red
-          startTime: w.startTime,
-          endTime: w.endTime,
-        }))
+      const warnings = normalizedWarnings
+        .map((warning) => {
+          const { area, type, level, startTime, endTime, text } = warning;
+          return {
+            id: `${area}-${type}-${startTime}`,
+            area,
+            areaName: AREA_NAMES[area] || area,
+            type,
+            text,
+            level,
+            startTime,
+            endTime,
+          };
+        })
         .sort((a, b) => {
           const rank = { red: 0, orange: 1, yellow: 2 };
           return (rank[a.level as keyof typeof rank] ?? 9) -
                  (rank[b.level as keyof typeof rank] ?? 9);
         });
 
+      const fetchedAt = new Date().toISOString();
       return {
         source: "ipma-warnings",
-        fetchedAt: new Date().toISOString(),
+        fetchedAt,
         count: warnings.length,
         warnings,
         distribution: {
@@ -65,6 +76,7 @@ export async function GET() {
           orange: warnings.filter((w) => w.level === "orange").length,
           yellow: warnings.filter((w) => w.level === "yellow").length,
         },
+        dataState: createDataStateMeta(classifyDataState({ count: warnings.length }), undefined, fetchedAt, "ipma-warnings"),
       };
     });
 
@@ -72,11 +84,15 @@ export async function GET() {
       headers: { "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300" },
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const status = msg.includes("HTTP") ? 502 : 500;
+    logServerFailure("weather-warnings.fetch", err, { route: "/api/weather-warnings", retryable: true });
     return NextResponse.json(
-      { error: msg, warnings: [], count: 0 },
-      { status }
+      {
+        error: "Weather warnings are temporarily unavailable.",
+        warnings: [],
+        count: 0,
+        dataState: createDataStateMeta("retryable-error", "IPMA warnings source unavailable"),
+      },
+      { status: 502, headers: { "Cache-Control": "no-store" } }
     );
   }
 }

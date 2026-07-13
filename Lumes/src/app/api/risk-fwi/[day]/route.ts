@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cached } from "@/lib/api/cache";
 import { createDataStateMeta } from "@/lib/data-state";
 import { logServerFailure } from "@/lib/observability";
+import { normalizeFireRiskForecast } from "@/lib/fire-risk/forecast-normalizer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,8 +27,8 @@ export async function GET(
   const day = (rawDay ?? "").toLowerCase();
   if (!DAY_VALID(day)) {
     return NextResponse.json(
-      { error: "day must be one of: today, tomorrow, after" },
-      { status: 400 }
+      { error: "day must be one of: today, tomorrow, after", dataState: createDataStateMeta("empty", "Invalid forecast day") },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
     );
   }
 
@@ -39,11 +40,22 @@ export async function GET(
       if (!r.ok) {
         throw new Error(`IPMA HTTP ${r.status}`);
       }
-      return await r.json();
+      const normalized = normalizeFireRiskForecast(await r.json());
+      if (normalized.state === "invalid") throw new Error(normalized.reason);
+      return normalized.data;
     });
 
     return NextResponse.json(
-      { when: day, ...(data as Record<string, unknown>), dataState: createDataStateMeta("healthy", undefined, new Date().toISOString(), "ipma") },
+      {
+        when: day,
+        ...data,
+        dataState: createDataStateMeta(
+          data.data.length === 0 ? "empty" : "healthy",
+          data.data.length === 0 ? "IPMA returned no usable forecast rows" : undefined,
+          new Date().toISOString(),
+          "ipma",
+        ),
+      },
       {
         headers: {
           "Cache-Control": "public, s-maxage=21600, stale-while-revalidate=86400",
@@ -54,7 +66,7 @@ export async function GET(
     logServerFailure("risk-fwi.fetch", err, { route: "/api/risk-fwi", retryable: true });
     return NextResponse.json(
       { error: "Fire-risk data is temporarily unavailable.", dataState: createDataStateMeta("retryable-error", "IPMA unavailable") },
-      { status: 502 }
+      { status: 502, headers: { "Cache-Control": "no-store" } }
     );
   }
 }

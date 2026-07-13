@@ -1,17 +1,61 @@
 "use client";
 
-import maplibregl from "maplibre-gl";
+import maplibregl, { type MapTouchEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { mapMotionOptions } from "@/lib/map-motion";
 import { escapePopupText, safePopupNumber } from "@/lib/map-popup";
+import {
+  buildIncidentFocusCamera,
+  buildPortugalOverviewCamera,
+  captureCameraSnapshot,
+  isValidIncidentCenter,
+  type CameraSnapshot,
+  type IncidentFocusTarget,
+  type MapPadding,
+} from "@/lib/map/incident-focus-controller";
+import {
+  dispatchMapEvent,
+  MAP_READY_EVENT,
+  MAP_STYLE_RESTORED_EVENT,
+  MAP_STYLE_TRANSITION_EVENT,
+} from "@/lib/map/map-events";
+import {
+  createStyleTransitionController,
+  createStyleTransitionRuntime,
+  isStyleLoadError,
+  shouldSkipStyleTransition,
+  STYLE_LOAD_TIMEOUT_MS,
+  type StyleTransitionMap,
+} from "@/lib/map/style-transition";
 import type {
   Incident,
-  IncidentStatus,
-  Severity,
   SourceType,
-  VerificationStatus,
 } from "@/lib/sample-data";
+import {
+  buildCommunityGeoJSON,
+  buildEvacuationGeoJSON,
+  buildIncidentsGeoJSON,
+  buildSatelliteGeoJSON,
+  buildSelectedGeoJSON,
+} from "@/lib/map/geojson-builders";
+import { setGeoJSONSourceData } from "@/lib/map/map-source";
+import type { FireRiskFeature, FireStationFeature, SatelliteFeature } from "@/components/map/map-data-adapter";
+export type { FireRiskFeature, FireStationFeature } from "@/components/map/map-data-adapter";
+import {
+  DARK_STYLE,
+  LIGHT_STYLE,
+  SATELLITE_LAYER_ID,
+  SATELLITE_SOURCE_ID,
+  SATELLITE_TILES,
+  SOURCE_COLORS,
+  pickStyle,
+  pickWaterColor,
+  type BasemapMode,
+} from "@/lib/map/map-style";
+export type { BasemapMode } from "@/lib/map/map-style";
+
+type IncidentPopupProperties = Record<string, unknown>;
 
 // ============================================================
 // Source IDs — each is an independent GeoJSON source on the map
@@ -31,6 +75,7 @@ export const SOURCE_IDS = {
 export const LAYER_IDS = {
   incidentFill: "ember-incidents-fill",
   incidentStroke: "ember-incidents-stroke",
+  incidentCriticalCue: "ember-incidents-critical-cue",
   incidentSymbol: "ember-incidents-symbol",
   satelliteDots: "ember-satellite-dots",
   communityDots: "ember-community-dots",
@@ -44,248 +89,6 @@ export const LAYER_IDS = {
 } as const;
 
 // ============================================================
-// Style URLs — three options now (dark, light, satellite)
-// Switched on theme/basemap change without recreating the map instance
-// ============================================================
-const DARK_STYLE =
-  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
-const LIGHT_STYLE =
-  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
-// EOX Sentinel-2 Cloudless 2020 — global cloud-free satellite imagery
-// Used by GWIS (European Forest Fire Information System) as their basemap
-// We add this as a raster layer on top of the dark style (rather than replacing
-// the entire style) to avoid losing our ember overlay layers on style swap.
-const SATELLITE_TILES = "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg";
-const SATELLITE_SOURCE_ID = "eox-s2cloudless";
-const SATELLITE_LAYER_ID = "eox-s2cloudless-bg";
-
-// ============================================================
-// Source colors — MapLibre paint properties cannot use CSS vars,
-// so we mirror the values here. Keep in sync with globals.css.
-// ============================================================
-const SOURCE_COLORS = {
-  dark: {
-    satellite: "#ff8a5b",
-    official: "#ff6b5b",
-    community: "#5dade2",
-    news: "#c39bd3",
-    weather: "#58d68d",
-    evacuation: "#ff6b5b",
-  },
-  light: {
-    satellite: "#ff6a3b",
-    official: "#c0392b",
-    community: "#2e86c1",
-    news: "#8e44ad",
-    weather: "#27ae60",
-    evacuation: "#c0392b",
-  },
-} as const;
-
-// ============================================================
-// Helpers
-// ============================================================
-
-function severityColor(severity: Severity, theme: "dark" | "light"): string {
-  const palette = theme === "dark"
-    ? { critical: "#ff6b5b", high: "#ffb786", medium: "#5dade2", low: "#58d68d" }
-    : { critical: "#c0392b", high: "#d4875a", medium: "#2e86c1", low: "#27ae60" };
-  return palette[severity];
-}
-
-function statusOpacity(status: IncidentStatus): number {
-  switch (status) {
-    case "active":
-    case "detected":
-      return 0.9;
-    case "contained":
-      return 0.7;
-    case "monitoring":
-      return 0.5;
-    case "resolved":
-      return 0.3;
-  }
-}
-
-function severityRadius(severity: Severity, areaHa: number): number {
-  // Base size by severity, scaled slightly by area
-  const base = { critical: 22, high: 18, medium: 14, low: 10 }[severity];
-  const areaBoost = Math.min(8, Math.sqrt(areaHa) / 6);
-  return base + areaBoost;
-}
-
-// Convert a distance in km to a circle polygon (GeoJSON) at a given lat/lon
-// Used to render approximate incident footprints and evacuation zones
-function circlePolygon(
-  lat: number,
-  lon: number,
-  radiusKm: number,
-  steps = 48
-): GeoJSON.Feature<GeoJSON.Polygon> {
-  const coords: [number, number][] = [];
-  const earthRadiusKm = 6371;
-  for (let i = 0; i <= steps; i++) {
-    const bearing = (i * 360) / steps;
-    const lat1 = (lat * Math.PI) / 180;
-    const lon1 = (lon * Math.PI) / 180;
-    const bearingRad = (bearing * Math.PI) / 180;
-    const dr = radiusKm / earthRadiusKm;
-    const lat2 = Math.asin(
-      Math.sin(lat1) * Math.cos(dr) +
-        Math.cos(lat1) * Math.sin(dr) * Math.cos(bearingRad)
-    );
-    const lon2 =
-      lon1 +
-      Math.atan2(
-        Math.sin(bearingRad) * Math.sin(dr) * Math.cos(lat1),
-        Math.cos(dr) - Math.sin(lat1) * Math.sin(lat2)
-      );
-    coords.push([(lon2 * 180) / Math.PI, (lat2 * 180) / Math.PI]);
-  }
-  return {
-    type: "Feature",
-    properties: {},
-    geometry: { type: "Polygon", coordinates: [coords] },
-  };
-}
-
-// Build GeoJSON for the incident source (footprint polygons)
-function buildIncidentsGeoJSON(
-  incidents: Incident[],
-  theme: "dark" | "light"
-): GeoJSON.FeatureCollection {
-  return {
-    type: "FeatureCollection",
-    features: incidents.map((inc) => {
-      // Point geometry for symbol layer (fire icons)
-      const feature: GeoJSON.Feature<GeoJSON.Point> = {
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [inc.longitude, inc.latitude],
-        },
-        properties: {
-          id: inc.id,
-          displayName: inc.displayName,
-          severity: inc.severity,
-          status: inc.status,
-          areaHa: inc.estimatedAreaHa,
-          confidence: inc.confidence,
-          verification: inc.verification,
-          sourceCount: inc.sourceCount,
-          opacity: statusOpacity(inc.status),
-          color: severityColor(inc.severity, theme),
-        },
-      };
-      return feature;
-    }),
-  };
-}
-
-// Deterministic jitter helper (based on id for stability)
-function jitterOffset(id: string, max: number, salt = 0): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  }
-  hash = (hash + salt) >>> 0;
-  return ((hash % 1000) / 1000 - 0.5) * max;
-}
-
-// Build GeoJSON for satellite detection markers
-function buildSatelliteGeoJSON(incidents: Incident[]): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = [];
-  for (const inc of incidents) {
-    const satelliteEvents = inc.timeline.filter(
-      (e) => e.sourceType === "satellite"
-    );
-    for (const evt of satelliteEvents) {
-      features.push({
-        type: "Feature",
-        properties: {
-          incidentId: inc.id,
-          sourceName: evt.sourceName,
-          confidence: evt.confidence,
-          timestamp: evt.timestamp,
-          title: evt.title,
-        },
-        geometry: {
-          type: "Point",
-          coordinates: [
-            inc.longitude + jitterOffset(inc.id + evt.id, 0.02),
-            inc.latitude + jitterOffset(inc.id + evt.id, 0.02, 1),
-          ],
-        },
-      });
-    }
-  }
-  return { type: "FeatureCollection", features };
-}
-
-// Build GeoJSON for community report markers
-function buildCommunityGeoJSON(incidents: Incident[]): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = [];
-  for (const inc of incidents) {
-    const communityEvents = inc.timeline.filter(
-      (e) => e.sourceType === "community"
-    );
-    for (const evt of communityEvents) {
-      features.push({
-        type: "Feature",
-        properties: {
-          incidentId: inc.id,
-          sourceName: evt.sourceName,
-          confidence: evt.confidence,
-          verification: evt.verification,
-          timestamp: evt.timestamp,
-          title: evt.title,
-        },
-        geometry: {
-          type: "Point",
-          coordinates: [
-            inc.longitude + jitterOffset(inc.id + evt.id, 0.04),
-            inc.latitude + jitterOffset(inc.id + evt.id, 0.04, 1),
-          ],
-        },
-      });
-    }
-  }
-  return { type: "FeatureCollection", features };
-}
-
-// Build GeoJSON for evacuation zones (buffer around evac-ordered incidents)
-function buildEvacuationGeoJSON(incidents: Incident[]): GeoJSON.FeatureCollection {
-  const features: GeoJSON.Feature[] = [];
-  for (const inc of incidents) {
-    if (!inc.evacuationOrder) continue;
-    const radiusKm = Math.max(2, Math.sqrt(inc.estimatedAreaHa) / 6);
-    const feature = circlePolygon(inc.latitude, inc.longitude, radiusKm, 64);
-    feature.properties = {
-      incidentId: inc.id,
-      displayName: inc.displayName,
-    };
-    features.push(feature);
-  }
-  return { type: "FeatureCollection", features };
-}
-
-// Build GeoJSON for the selected incident halo
-function buildSelectedGeoJSON(
-  selected: Incident | null
-): GeoJSON.FeatureCollection {
-  if (!selected) return { type: "FeatureCollection", features: [] };
-  const radiusKm = Math.max(0.8, Math.sqrt(selected.estimatedAreaHa) / 10) + 1.5;
-  const feature = circlePolygon(
-    selected.latitude,
-    selected.longitude,
-    radiusKm,
-    64
-  );
-  feature.properties = { id: selected.id };
-  return { type: "FeatureCollection", features: [feature] };
-}
-
-// ============================================================
 // Map component — single MapLibre instance, multi-source updates
 // ============================================================
 
@@ -295,22 +98,13 @@ export interface EmberMapHandle {
   zoomIn: () => void;
   zoomOut: () => void;
   resetView: () => void;
+  enterIncidentFocus: (target: IncidentFocusTarget) => CameraSnapshot | null;
+  exitIncidentFocus: (snapshot: CameraSnapshot | null) => void;
+  returnToPortugalOverview: () => void;
+  getCameraSnapshot: () => CameraSnapshot | null;
+  isMapReady: () => boolean;
   getZoom: () => number;
   resize: () => void;
-}
-
-export type BasemapMode = "dark" | "light" | "satellite";
-
-export interface FireRiskFeature {
-  type: "Feature";
-  geometry: { type: "Point"; coordinates: [number, number] };
-  properties: { rcm: number; dico: string };
-}
-
-export interface FireStationFeature {
-  type: "Feature";
-  geometry: { type: "Point"; coordinates: [number, number] };
-  properties: { name?: string; id: number };
 }
 
 export interface EmberMapProps {
@@ -329,38 +123,11 @@ export interface EmberMapProps {
   onMarkerLongPress?: (x: number, y: number, incidentId: string) => void;
   fireRiskFeatures?: FireRiskFeature[];
   fireStationsFeatures?: FireStationFeature[];
-  satelliteFeatures?: any[];
+  satelliteFeatures?: SatelliteFeature[];
   showFireRisk?: boolean;
   showFireStations?: boolean;
   showSatellite?: boolean;
   className?: string;
-}
-
-function pickStyle(basemap: BasemapMode | "sat", theme: "dark" | "light"): string {
-  const normalized = (basemap as string) === "sat" ? "satellite" : basemap;
-  if (normalized === "satellite") return DARK_STYLE;
-  // Satellite mode uses the dark style as a base; the EOX raster is added
-  // as a layer on top (see EFFECT 2b), not as a style replacement.
-  if (normalized === "light" || (normalized === "dark" && theme === "light")) return LIGHT_STYLE;
-  return DARK_STYLE;
-}
-
-// Ocean/water color per theme + basemap.
-// — Dark mode: deep blue (#0a2540) — readable, distinguishes from land.
-// — Light mode: classic blue (#a8c8e8) — similar to Google Maps water.
-// — Satellite mode: keep the basemap's own water tint so the satellite
-//   imagery looks natural.
-function pickWaterColor(theme: "dark" | "light", basemap: BasemapMode): string {
-  if (basemap === "satellite") {
-    // Satellite keeps the original water tint from the raster imagery
-    return theme === "light" ? "#bcd4e6" : "#1e3a5f";
-  }
-  if (theme === "light") {
-    // Light mode: classic soft blue water
-    return "#a8c8e8";
-  }
-  // Dark mode: deep blue water (matches the warm parchment dark theme)
-  return "#0a2540";
 }
 
 const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
@@ -383,10 +150,17 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const initializedRef = useRef(false);
-  const currentStyleRef = useRef<string>(""); // Track which CARTO style is loaded
-  const [mapReady, setMapReady] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+   const initializedRef = useRef(false);
+   const mapLoadedRef = useRef(false);
+   const currentStyleRef = useRef<string>(""); // Track which CARTO style is loaded
+   const committedThemeRef = useRef<"dark" | "light">("dark");
+   const committedBasemapRef = useRef<BasemapMode>("dark");
+   const styleTransitionRef = useRef(createStyleTransitionController());
+   const [mapLoaded, setMapLoaded] = useState(false);
+   const [mapReady, setMapReady] = useState(false);
+   const [incidentDataReady, setIncidentDataReady] = useState(false);
+   const [mapStyleState, setMapStyleState] = useState<"initializing" | "ready" | "recovered" | "transitioning" | "retryable-error">("initializing");
+   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -401,6 +175,28 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
 
   // Expose imperative handle for parent to control zoom, reset, etc.
   useImperativeHandle(ref, () => ({
+    getCameraSnapshot: () => {
+      const map = mapRef.current;
+      if (!map) return null;
+      const padding = map.getPadding();
+      const normalizedPadding: MapPadding = {
+        top: padding.top ?? 0,
+        right: padding.right ?? 0,
+        bottom: padding.bottom ?? 0,
+        left: padding.left ?? 0,
+      };
+      return captureCameraSnapshot({
+        getCenter: () => {
+          const center = map.getCenter();
+          return [center.lng, center.lat];
+        },
+        getZoom: () => map.getZoom(),
+        getBearing: () => map.getBearing(),
+        getPitch: () => map.getPitch(),
+        getPadding: () => normalizedPadding,
+      });
+    },
+    isMapReady: () => mapReady && mapRef.current !== null,
     flyTo: (lat: number, lon: number, zoom?: number) => {
       mapRef.current?.flyTo({
         center: [lon, lat],
@@ -414,15 +210,73 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     zoomIn: () => mapRef.current?.zoomIn(),
     zoomOut: () => mapRef.current?.zoomOut(),
     resetView: () => {
-      mapRef.current?.flyTo({
-        center: [-8.0, 39.5],
-        zoom: 6.2,
-        ...mapMotionOptions(prefersReducedMotion, 1200),
+      const map = mapRef.current;
+      if (!map) return;
+      const camera = buildPortugalOverviewCamera();
+      map.stop();
+      if (prefersReducedMotion) {
+        map.jumpTo(camera);
+      } else {
+        map.flyTo({ ...camera, ...mapMotionOptions(false, 1200) });
+      }
+    },
+    enterIncidentFocus: (target: IncidentFocusTarget) => {
+      const map = mapRef.current;
+      if (!map || !mapReady || !isValidIncidentCenter(target.center)) return null;
+
+      const before = captureCameraSnapshot({
+        getCenter: () => {
+          const center = map.getCenter();
+          return [center.lng, center.lat];
+        },
+        getZoom: () => map.getZoom(),
+        getBearing: () => map.getBearing(),
+        getPitch: () => map.getPitch(),
+        getPadding: () => {
+          const padding = map.getPadding();
+          return {
+            top: padding.top ?? 0,
+            right: padding.right ?? 0,
+            bottom: padding.bottom ?? 0,
+            left: padding.left ?? 0,
+          };
+        },
       });
+      const camera = buildIncidentFocusCamera(before, target);
+
+      map.stop();
+      if (prefersReducedMotion) {
+        map.jumpTo(camera);
+      } else {
+        map.flyTo({ ...camera, ...mapMotionOptions(false, 650) });
+      }
+      return before;
+    },
+    exitIncidentFocus: (snapshot: CameraSnapshot | null) => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.stop();
+      if (!snapshot) return;
+      if (prefersReducedMotion) {
+        map.jumpTo(snapshot);
+      } else {
+        map.flyTo({ ...snapshot, ...mapMotionOptions(false, 500) });
+      }
+    },
+    returnToPortugalOverview: () => {
+      const map = mapRef.current;
+      if (!map) return;
+      const camera = buildPortugalOverviewCamera();
+      map.stop();
+      if (prefersReducedMotion) {
+        map.jumpTo(camera);
+      } else {
+        map.flyTo({ ...camera, ...mapMotionOptions(false, 900) });
+      }
     },
     getZoom: () => mapRef.current?.getZoom() ?? 0,
     resize: () => mapRef.current?.resize(),
-  }), [prefersReducedMotion]);
+  }), [mapReady, prefersReducedMotion]);
 
   // ---------------------------------------------------------
   // EFFECT 1 — Initialize the map (runs once)
@@ -450,24 +304,51 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
 
     mapRef.current = map;
 
+    let initialStyleTimer: number | null = null;
+    const clearInitialStyleWatchdog = () => {
+      if (initialStyleTimer !== null) window.clearTimeout(initialStyleTimer);
+      initialStyleTimer = null;
+      map.off("error", onInitialStyleError);
+    };
+    const markInitialStyleFailure = () => {
+      if (mapLoadedRef.current || mapRef.current !== map || !initializedRef.current) return;
+      setMapStyleState("retryable-error");
+      setMapReady(false);
+      setIncidentDataReady(false);
+    };
+    const onInitialStyleError = (event: maplibregl.ErrorEvent) => {
+      if (!mapLoadedRef.current && isStyleLoadError(event)) markInitialStyleFailure();
+    };
+    map.on("error", onInitialStyleError);
+    initialStyleTimer = window.setTimeout(markInitialStyleFailure, STYLE_LOAD_TIMEOUT_MS);
+
     map.on("load", () => {
+      clearInitialStyleWatchdog();
+      mapLoadedRef.current = true;
+      setMapLoaded(true);
       addEmberSourcesAndLayers(map, theme, basemap);
       currentStyleRef.current = pickStyle(basemap, theme);
+      committedThemeRef.current = theme;
+      committedBasemapRef.current = basemap;
+      setMapStyleState("ready");
       setMapReady(true);
       // Broadcast map readiness to the LayerPanel system (lazy-loaded
       // advanced overlays: biomass, risk, aerial). Listens via window.
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("lumes:map-ready", { detail: { map } })
-        );
-      }
+      dispatchMapEvent(MAP_READY_EVENT, map);
     });
 
     return () => {
+      if (initialStyleTimer !== null) window.clearTimeout(initialStyleTimer);
+      map.off("error", onInitialStyleError);
+      styleTransitionRef.current.invalidate();
       map.remove();
       mapRef.current = null;
       initializedRef.current = false;
+      mapLoadedRef.current = false;
+      setMapLoaded(false);
       setMapReady(false);
+      setIncidentDataReady(false);
+      setMapStyleState("initializing");
     };
   }, []);
 
@@ -479,47 +360,103 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (!initializedRef.current || !mapReady) return;
+    if (!initializedRef.current) return;
 
     const targetStyle = pickStyle(basemap, theme);
 
     // Skip if the CARTO style hasn't actually changed
-    if (currentStyleRef.current === targetStyle) return;
+    // During a pending transition, currentStyleRef still describes the last
+    // committed style. Do not skip a requested reversal (for example,
+    // dark -> light -> dark before the first style.load fires).
+    if (shouldSkipStyleTransition({
+      mapLoaded: mapLoadedRef.current,
+      mapReady,
+      currentStyle: currentStyleRef.current,
+      targetStyle,
+    })) return;
+
+    const transitionToken = styleTransitionRef.current.begin();
+
+    dispatchMapEvent(MAP_STYLE_TRANSITION_EVENT, map);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMapStyleState("transitioning");
     setMapReady(false);
+    setIncidentDataReady(false);
 
-    const onStyleLoad = () => {
-      addEmberSourcesAndLayers(map, theme, basemap);
-      // Customize ocean/water color per theme and basemap
-      try {
-        const style = map.getStyle();
-        const layers = style.layers || [];
-        // Find water/ocean layers and re-tint them
-        const waterColor = pickWaterColor(theme, basemap);
-        for (const layer of layers) {
-          if (layer.id && /water|ocean|sea/i.test(layer.id)) {
-            if (layer.type === "fill") {
-              map.setPaintProperty(layer.id, "fill-color", waterColor);
-            } else if (layer.type === "background" && /water|ocean/i.test(layer.id)) {
-              map.setPaintProperty(layer.id, "background-color", waterColor);
+    const fallbackStyle = currentStyleRef.current || pickStyle(committedBasemapRef.current, committedThemeRef.current);
+    const styleMap: StyleTransitionMap = {
+      once: (_event, listener) => map.once("style.load", listener),
+      on: (_event, listener) => {
+        map.on("error", listener as (event: maplibregl.ErrorEvent) => void);
+      },
+      off: (event, listener) => {
+        if (event === "style.load") {
+          map.off("style.load", listener as () => void);
+        } else {
+          map.off("error", listener as (event: maplibregl.ErrorEvent) => void);
+        }
+      },
+      setStyle: (style) => map.setStyle(style),
+    };
+
+    const runtime = createStyleTransitionRuntime({
+      map: styleMap,
+      targetStyle,
+      fallbackStyle,
+      timeoutMs: STYLE_LOAD_TIMEOUT_MS,
+      scheduleTimeout: (callback, timeoutMs) => window.setTimeout(callback, timeoutMs),
+      clearTimeout: (handle) => window.clearTimeout(handle as number),
+      isCurrent: () =>
+        styleTransitionRef.current.isCurrent(transitionToken) &&
+        mapRef.current === map &&
+        initializedRef.current,
+      onCommit: (style, recovered) => {
+        const replayTheme = recovered ? committedThemeRef.current : theme;
+        const replayBasemap = recovered ? committedBasemapRef.current : basemap;
+        addEmberSourcesAndLayers(map, replayTheme, replayBasemap);
+        // Customize ocean/water color per theme and basemap.
+        try {
+          const mapStyle = map.getStyle();
+          const layers = mapStyle.layers || [];
+          // Find water/ocean layers and re-tint them
+          const waterColor = pickWaterColor(replayTheme, replayBasemap);
+          for (const layer of layers) {
+            if (layer.id && /water|ocean|sea/i.test(layer.id)) {
+              if (layer.type === "fill") {
+                map.setPaintProperty(layer.id, "fill-color", waterColor);
+              } else if (layer.type === "background" && /water|ocean/i.test(layer.id)) {
+                map.setPaintProperty(layer.id, "background-color", waterColor);
+              }
             }
           }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
-      }
-      currentStyleRef.current = targetStyle;
-      setMapReady(true);
-    };
+        currentStyleRef.current = style;
+        if (!recovered) {
+          committedThemeRef.current = theme;
+          committedBasemapRef.current = basemap;
+        }
+        setMapStyleState(recovered ? "recovered" : "ready");
+        setMapReady(true);
+        dispatchMapEvent(MAP_STYLE_RESTORED_EVENT, map);
+      },
+      onRetryableFailure: () => {
+        if (!styleTransitionRef.current.isCurrent(transitionToken)) return;
+        setMapStyleState("retryable-error");
+        setMapReady(false);
+        setIncidentDataReady(false);
+      },
+    });
 
-    map.once("style.load", onStyleLoad);
-    map.setStyle(targetStyle);
+    runtime.start();
 
     return () => {
-      map.off("style.load", onStyleLoad);
+      runtime.dispose();
+      styleTransitionRef.current.invalidate(transitionToken);
     };
-  }, [theme, basemap]);
+  }, [theme, basemap, mapLoaded]);
 
   // ---------------------------------------------------------
   // EFFECT 2b — Satellite raster overlay
@@ -530,8 +467,18 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     const map = mapRef.current;
     if (!map) return;
 
+    const styleGeneration = styleTransitionRef.current.current();
+
     // Wait for the map to be loaded enough to add layers
     const applySatellite = () => {
+      if (
+        !styleTransitionRef.current.isCurrent(styleGeneration) ||
+        mapRef.current !== map ||
+        !map.isStyleLoaded()
+      ) {
+        return;
+      }
+
       // Add the satellite raster source if not present
       if (!map.getSource(SATELLITE_SOURCE_ID)) {
         map.addSource(SATELLITE_SOURCE_ID, {
@@ -591,7 +538,11 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     } else {
       map.once("style.load", applySatellite);
     }
-  }, [basemap, mapReady]);
+
+    return () => {
+      map.off("style.load", applySatellite);
+    };
+  }, [basemap, mapReady, theme]);
 
   // ---------------------------------------------------------
   // EFFECT 3 — Update incidents source via setData()
@@ -599,12 +550,14 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.incidents)) return;
 
     const geojson = buildIncidentsGeoJSON(incidents, theme);
-    (map.getSource(SOURCE_IDS.incidents) as maplibregl.GeoJSONSource).setData(
-      geojson
-    );
+    if (!setGeoJSONSourceData(map, SOURCE_IDS.incidents, geojson)) return;
+    const markIncidentDataReady = () => setIncidentDataReady(true);
+    map.once("idle", markIncidentDataReady);
+    return () => {
+      map.off("idle", markIncidentDataReady);
+    };
   }, [incidents, theme, mapReady]);
 
   // ---------------------------------------------------------
@@ -613,12 +566,11 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.satellite)) return;
 
     // When dedicated FIRMS showSatellite is active, let the FIRMS path own the satellite layer.
     // Timeline-based satellite (from incident.timeline) is secondary / sample-oriented.
     if (!visibleSources.has("satellite") || showSatellite) {
-      (map.getSource(SOURCE_IDS.satellite) as maplibregl.GeoJSONSource).setData({
+      setGeoJSONSourceData(map, SOURCE_IDS.satellite, {
         type: "FeatureCollection",
         features: [],
       });
@@ -626,9 +578,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     }
 
     const geojson = buildSatelliteGeoJSON(incidents);
-    (map.getSource(SOURCE_IDS.satellite) as maplibregl.GeoJSONSource).setData(
-      geojson
-    );
+    setGeoJSONSourceData(map, SOURCE_IDS.satellite, geojson);
   }, [incidents, visibleSources, mapReady, showSatellite]);
 
   // ---------------------------------------------------------
@@ -637,10 +587,9 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.community)) return;
 
     if (!visibleSources.has("community")) {
-      (map.getSource(SOURCE_IDS.community) as maplibregl.GeoJSONSource).setData({
+      setGeoJSONSourceData(map, SOURCE_IDS.community, {
         type: "FeatureCollection",
         features: [],
       });
@@ -648,9 +597,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     }
 
     const geojson = buildCommunityGeoJSON(incidents);
-    (map.getSource(SOURCE_IDS.community) as maplibregl.GeoJSONSource).setData(
-      geojson
-    );
+    setGeoJSONSourceData(map, SOURCE_IDS.community, geojson);
   }, [incidents, visibleSources, mapReady]);
 
   // ---------------------------------------------------------
@@ -659,12 +606,9 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.evacuation)) return;
 
     const geojson = buildEvacuationGeoJSON(incidents);
-    (map.getSource(SOURCE_IDS.evacuation) as maplibregl.GeoJSONSource).setData(
-      geojson
-    );
+    setGeoJSONSourceData(map, SOURCE_IDS.evacuation, geojson);
   }, [incidents, mapReady]);
 
   // ---------------------------------------------------------
@@ -673,15 +617,12 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.selected)) return;
 
     const selected = selectedIncidentId
       ? incidents.find((i) => i.id === selectedIncidentId) ?? null
       : null;
     const geojson = buildSelectedGeoJSON(selected);
-    (map.getSource(SOURCE_IDS.selected) as maplibregl.GeoJSONSource).setData(
-      geojson
-    );
+    setGeoJSONSourceData(map, SOURCE_IDS.selected, geojson);
   }, [selectedIncidentId, incidents, mapReady]);
 
   // ---------------------------------------------------------
@@ -705,13 +646,12 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.fireRisk)) return;
 
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
       features: fireRiskFeatures,
     };
-    (map.getSource(SOURCE_IDS.fireRisk) as maplibregl.GeoJSONSource).setData(geojson);
+    setGeoJSONSourceData(map, SOURCE_IDS.fireRisk, geojson);
 
     if (map.getLayer(LAYER_IDS.fireRiskCircles)) {
       map.setLayoutProperty(
@@ -735,13 +675,12 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.fireStations)) return;
 
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
       features: fireStationsFeatures,
     };
-    (map.getSource(SOURCE_IDS.fireStations) as maplibregl.GeoJSONSource).setData(geojson);
+    setGeoJSONSourceData(map, SOURCE_IDS.fireStations, geojson);
 
     if (map.getLayer(LAYER_IDS.fireStationsDots)) {
       map.setLayoutProperty(
@@ -772,13 +711,12 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    if (!map.getSource(SOURCE_IDS.firmsSatellite)) return;
 
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
       features: satelliteFeatures,
     };
-    (map.getSource(SOURCE_IDS.firmsSatellite) as maplibregl.GeoJSONSource).setData(geojson);
+    setGeoJSONSourceData(map, SOURCE_IDS.firmsSatellite, geojson);
 
     const firmsLayer = LAYER_IDS.satelliteDots + "-firms";
     if (map.getLayer(firmsLayer)) {
@@ -818,7 +756,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     let popupHoverTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Helper: build popup HTML from feature properties
-    const buildPopupHtml = (props: any) => {
+    const buildPopupHtml = (props: IncidentPopupProperties | null | undefined) => {
       const name = escapePopupText(props?.displayName || "Incident");
       const severity = escapePopupText(props?.severity || "—");
       const status = escapePopupText(props?.status || "—");
@@ -882,11 +820,11 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
       try {
         const sourceFeatures = map.querySourceFeatures(SOURCE_IDS.incidents);
         if (sourceFeatures && sourceFeatures.length > 0) {
-          let nearest: { feature: any; dist: number } | null = null;
+          let nearest: { feature: (typeof sourceFeatures)[number]; dist: number } | null = null;
           for (const f of sourceFeatures) {
-            const g: any = f.geometry;
-            if (g?.type !== "Point" || !g.coordinates) continue;
-            const p = map.project(g.coordinates);
+            if (f.geometry.type !== "Point") continue;
+            const [longitude, latitude] = f.geometry.coordinates;
+            const p = map.project([longitude, latitude]);
             const dx = p.x - point.x;
             const dy = p.y - point.y;
             const d = Math.sqrt(dx * dx + dy * dy);
@@ -894,7 +832,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
               nearest = { feature: f, dist: d };
             }
           }
-          if (nearest) return [nearest.feature];
+          if (nearest && nearest.feature.properties?.id) return [nearest.feature];
         }
       } catch {
         // querySourceFeatures throws if source not loaded yet — ignore
@@ -903,12 +841,29 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     };
 
     const onClick = (e: maplibregl.MapMouseEvent) => {
-      // Check if clicking a cluster — if so, zoom in toward it
+      // Prefer a concrete incident within the generous hit tolerance. This
+      // keeps marker/list selection parity even when a nearby cluster is also
+      // rendered; only an unresolved cluster falls through to zoom-in.
+      const features = queryIncidentFeatures(e.point);
+      if (features.length > 0) {
+        const id = typeof features[0].properties?.id === "string" ? features[0].properties.id : undefined;
+        if (id) {
+          onSelectIncident(id);
+          // On touch devices, also show popup on tap (since there's no hover)
+          if (isTouchDevice) {
+            popup.setLngLat(e.lngLat).setHTML(buildPopupHtml(features[0].properties)).addTo(map);
+            // Auto-dismiss after 3 seconds on touch
+            setTimeout(() => popup.remove(), 3000);
+          }
+          return;
+        }
+      }
+
+      // Check if clicking an unresolved cluster — if so, zoom in toward it.
       const clusterFeatures = map.queryRenderedFeatures(e.point, {
         layers: [LAYER_IDS.incidentFill + "-clusters"],
       });
       if (clusterFeatures.length > 0) {
-        // Simple, reliable approach: zoom in +2 levels toward the cluster center
         const currentZoom = map.getZoom();
         const targetZoom = Math.min(currentZoom + 2, 14);
         map.flyTo({
@@ -919,26 +874,11 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
         return;
       }
 
-      // Check for incident features
-      const features = queryIncidentFeatures(e.point);
-      if (features.length > 0) {
-        const id = features[0].properties?.id as string | undefined;
-        if (id) {
-          onSelectIncident(id);
-          // On touch devices, also show popup on tap (since there's no hover)
-          if (isTouchDevice) {
-            popup.setLngLat(e.lngLat).setHTML(buildPopupHtml(features[0].properties)).addTo(map);
-            // Auto-dismiss after 3 seconds on touch
-            setTimeout(() => popup.remove(), 3000);
-          }
-        }
-      } else {
-        // Click on empty area — clear selection + dismiss popup
-        const hit = map.queryRenderedFeatures(e.point);
-        if (hit.length === 0) {
-          onSelectIncident(null);
-          popup.remove();
-        }
+      // Click on empty area — clear selection + dismiss popup.
+      const hit = map.queryRenderedFeatures(e.point);
+      if (hit.length === 0) {
+        onSelectIncident(null);
+        popup.remove();
       }
     };
 
@@ -976,9 +916,9 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
 
     // Long-press / right-click handler for marker context menu
     const onLongPressTrigger = (x: number, y: number) => {
-      const features = queryIncidentFeatures({ x, y } as maplibregl.Point);
+      const features = queryIncidentFeatures({ x, y });
       if (features.length > 0) {
-        const id = features[0].properties?.id as string | undefined;
+        const id = typeof features[0].properties?.id === "string" ? features[0].properties.id : undefined;
         if (id && onMarkerLongPress) {
           onMarkerLongPress(x, y, id);
         }
@@ -995,7 +935,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     let touchTimer: ReturnType<typeof setTimeout> | null = null;
     let touchStart = { x: 0, y: 0 };
     let touchMoved = false;
-    const onTouchStart = (e: maplibregl.MapMouseEvent) => {
+    const onTouchStart = (e: MapTouchEvent) => {
       touchStart = { x: e.point.x, y: e.point.y };
       touchMoved = false;
       if (touchTimer) clearTimeout(touchTimer);
@@ -1003,7 +943,7 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
         if (!touchMoved) onLongPressTrigger(touchStart.x, touchStart.y);
       }, 600);
     };
-    const onTouchMove = (e: maplibregl.MapMouseEvent) => {
+    const onTouchMove = (e: MapTouchEvent) => {
       const dx = Math.abs(e.point.x - touchStart.x);
       const dy = Math.abs(e.point.y - touchStart.y);
       if (dx > 10 || dy > 10) {
@@ -1018,10 +958,10 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     map.on("click", onClick);
     map.on("contextmenu", onContextMenu);
     if (isTouchDevice) {
-      map.on("touchstart", onTouchStart as any);
-      map.on("touchmove", onTouchMove as any);
-      map.on("touchend", onTouchEnd as any);
-      map.on("touchcancel", onTouchEnd as any);
+      map.on("touchstart", onTouchStart);
+      map.on("touchmove", onTouchMove);
+      map.on("touchend", onTouchEnd);
+      map.on("touchcancel", onTouchEnd);
     }
     if (!isTouchDevice) {
       map.on("mousemove", onMouseMove);
@@ -1032,10 +972,10 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
       map.off("click", onClick);
       map.off("contextmenu", onContextMenu);
       if (isTouchDevice) {
-        map.off("touchstart", onTouchStart as any);
-        map.off("touchmove", onTouchMove as any);
-        map.off("touchend", onTouchEnd as any);
-        map.off("touchcancel", onTouchEnd as any);
+        map.off("touchstart", onTouchStart);
+        map.off("touchmove", onTouchMove);
+        map.off("touchend", onTouchEnd);
+        map.off("touchcancel", onTouchEnd);
       }
       if (!isTouchDevice) {
         map.off("mousemove", onMouseMove);
@@ -1069,6 +1009,10 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     <div
       ref={containerRef}
       className={`ember-map-container ${className ?? ""}`}
+      data-testid="ember-map"
+      data-map-ready={mapReady ? "true" : "false"}
+      data-incident-source-ready={incidentDataReady ? "true" : "false"}
+      data-map-style-state={mapStyleState}
       style={{
         background: "var(--ember-map-bg)",
         position: "absolute",
@@ -1343,6 +1287,28 @@ function addEmberSourcesAndLayers(
         isSatellite ? 0.55 : 0.45,
         isSatellite ? 0.95 : 0.90,
       ],
+    },
+  });
+
+  // Critical incidents keep the flame color but gain a visible ring cue so
+  // severity is not communicated by color alone.
+  map.addLayer({
+    id: LAYER_IDS.incidentCriticalCue,
+    type: "circle",
+    source: SOURCE_IDS.incidents,
+    filter: ["all", ["!", ["has", "cluster"]], ["==", ["get", "severity"], "critical"]],
+    paint: {
+      "circle-radius": [
+        "interpolate", ["linear"], ["zoom"],
+        4, 7,
+        8, 9,
+        12, 12,
+        16, 15,
+      ],
+      "circle-color": "rgba(0,0,0,0)",
+      "circle-stroke-color": theme === "dark" ? "#fff7ed" : "#3b1710",
+      "circle-stroke-width": 1.5,
+      "circle-opacity": 0.95,
     },
   });
 

@@ -53,7 +53,7 @@ Enable HSTS with **6 months** max-age, **includeSubDomains** enabled,
 
 ## 3. Cache Rules (replaces old Page Rules)
 
-Use the new **Caching → Cache Rules** section. Create these four
+Use the new **Caching → Cache Rules** section. Create these five
 rules in order:
 
 ### Rule 1 — Cache static assets forever
@@ -84,7 +84,16 @@ them automatically.
 - **Match**: `(http.request.uri.path in {"/api/cron/ingest" "/api/follow" "/api/reports" "/api/alerts" "/api/realtime"}) or (http.request.method ne "GET" and http.request.uri.path eq "/api/*")`
 - **Action**: **Bypass cache**
 
-### Rule 4 — Cache static public files
+### Rule 4 — Bypass public HTML and control assets
+
+The public shell and browser control assets must not be held at the edge for a
+deployment-length TTL. The deploy helper creates a bypass rule for `/`,
+`/status`, `/privacy`, `/newsletter`, `/manifest.json`, and `/sw.js`; this
+keeps the HTML and service-worker/manifest contracts aligned with the origin
+after a restart. The origin also sends `Cache-Control: no-store` for these
+routes, so both layers agree.
+
+### Rule 5 — Cache static public files
 
 - **Name**: `Cache public assets`
 - **Match**: `(http.request.uri.path matches "\\.(js|css|svg|png|jpe?g|webp|woff2?)$") and (http.host eq "lumes.pt")`

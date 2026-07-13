@@ -13,6 +13,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { cached } from "@/lib/api/cache";
+import { clientKey, rateLimit } from "@/lib/api/rate-limit";
+import { logServerFailure } from "@/lib/observability";
+import { createDataStateMeta } from "@/lib/data-state";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,8 +35,16 @@ function decode(name: string): string {
 export async function GET(req: NextRequest, { params }: RouteParams) {
   const { name } = await params;
   const regionName = decode(name).trim();
-  if (!regionName) {
-    return NextResponse.json({ error: "missing region name" }, { status: 400 });
+  if (!regionName || regionName.length > 80) {
+    return NextResponse.json({ error: "missing region name", dataState: createDataStateMeta("empty", "Missing region name") }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+
+  const rl = rateLimit(clientKey(req), { limit: 60 });
+  if (!rl.ok) {
+    return NextResponse.json({ error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") }, {
+      status: 429,
+      headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" },
+    });
   }
 
   // Cache by lowercase + status filter
@@ -66,6 +77,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         count: incidents.length,
         incidents,
         includeResolved,
+        dataState: createDataStateMeta(incidents.length === 0 ? "empty" : "healthy", undefined, new Date().toISOString(), "lumes-internal"),
       };
     });
 
@@ -75,10 +87,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    logServerFailure("region.fetch", err, { route: "/api/region/[name]", retryable: true });
     return NextResponse.json(
-      { error: msg, region: regionName },
-      { status: 500 }
+      { error: "Regional incident data is temporarily unavailable.", region: regionName, dataState: createDataStateMeta("retryable-error", "Regional data unavailable") },
+      { status: 502, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
