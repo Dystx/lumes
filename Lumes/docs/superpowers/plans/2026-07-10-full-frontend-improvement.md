@@ -2607,3 +2607,11 @@ home performance `0.95` and then `0.96`; the latest run measured approximately
 remained `0.99` and `/privacy` `1.00`. This is a small, reversible,
 provider-independent startup improvement. It does not alter MapLibre behavior,
 map layers, service-worker caching, attribution, or the gated 3D/provider work.
+
+Remote verification after commit `ffec4fb71` started Lighthouse run
+`29283700711` and CI run `29283700685`. Both completed build and all earlier
+checks before failing only at the unchanged home Lighthouse budget, measuring
+`0.64` and `0.63`. This confirms the change is safe but does not clear the
+hosted performance boundary. Keep the `0.70` threshold; do not switch
+providers, add arbitrary delay, or reopen the gated 3D work as a response to
+this result.

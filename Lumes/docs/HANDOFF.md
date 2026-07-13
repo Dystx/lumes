@@ -1640,6 +1640,16 @@ coalescing, client lifecycle reliability, and response-envelope trust.
     provider-independent improvement; it does not change map behavior,
     service-worker policy, attribution, or the closed 3D/provider gates.
 
+103. **Remote verification after font boundary** — ⚠️ push `ffec4fb71` started
+    Lighthouse run `29283700711` and CI run `29283700685`. Both completed the
+    build and all earlier checks, then failed only at the unchanged home
+    Lighthouse budget: hosted scores were `0.64` and `0.63` respectively.
+    The CI run therefore confirms the font change introduces no lint,
+    typecheck, unit-test, build, or browser-matrix failure, but it does not
+    clear the pre-existing hosted performance boundary. Keep the `0.70`
+    threshold and stop provider-independent startup tuning here unless a new
+    product-aware profile identifies a concrete, non-visual reliability gain.
+
 ---
 
 ## 7. Contact
