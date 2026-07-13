@@ -86,10 +86,10 @@ import dynamic from "next/dynamic";
 const AdvancedMapLayers = dynamic(() => import("@/components/advanced-layers-host"), { ssr: false });
 const NewsSection = dynamic(() => import("@/components/news-section"), { ssr: false });
 // MapLibre is the heaviest client dependency. Keep the operational map as
-// the default experience, but defer its bundle until after the shell mounts so
+// the default experience, but defer its startup until the shell is idle so
 // the initial page can paint without blocking on WebGL setup.
 const MapScene = dynamic(
-  () => import("@/components/map/map-scene").then((mod) => mod.MapScene),
+  () => import("@/components/map/deferred-map-scene").then((mod) => mod.DeferredMapScene),
   {
     ssr: false,
     loading: () => <div className="absolute inset-0 bg-[var(--ember-map-bg)]" aria-hidden="true" />,
