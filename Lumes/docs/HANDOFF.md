@@ -1575,9 +1575,24 @@ coalescing, client lifecycle reliability, and response-envelope trust.
     repository-root `.github/workflows/lumes-ci.yml`,
     `.github/workflows/lumes-deploy.yml`, and
     `.github/workflows/lumes-lighthouse.yml`, with `Lumes/**` path filters and
-    explicit `working-directory: Lumes` execution. The fix is prepared locally
-    but has not yet been committed or pushed; the dirty application worktree
-    remains untouched.
+    explicit `working-directory: Lumes` execution. The repair is committed on
+    `codex/lumes-root-workflows` and pushed to the open PR without force. The
+    branch also publishes the tracked Prisma schema and public-page dependency
+    chain that hosted CI required. Unrelated root-project changes remain
+    outside the branch.
+
+99. **Hosted verification after publication** — ⚠️ workflow discovery and the
+    published source contract are now proven, but the PR checks are not green.
+    Run `29278210950` passed setup, Prisma generation, lint, typecheck, the
+    full unit suite, and production build before failing at its Lighthouse
+    budget step with home performance `0.64`; run `29278210957` independently
+    built successfully and failed its hosted Lighthouse assertion at `0.66`
+    after a rerun (the earlier attempt measured `0.69`). The local filesystem
+    Lighthouse evidence remains `0.72/0.83/0.83`, so this is a reproducible
+    hosted performance gap rather than a source/build failure. Do not lower
+    the `0.70` budget blindly; the next reliability action is to make the
+    performance test deterministic or improve the home route, while the
+    provider and attachment gates remain separate.
 
 ---
 

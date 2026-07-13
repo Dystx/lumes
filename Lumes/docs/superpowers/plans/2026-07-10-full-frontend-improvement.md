@@ -2489,11 +2489,16 @@ described as remote-CI coverage. Likewise, the controlled PMTiles fixture is
 implementation-shape evidence only and does not open the Lumes-owned storage,
 legal, coverage, mobile/GPU, or refresh/rollback gates.
 
-Read-only GitHub inspection found no workflow definitions or runs on the
-remote `Dystx/lumes` default branch; the local `main` is six commits ahead of
-`origin/main` and the worktree is dirty. No push, pull request, workflow
-dispatch, or deployment was attempted, so remote CI remains an external
-release-boundary action rather than a local failure.
+The canonical repository-root workflows are now published on the
+`codex/lumes-root-workflows` PR branch. Hosted run `29278210950` passed setup,
+Prisma generation, lint, typecheck, the full unit suite, and production build
+before failing at the Lighthouse budget step with home performance `0.64`.
+The independent Lighthouse run `29278210957` built successfully and failed
+at `0.66` after a rerun (the earlier attempt measured `0.69`). Local
+filesystem Lighthouse remains `0.72/0.83/0.83`; therefore hosted performance
+is the next reliability issue, not a workflow-discovery or build issue. Keep
+the configured `0.70` budget until a deterministic test or a targeted home
+route improvement is chosen; do not weaken it as a blind workaround.
 
 ## Local production artifact verification (2026-07-13)
 
