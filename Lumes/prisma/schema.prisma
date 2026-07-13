@@ -1,0 +1,143 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Ember Platform — Event/Incident persistence models
+// ============================================================
+
+// An Incident is the user-facing aggregate of Events.
+// It tracks the lifecycle of a single wildfire occurrence.
+model Incident {
+  id              String   @id // e.g. "anepc-45179721"
+  sourceId        String   // e.g. "anepc-prociv-arcgis"
+  sourceInternalId String  // e.g. "45179721"
+  displayName     String
+  eventType       String   // wildfire | urban_fire | other_fire
+  status          String   // detected | active | contained | resolved | monitoring
+  severity        String   // low | medium | high | critical
+  latitude        Float
+  longitude       Float
+  estimatedAreaHa Float   @default(0)
+  municipality    String?
+  parish          String?
+  district        String?
+  personnelTotal  Int      @default(0)
+  assetsGround    Int      @default(0)
+  assetsAerial    Int      @default(0)
+  confidence      Float    @default(0.9)
+  rasi             String? // ANEPC category
+  naturezaText    String?  // ANEPC type text
+  statusText      String?  // ANEPC fine-grained status
+
+  firstSeen       DateTime @default(now())
+  lastSeen        DateTime @default(now())
+  firstDetected   DateTime // From source data (observed_at)
+  lastUpdated     DateTime // From source data
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Snapshots — record state changes over time for timeline
+  snapshots       IncidentSnapshot[]
+
+  @@index([sourceId, sourceInternalId])
+  @@index([status])
+  @@index([severity])
+  @@index([latitude, longitude])
+}
+
+// A snapshot captures the state of an Incident at a point in time.
+// The collection of snapshots forms the incident timeline.
+model IncidentSnapshot {
+  id              String   @id @default(cuid())
+  incidentId      String
+  incident        Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  timestamp       DateTime @default(now())
+
+  status          String
+  severity        String
+  personnelTotal  Int      @default(0)
+  assetsGround    Int      @default(0)
+  assetsAerial    Int      @default(0)
+  estimatedAreaHa Float   @default(0)
+  statusText      String?
+  note            String?  // Human-readable change description
+
+  @@index([incidentId, timestamp])
+}
+
+// Followed incidents — per-user (simplified for MVP, no auth)
+model FollowedIncident {
+  id          String   @id @default(cuid())
+  incidentId  String
+  followedAt  DateTime @default(now())
+
+  @@unique([incidentId])
+}
+
+// Community reports — user-submitted fire/smoke/evacuation reports
+model CommunityReport {
+  id            String   @id @default(cuid())
+  reportType    String   // smoke | flame | road_closure | evacuation | contained
+  latitude      Float
+  longitude     Float
+  description   String?
+  reporterName  String   @default("anonymous")
+  reporterTier  String   @default("anonymous") // anonymous | registered | verified_local | professional | official
+  photoUrl      String?
+  status        String   @default("pending") // pending | verified | rejected
+  confidence    Float    @default(0.3)
+  submittedAt   DateTime @default(now())
+  reviewedAt    DateTime?
+  reviewedBy    String?
+
+  @@index([status])
+  @@index([latitude, longitude])
+  @@index([reportType])
+}
+
+// Alert subscriptions — geofence-based notification triggers
+model AlertSubscription {
+  id            String   @id @default(cuid())
+  name          String
+  latitude      Float
+  longitude     Float
+  radiusKm      Float    @default(10)
+  alertTypes    String   @default("all") // comma-separated: wildfire,evacuation,contained
+  createdAt     DateTime @default(now())
+  active        Boolean  @default(true)
+
+  @@index([latitude, longitude])
+}
+
+// Newsletter subscribers — double opt-in compliance with GDPR Art. 7.
+// Email is stored as a SHA-256 hash to allow cheap "already
+// subscribed" checks without exposing plaintext PII.
+model NewsletterSubscriber {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  emailHash       String   @unique  // sha256(email)
+  confirmToken    String   @unique @default(cuid())
+  confirmedAt     DateTime?
+  unsubscribedAt  DateTime?
+  locale          String   @default("pt-PT")
+  source          String   @default("web-form")  // 'web-form', 'incident-follow', etc.
+  ipHash          String?  // truncated IP for audit, GDPR-compliant
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([confirmedAt])
+  @@index([emailHash])
+}
+
+// (Removed User + Post boilerplate models — they were never referenced
+// in the wildfire-intel codebase. Cleaned during 2026 improvements.)
