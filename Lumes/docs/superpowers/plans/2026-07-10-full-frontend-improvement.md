@@ -2591,3 +2591,19 @@ MapLibre startup cost, not as justification for another arbitrary timeout,
 provider change, or threshold reduction. The next step is a product-aware
 profiling decision; reliability, incident clarity, and the explicitly gated
 3D/provider/attachment work remain ahead of further visual/performance novelty.
+
+## Brand-font preload boundary (2026-07-13)
+
+The root layout now opts Fraunces out of Next's document font preload. The font
+still remains available for the public brand mark, while the operational map
+shell is served without making the approximately 121 KB brand font a critical
+request. The existing typography contract includes an assertion for
+`preload: false` so this remains intentional.
+
+Focused typography tests, the full serialized suite (**149 files / 728 tests**),
+typecheck, lint, and production build pass. Repeated local Lighthouse measured
+home performance `0.95` and then `0.96`; the latest run measured approximately
+`812 KB` total transfer and contained no Fraunces request, while `/status`
+remained `0.99` and `/privacy` `1.00`. This is a small, reversible,
+provider-independent startup improvement. It does not alter MapLibre behavior,
+map layers, service-worker caching, attribution, or the gated 3D/provider work.

@@ -18,6 +18,7 @@ describe("typography contract", () => {
     expect(layout).toContain('variable: "--font-ui"');
     expect(layout).toContain("IBM_Plex_Mono");
     expect(layout).toContain('variable: "--font-data"');
+    expect(layout).toContain("preload: false");
     expect(globals).toContain("--type-body");
     expect(globals).toContain("--type-secondary");
     expect(globals).toContain("--type-meta");

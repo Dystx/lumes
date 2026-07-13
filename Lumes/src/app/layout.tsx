@@ -12,6 +12,8 @@ const fraunces = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
   display: "swap",
+  // Fraunces is reserved for the brand mark; do not block the map shell on it.
+  preload: false,
   axes: ["opsz", "SOFT", "WONK"],
 });
 

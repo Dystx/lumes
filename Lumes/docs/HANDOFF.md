@@ -1628,6 +1628,18 @@ coalescing, client lifecycle reliability, and response-envelope trust.
     reliability, incident clarity, and the existing provider/3D gates remain
     higher priority.
 
+102. **Brand-font preload boundary** — ✅ `src/app/layout.tsx` now sets
+    `preload: false` for Fraunces. Fraunces remains available for the brand
+    mark, but the operational map shell no longer preloads the approximately
+    121 KB font. The typography contract now guards this boundary. Focused
+    typography tests, the full serialized suite (**149 files / 728 tests**),
+    typecheck, lint, and production build pass. Repeated local Lighthouse
+    measured home performance `0.95` then `0.96`, with the latest run at about
+    `812 KB` total transfer and no Fraunces request in the home network trace;
+    `/status` remained `0.99` and `/privacy` `1.00`. This is a bounded,
+    provider-independent improvement; it does not change map behavior,
+    service-worker policy, attribution, or the closed 3D/provider gates.
+
 ---
 
 ## 7. Contact
