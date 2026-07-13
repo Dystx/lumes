@@ -20,6 +20,9 @@ describe("MapLibre style restoration contract", () => {
     expect(map).toContain("initialStyleTimer");
     expect(map).toContain("isStyleLoadError(event)");
     expect(map).toContain('setMapStyleState(recovered ? "recovered" : "ready")');
+    expect(map).toContain("scheduleOverlaySetup");
+    expect(map).toContain("requestIdleCallback");
+    expect(map).toContain("cancelOverlaySetup");
     expect(styleEffect.match(/addEmberSourcesAndLayers\(map/g)?.length ?? 0).toBe(1);
 
     const satelliteEffect = map.slice(

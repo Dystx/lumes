@@ -305,6 +305,8 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     mapRef.current = map;
 
     let initialStyleTimer: number | null = null;
+    let overlayIdleId: number | null = null;
+    let overlayTimer: number | null = null;
     const clearInitialStyleWatchdog = () => {
       if (initialStyleTimer !== null) window.clearTimeout(initialStyleTimer);
       initialStyleTimer = null;
@@ -322,24 +324,51 @@ const EmberMap = forwardRef<EmberMapHandle, EmberMapProps>(function EmberMap({
     map.on("error", onInitialStyleError);
     initialStyleTimer = window.setTimeout(markInitialStyleFailure, STYLE_LOAD_TIMEOUT_MS);
 
-    map.on("load", () => {
-      clearInitialStyleWatchdog();
-      mapLoadedRef.current = true;
-      setMapLoaded(true);
+    const setupOverlays = () => {
+      overlayIdleId = null;
+      overlayTimer = null;
+      if (mapRef.current !== map || !initializedRef.current) return;
+
       addEmberSourcesAndLayers(map, theme, basemap);
       currentStyleRef.current = pickStyle(basemap, theme);
       committedThemeRef.current = theme;
       committedBasemapRef.current = basemap;
+      setMapLoaded(true);
       setMapStyleState("ready");
       setMapReady(true);
       // Broadcast map readiness to the LayerPanel system (lazy-loaded
       // advanced overlays: biomass, risk, aerial). Listens via window.
       dispatchMapEvent(MAP_READY_EVENT, map);
-    });
+    };
+
+    const scheduleOverlaySetup = () => {
+      if (typeof window.requestIdleCallback === "function") {
+        overlayIdleId = window.requestIdleCallback(setupOverlays, { timeout: 500 });
+      } else {
+        overlayTimer = setTimeout(setupOverlays, 0) as unknown as number;
+      }
+    };
+
+    const cancelOverlaySetup = () => {
+      if (overlayIdleId !== null) window.cancelIdleCallback(overlayIdleId);
+      if (overlayTimer !== null) window.clearTimeout(overlayTimer);
+      overlayIdleId = null;
+      overlayTimer = null;
+    };
+
+    map.on("load", scheduleOverlaySetup);
+    const onLoad = () => {
+      clearInitialStyleWatchdog();
+      mapLoadedRef.current = true;
+    };
+    map.on("load", onLoad);
 
     return () => {
       if (initialStyleTimer !== null) window.clearTimeout(initialStyleTimer);
+      cancelOverlaySetup();
       map.off("error", onInitialStyleError);
+      map.off("load", scheduleOverlaySetup);
+      map.off("load", onLoad);
       styleTransitionRef.current.invalidate();
       map.remove();
       mapRef.current = null;
