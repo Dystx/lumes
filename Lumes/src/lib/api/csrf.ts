@@ -10,6 +10,7 @@
 // attack vectors.
 
 import type { NextRequest } from "next/server";
+import { createDataStateMeta } from "@/lib/data-state";
 
 const ALLOWED_HOSTNAMES = [
   "lumes.pt",
@@ -46,7 +47,16 @@ export function isSafeOrigin(req: NextRequest): boolean {
 export function assertSafeOrigin(req: NextRequest): Response | null {
   if (isSafeOrigin(req)) return null;
   return new Response(
-    JSON.stringify({ error: "Forbidden: cross-origin request rejected" }),
-    { status: 403, headers: { "Content-Type": "application/json" } },
+    JSON.stringify({
+      error: "Forbidden: cross-origin request rejected",
+      dataState: createDataStateMeta("empty", "Cross-origin request rejected"),
+    }),
+    {
+      status: 403,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
+    },
   );
 }

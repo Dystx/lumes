@@ -13,52 +13,15 @@
 // Originally the read endpoint did both, which meant every page load
 // triggered 100+ SQL upserts — the perf bug that triggered this refactor.
 //
-// All callers should treat `runIngest` as a black box: any HTTP, file,
+// All callers should treat `runIngest` as a black box: HTTP, file,
 // or scheduler-driven invocation runs the same code path.
 
 import { persistIncidents } from "@/lib/persistence";
 import type { LiveIncident } from "@/lib/types";
-import {
-  ptDateToISO,
-  mapEventType,
-  mapIncidentStatus,
-  mapSeverity,
-  freshnessScore,
-} from "@/lib/incident";
+import { isFireIncident, normalizeANepcFeature, parseANepcFeatureCollection } from "@/lib/anepc";
 
 const ANEPC_FEATURE_SERVER =
   "https://services-eu1.arcgis.com/VlrHb7fn5ewYhX6y/arcgis/rest/services/OcorrenciasSite/FeatureServer/0/query";
-
-interface RawANepcProps {
-  ID_oc: number;
-  Numero: string;
-  CodEstadoOcorrencia: number;
-  EstadoOcorrencia: string;
-  EstadoAgrupado: string;
-  DataInicioOcorrencia: string;
-  RASI: string;
-  Natureza: string;
-  Regiao: string;
-  SubRegiao: string;
-  Concelho: string;
-  Freguesia: string;
-  Localidade: string;
-  Endereco: string;
-  OperacionaisTerrestres: number;
-  OPAereos: number;
-  Operacionais: number;
-  MeiosTerrestres: number;
-  MeiosAereos: number;
-  Latitude: number;
-  Longitude: number;
-  DuracaoMinutos: number;
-}
-
-interface RawANepcFeature {
-  type: "Feature";
-  geometry: { type: "Point"; coordinates: [number, number] };
-  properties: RawANepcProps;
-}
 
 export interface IngestResult {
   source: string;
@@ -70,70 +33,6 @@ export interface IngestResult {
   snapshotsCreated: number;
   errors: string[];
   latencyMs: number;
-}
-
-// ptDateToISO, mapEventType, mapIncidentStatus, mapSeverity, freshnessScore
-// are now imported from @/lib/incident (unified)
-
-function normalizeFeature(f: RawANepcFeature): LiveIncident {
-  const p = f.properties;
-  const rasi = p.RASI || "";
-  const eventType = mapEventType(rasi);
-  const incidentStatus = mapIncidentStatus(p.EstadoAgrupado);
-  const severity = mapSeverity(
-    p.Operacionais || 0,
-    p.MeiosAereos || 0,
-    eventType,
-    incidentStatus
-  );
-  const observedAt = ptDateToISO(p.DataInicioOcorrencia);
-  const freshness = freshnessScore(observedAt);
-  const confidence = 0.92 * freshness + 0.05;
-  const displayName = p.Localidade || p.Concelho || p.Freguesia || `Ocorrência ${p.Numero || p.ID_oc}`;
-
-  return {
-    id: `anepc-${p.ID_oc}`,
-    sourceId: "anepc-prociv-arcgis",
-    sourceInternalId: String(p.ID_oc),
-    observedAt,
-    ingestedAt: new Date().toISOString(),
-    geometry: { type: "Point", coordinates: [p.Longitude, p.Latitude] },
-    sourceType: "official",
-    properties: {
-      numero: p.Numero,
-      statusCode: p.CodEstadoOcorrencia,
-      statusText: p.EstadoOcorrencia,
-      statusGroup: p.EstadoAgrupado,
-      rasi,
-      naturezaText: p.Natureza,
-      localidade: p.Localidade,
-      endereco: p.Endereco,
-      municipality: p.Concelho,
-      parish: p.Freguesia,
-      region: p.Regiao,
-      subregion: p.SubRegiao,
-      personnelTotal: p.Operacionais,
-      personnelGround: p.OperacionaisTerrestres,
-      personnelAerial: p.OPAereos,
-      assetsGround: p.MeiosTerrestres,
-      assetsAerial: p.MeiosAereos,
-      durationMinutes: p.DuracaoMinutos,
-    },
-    trust: {
-      confidence,
-      sourceReputation: 0.95,
-      verificationStatus: "officially-verified",
-      corroborationCount: 0,
-      freshnessScore: freshness,
-    },
-    eventType,
-    incidentStatus,
-    severity,
-    displayName: `${displayName} (${p.Concelho || "—"})`,
-    estimatedAreaHa: 0,
-    firstDetected: observedAt,
-    lastUpdated: observedAt,
-  };
 }
 
 /**
@@ -155,6 +54,7 @@ export async function runIngest(): Promise<IngestResult> {
 
   let totalRaw = 0;
   let fireIncidents: LiveIncident[] = [];
+  let allowStaleResolution = false;
   const errors: string[] = [];
 
   try {
@@ -185,8 +85,8 @@ export async function runIngest(): Promise<IngestResult> {
       };
     }
 
-    const raw: any = await res.json();
-    if (!raw.features || !Array.isArray(raw.features)) {
+    const parsed = parseANepcFeatureCollection(await res.json());
+    if (!parsed) {
       errors.push("Unexpected ANEPC response (no features array)");
       return {
         source: "anepc-prociv-arcgis",
@@ -201,11 +101,39 @@ export async function runIngest(): Promise<IngestResult> {
       };
     }
 
-    totalRaw = raw.features.length;
-    const all = raw.features.map(normalizeFeature);
-    fireIncidents = all.filter(
-      (i) => i.eventType === "wildfire" || i.eventType === "urban_fire" || i.eventType === "other_fire"
-    );
+    totalRaw = parsed.totalRaw;
+    const all = parsed.features
+      .map(normalizeANepcFeature)
+      .filter((incident): incident is LiveIncident => incident !== null);
+    fireIncidents = all.filter(isFireIncident);
+    allowStaleResolution = parsed.features.length === parsed.totalRaw && all.length === fireIncidents.length;
+
+    // Never pass an empty set to persistence: its stale-incident cleanup is a
+    // write side effect and must not run after an empty or malformed provider
+    // response. A non-empty raw payload with no valid features is reported so
+    // operators can distinguish provider corruption from a legitimate empty
+    // collection.
+    if (fireIncidents.length === 0) {
+      if (parsed.totalRaw > 0 && parsed.features.length === 0) {
+        errors.push("ANEPC response contained no valid features");
+      } else if (parsed.totalRaw > 0) {
+        // A non-empty, valid payload that contains no fire event types means
+        // the upstream query or schema may have drifted. Keep the write path
+        // fail-closed, but surface the condition to health/cron consumers.
+        errors.push("ANEPC response contained no fire incidents after normalization");
+      }
+      return {
+        source: "anepc-prociv-arcgis",
+        fetchedAt: new Date().toISOString(),
+        totalRaw,
+        upserted: 0,
+        created: 0,
+        updated: 0,
+        snapshotsCreated: 0,
+        errors,
+        latencyMs: Date.now() - start,
+      };
+    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     errors.push(`ANEPC fetch failed: ${msg}`);
@@ -222,8 +150,10 @@ export async function runIngest(): Promise<IngestResult> {
     };
   }
 
-  // Persist (only if we got any incidents to persist)
-  const persistResult = await persistIncidents(fireIncidents);
+  // Persist only when incidents were returned.
+  const persistResult = await persistIncidents(fireIncidents, {
+    allowStaleResolution,
+  });
   errors.push(...persistResult.errors);
 
   return {

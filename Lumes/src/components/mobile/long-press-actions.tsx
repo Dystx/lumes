@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Bookmark, Share2, MapPin, X, Bell } from "@/components/icons/phosphor-icons";
 import { useLanguage } from "@/lib/use-language";
 import { t } from "@/lib/i18n";
+import { useBlockingOverlay } from "@/lib/blocking-overlay";
 
 export interface LongPressActionsProps {
   /** Coordinates where the menu should appear */
@@ -38,6 +39,19 @@ export function LongPressActions({
   isFollowed = false,
 }: LongPressActionsProps) {
   const { language: lang } = useLanguage();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  useBlockingOverlay(true, menuRef, onClose);
+
+  useEffect(() => {
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusTimer = requestAnimationFrame(() => menuRef.current?.focus());
+    return () => {
+      cancelAnimationFrame(focusTimer);
+      openerRef.current?.focus();
+    };
+  }, [onClose]);
 
   // Reposition menu if it would overflow viewport
   const adjustedX = Math.min(Math.max(x, 100), window.innerWidth - 100);
@@ -60,7 +74,14 @@ export function LongPressActions({
         />
 
         {/* Menu card */}
-        <div className="bg-[var(--ember-surface)] border border-[var(--ember-border)] rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.4)] p-1.5 min-w-[180px]">
+        <div
+          ref={menuRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={lang === "pt" ? "Ações do incidente" : "Incident actions"}
+          tabIndex={-1}
+          className="bg-[var(--ember-surface)] border border-[var(--ember-border)] rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.4)] p-1.5 min-w-[180px] outline-none"
+        >
           <ActionItem
             icon={<Bell className="w-3.5 h-3.5" />}
             label={isFollowed ? t(lang, "incident.following") : t(lang, "incident.follow")}

@@ -1,6 +1,6 @@
 # Lumes.pt — Code Architecture
 
-> Last updated: 2026-07-09 (local-only refactor tranche; no deployment verified)
+> Last updated: 2026-07-13 (local reliability/refactor tranche; production deployment still requires the authorized HTTPS verification gate)
 
 ## High-level stack
 
@@ -23,47 +23,44 @@
 
 ```
 Lumes/
-├── app/                        # Next.js App Router
-│   ├── api/                    # 35+ API routes (incidents, news, dashboard, …)
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── api/                # 33 API routes (incidents, news, dashboard, …)
 │   │   ├── cron/ingest/        # 60s cron entrypoint
 │   │   ├── cron/prune/          # daily prune entrypoint
 │   │   ├── incidents/           # CRUD + risks/news/timeline subroutes
 │   │   ├── source-health/       # 30s polling target
 │   │   └── …                    # aerial, biomass, fire-risk, satellite, weather
-│   ├── page.tsx                 # ⭐ data composition + shell orchestration
-│   ├── layout.tsx               # root layout, fonts, theme provider, SW register
-│   ├── globals.css              # design tokens, animations, ember-* utilities
-│   └── error.tsx                # error boundary
-│
-├── components/                  # React components
-│   ├── ember-map.tsx            # ⭐ map (1,400 lines, MapLibre wrapper)
-│   ├── mobile/                  # mobile-only UI (tabs, peek, bottom sheet)
-│   ├── filters/                 # FiltersPanel, FilterStatus
-│   ├── dashboard/               # HeroCounter, OperationalPhases, stat cards
-│   ├── layers/                  # lazy-loaded map overlays (biomass/risk/aerial)
-│   ├── layout/                  # RightSidebar (smart rail with FILTROS/DETALHE/NOTÍCIAS)
-│   ├── icons/                   # brand-icons.tsx (custom) + phosphor-icons.tsx (wrapper)
-│   ├── news-section.tsx         # news in right sidebar
-│   └── ui/                      # shadcn-style primitives (only sonner kept)
-│
-├── lib/                         # domain logic
-│   ├── i18n.ts                  # translations object (PT/EN, 280+ keys)
-│   ├── db.ts                    # Prisma singleton
-│   ├── incident.ts              # status/severity/phase helpers
-│   ├── incident-types.ts        # shared TS types
-│   ├── use-app-data.ts          # thin wrappers over useFetch
-│   ├── use-fetch.ts             # generic fetch hook with TTL
-│   ├── use-live-data.ts         # legacy hooks (being migrated to use-app-data.ts)
-│   ├── aerial/merge.ts          # ADS-B multi-source merge
-│   ├── api/cache.ts             # in-memory TTL cache helper
-│   ├── api/csrf.ts              # CSRF / origin check
-│   ├── api/rate-limit.ts        # token-bucket rate limiter
-│   ├── api/schemas.ts           # zod schemas for request bodies
-│   ├── persistence.ts           # snapshot/incident DB ops
-│   └── …                        # ingest, sample-data, utils
-│
-├── store/
-│   └── ui-store.ts              # zustand: filters, UI state, play-mode
+│   │   ├── page.tsx             # ⭐ data composition + shell orchestration (1,354 lines)
+│   │   ├── layout.tsx           # root layout, fonts, theme provider, SW register
+│   │   ├── globals.css          # design tokens, animations, ember-* utilities
+│   │   └── error.tsx            # error boundary
+│   ├── components/              # React components
+│   │   ├── ember-map.tsx         # ⭐ map (1,546 lines, MapLibre wrapper)
+│   │   ├── mobile/              # mobile-only UI (tabs, peek, bottom sheet)
+│   │   ├── filters/             # FiltersPanel, FilterStatus, MapStatusSummary
+│   │   ├── dashboard/            # HeroCounter, OperationalPhases, stat cards
+│   │   ├── layers/               # lazy-loaded map overlays (biomass/risk/aerial)
+│   │   ├── layout/               # RightSidebar and shell layout
+│   │   ├── icons/                # brand-icons.tsx + phosphor-icons.tsx wrapper
+│   │   ├── news-section.tsx      # news in right sidebar
+│   │   └── ui/                   # shared UI primitives
+│   ├── lib/                      # domain logic and typed client boundaries
+│   │   ├── i18n.ts               # translations object (PT/EN)
+│   │   ├── db.ts                 # Prisma singleton
+│   │   ├── incident.ts           # status/severity/phase helpers
+│   │   ├── incident-types.ts     # shared TS types
+│   │   ├── use-app-data.ts       # typed endpoint wrappers over useFetch
+│   │   ├── use-fetch.ts          # generic fetch hook with TTL
+│   │   ├── use-realtime-incidents.ts # SSE connection/reconnect hook
+│   │   ├── use-followed-incidents.ts # browser-local follow state
+│   │   ├── aerial/merge.ts       # ADS-B multi-source merge
+│   │   ├── map/                  # camera policy, capability, and map events
+│   │   ├── use-incident-focus.ts # optional feature-flagged camera mode hook
+│   │   ├── api/                  # cache, CSRF, rate-limit, and schemas
+│   │   ├── persistence.ts        # snapshot/incident DB ops
+│   │   └── …                     # ingest, sample-data, adapters, utilities
+│   └── store/ui-store.ts         # zustand: filters, UI state, play-mode
 │
 ├── prisma/
 │   └── schema.prisma            # 7 tables: Incident, IncidentSnapshot, Source, etc.
@@ -97,27 +94,32 @@ Lumes/
 The home page remains the data-composition entry point; stable shell and
 detail surfaces now live in focused components. Top to bottom:
 
-1. **Imports** (~80 lines): React, hooks, all the component modules,
-   the data hooks, the dashboard component, helpers.
-2. **Helpers** (`enrichIncidentWithLiveContext`, `timeAgo`, `formatDate`,
-   `formatTime`, `sourceLabel`, `verificationLabel`) — pure functions
-   used across the file.
-3. **Sub-components** (defined as inline functions):
-   - `MetricCard` — small KPI tile
-   - `ReportFireModal`, `HistoryModal` — full-screen overlays
-   - `PlaybackBar` — bottom timeline scrubber
-   - `SituationPanel({ … })` — focused left situation rail
-   - `DashboardPanel({ … })` — mobile/all-incidents destination
-   - `IncidentDetailPanel({ … })` — selected-incident panel
-   - `OverviewTab`, `TimelineTab`, `SourcesTab` — detail-panel tabs
-4. **`Home()`** — the default export. Reads from a dozen hooks
+1. **Imports** (~80 lines): React, hooks, focused shell/detail/modal
+   components, data hooks, typed map adapters, and trust/state helpers.
+2. **Small local presentation helpers** (`formatDate`, `formatTime`, source/
+   verification labels, and incident-property guards). Localized relative
+   time is shared through the tested `src/lib/relative-time.ts` boundary.
+   Live weather/risk enrichment now belongs to the tested
+   `src/lib/incident-context.ts` boundary.
+   Dashboard aggregate computation belongs to the tested
+   `src/lib/dashboard-metrics.ts` boundary; the page only memoizes and passes
+   the result to the dashboard surface.
+   The IPMA sidebar summary follows the same pattern through the tested
+   `src/lib/weather-summary.ts` boundary.
+3. **`Home()`** — the default export. Reads from a dozen hooks
    (`useFireStationsNew`, `useSatelliteNew`, `useNews`, …) and renders
    the wide situation rail + map + collapsible Explore/Inspector/Updates
    rail.
 
 The file intentionally remains the highest-level data-composition entry
-point. New shell boundaries should be extracted only when their behavior
-is covered by route and browser tests.
+point; stable modal, map, shell, and detail surfaces are imported rather than
+defined inline. New shell boundaries should be extracted only when their
+behavior is covered by route and browser tests.
+
+Global keyboard listeners and shortcuts-dialog focus ownership are isolated in
+`src/lib/use-keyboard-shortcuts.ts`; pure intent ordering lives in
+`src/lib/keyboard-shortcuts.ts`. The page injects actions, while
+`showShortcuts` remains owned by the Zustand overlay stack.
 
 ## State management
 
@@ -131,7 +133,7 @@ Two sources of truth:
      `showAerial`, `showBiomass`, `showCompositeRisk`
    - UI: `playbackHour`, `mapStyle`, `basemap`
    - Methods: `toggleSeverity`, `toggleSource`, `resetSeverityFilter`,
-     `setBasemap`, `setQuickFilter`, …
+     `setBasemap`, `setQuickFilter`, `replaceIncidentFilters`, …
 
 2. **Local component state** (`useState` in `Home()`)
    - `selectedIncidentId`, `selectedIncident`
@@ -139,15 +141,18 @@ Two sources of truth:
    - `mobileTab`, `flyToIncidentId`
    - `markerMenu`, `expandedFilters`, `expandedPhases`
 
-3. **URL state** — `?incident=<id>` opens the detail panel on load.
+3. **URL state** — `?incident=<id>` opens the detail panel on load. Query
+   filters are persisted through `src/lib/use-incident-filter-url.ts` using
+   the locale-independent `severity`, `includeResolved`, `quick`, `phase`,
+   `resource`, and `q` keys; unrelated parameters are preserved.
 
 ## Data flow
 
 ```
         ┌── /api/incidents (every 60s) ──┐
         │                                ▼
-        │  ┌── /api/dashboard ──┐     zustand (via useLiveIncidentsNew
-        │  │                    │     + useDashboardNew)
+        │  ┌── /api/dashboard ──┐     typed use-app-data wrappers over
+        │  │                    │     useFetch (plus separate realtime hook)
         │  │                    ▼     │
    Browser  │                  ┌────▼─────┐
         │  │                  │  Home()   │
@@ -205,6 +210,26 @@ that all hooks read via `useLanguage()`.
    `AdvancedMapLayers` host in `page.tsx` and listen for
    `lumes:map-ready` events
 
+## Optional Incident Focus boundary
+
+`MapScene` owns the single MapLibre instance. `EmberMap` exposes only typed
+camera operations through `EmberMapHandle`; camera policy lives in
+`src/lib/map/incident-focus-controller.ts`, capability policy lives in
+`incident-focus-capability.ts`, and React mode state lives in
+`use-incident-focus.ts`. The feature is disabled unless
+`NEXT_PUBLIC_LUMES_3D_INCIDENT_FOCUS=1` is present at build time.
+
+Phase 1 is camera-only and keeps `dragRotate`, `pitchWithRotate`, and
+`touchPitch` disabled. It preserves all operational sources/layers and uses
+the existing CARTO/EOX styles. The `lumes:map-style-restored` event is a typed
+future restoration boundary for optional Phase 2/3 context layers; no new
+building, terrain, style, or provider request is made by Phase 1.
+
+Future context layers must be registered idempotently after `style.load`, keep
+operational overlays above buildings/terrain, include provider attribution and
+licence records, and fall back to camera-only/2D when coverage, tiles, or
+device capability are insufficient.
+
 ## Adding a new API route (recipe)
 
 1. `src/app/api/<thing>/route.ts` — exports `GET` (and `POST` if needed)
@@ -224,8 +249,8 @@ that all hooks read via `useLanguage()`.
   typed props and contract tests. Further extraction is incremental.
 
 - **Why not a real state machine for filters?**  — The current set of
-  filter logic is manageable in `useMemo`. Once we add URL persistence
-  and per-user filter presets, this will move to a dedicated reducer.
+  filter logic is manageable in `useMemo`; URL synchronization is isolated in
+  a guarded hook so it does not require a second state machine.
 
 - **Why Bun and not Node?**  — Bun is faster, supports TypeScript
   natively, and integrates well with our Prisma + Next.js stack.

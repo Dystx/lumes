@@ -86,8 +86,12 @@ if [[ -n "${LATEST_BACKUP}" && ! -s "${APP_DIR}/db/custom.db" ]]; then
 fi
 
 # ---------- Install + build ----------
-say "Install dependencies and build production bundle"
-( cd "${APP_DIR}" && bun install --frozen-lockfile --production && bun run build )
+say "Install build dependencies and create production bundle"
+# Keep the full dependency set through Prisma generation and Next build.
+# The standalone output traces the runtime dependencies into its own bundle;
+# pruning before the build can remove the compilers and Prisma tooling needed
+# to produce a valid server. The deploy helper performs the same safe order.
+( cd "${APP_DIR}" && bun install --frozen-lockfile && bun run build )
 
 # ---------- Generate production .env ----------
 say "Write .env (idempotent)"

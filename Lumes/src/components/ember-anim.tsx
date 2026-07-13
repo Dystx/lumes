@@ -3,14 +3,15 @@
 // Reusable animated building blocks for the Ember UI
 // Built on framer-motion + CSS keyframes
 
-import { motion, AnimatePresence } from "framer-motion";
-import { type ReactNode, type ButtonHTMLAttributes } from "react";
+import { motion, AnimatePresence, type HTMLMotionProps } from "framer-motion";
+import { type ReactNode } from "react";
 import { Loader2 } from "@/components/icons/phosphor-icons";
 
 // ============================================================
 // AnimatedButton — button with hover lift + press scale + loading
 // ============================================================
-interface AnimatedButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface AnimatedButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
+  children?: ReactNode;
   loading?: boolean;
   variant?: "default" | "accent" | "critical" | "ghost";
   size?: "sm" | "md" | "icon";
@@ -48,7 +49,7 @@ export function AnimatedButton({
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       disabled={disabled || loading}
       className={`relative inline-flex items-center justify-center gap-1.5 rounded-md font-medium border ember-focus ${variantClass} ${sizeClass} ${className} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0`}
-      {...(rest as any)}
+      {...rest}
     >
       {loading && (
         <Loader2 className="w-3.5 h-3.5 ember-spin" />

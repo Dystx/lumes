@@ -64,14 +64,14 @@ export function FilterStatus({
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <Funnel className="w-3.5 h-3.5 text-[var(--ember-accent)] flex-shrink-0" />
-                <span className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-semibold">
+                <span className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-semibold">
                   {lang === "pt" ? "Filtros ativos" : "Active filters"}
                 </span>
-                <span className="text-[10px] font-mono tabular-nums text-[var(--ember-accent)]">
+                <span className="text-meta font-mono tabular-nums text-[var(--ember-accent)]">
                   ({items.length})
                 </span>
                 {filteredCount !== undefined && totalCount !== undefined && (
-                  <span className="text-[10px] text-[var(--ember-text-faint)] ml-auto tabular-nums">
+                  <span className="text-meta text-[var(--ember-text-faint)] ml-auto tabular-nums">
                     {filteredCount} {lang === "pt" ? "de" : "of"} {totalCount}
                   </span>
                 )}
@@ -79,7 +79,7 @@ export function FilterStatus({
               <button
                 type="button"
                 onClick={onClearAll}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface)] transition-colors flex-shrink-0"
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-meta font-medium uppercase tracking-wider text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] hover:bg-[var(--ember-surface)] transition-colors flex-shrink-0"
                 aria-label={lang === "pt" ? "Limpar todos os filtros" : "Clear all filters"}
               >
                 <ArrowCounterClockwise className="w-2.5 h-2.5" />
@@ -99,7 +99,7 @@ export function FilterStatus({
                   onClick={item.onClear}
                   title={item.description ?? item.label}
                   aria-label={`${item.label} — ${lang === "pt" ? "remover" : "remove"}`}
-                  className={`group flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 ${
+                  className={`group flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-meta font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 ${
                     item.category === "layer"
                       ? "bg-[var(--ember-info)]/20 border border-[var(--ember-info)]/40 text-[var(--ember-info)] hover:bg-[var(--ember-info)]/30"
                       : "bg-[var(--ember-accent)] text-[#1a1410] hover:shadow-[0_0_0_3px_var(--ember-accent-subtle)]"
@@ -126,7 +126,7 @@ export function FilterStatus({
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
-                  className="text-[10px] text-[var(--ember-warning)] flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-[var(--ember-warning)]/10 border border-[var(--ember-warning)]/20"
+                  className="text-meta text-[var(--ember-warning)] flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-[var(--ember-warning)]/10 border border-[var(--ember-warning)]/20"
                 >
                   <span className="font-semibold">
                     {lang === "pt" ? "Sem resultados" : "No matches"}

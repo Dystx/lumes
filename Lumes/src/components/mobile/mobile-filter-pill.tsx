@@ -13,9 +13,11 @@ import { useLanguage } from "@/lib/use-language";
 export function MobileFilterPill({
   count,
   onTap,
+  topOffset = 12,
 }: {
   count: number;
   onTap?: () => void;
+  topOffset?: number;
 }) {
   const { language: lang } = useLanguage();
   const hasFilters = count > 0;
@@ -30,12 +32,14 @@ export function MobileFilterPill({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.9 }}
           transition={{ duration: 0.2 }}
-          className="absolute top-3 right-3 z-20 pointer-events-auto min-h-11"
+          className="absolute right-3 z-20 pointer-events-auto min-h-11"
+          style={{ top: topOffset }}
           aria-label={
             lang === "pt"
               ? `${count} filtros ativos. Toque para ver.`
               : `${count} active filters. Tap to view.`
           }
+          data-testid="mobile-filter-pill"
         >
           <div className="relative min-h-11 bg-[var(--ember-accent)] text-white shadow-[0_2px_8px_rgba(184,66,26,0.4)] rounded-full px-3 py-1.5 flex items-center gap-1.5 text-xs font-semibold active:scale-95 transition-transform">
             <Filter className="w-3.5 h-3.5" />

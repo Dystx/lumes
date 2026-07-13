@@ -4,6 +4,13 @@
 **Status**: Plan (post full review)
 **Scope**: Visual review (desktop + mobile + tablet), functional review (every clickable surface), backend audit, file-size analysis, dependency mapping, **design & UX critique**.
 
+> **Historical baseline:** This document records the July 6 review and its
+> findings as they were observed then. Current implementation status and later
+> verification belong to `docs/superpowers/plans/2026-07-10-full-frontend-improvement.md`
+> and `docs/HANDOFF.md`; entries such as the dashboard 500, mobile overlap,
+> and failed marker clicks must not be read as current-state claims without a
+> fresh verification run.
+
 ---
 
 ## 0. TL;DR
@@ -259,7 +266,9 @@ src/
 │   ├── aerial/merge.ts
 │   ├── biomass/equations.ts, synthetic-grid.ts
 │   ├── risk/composite.ts
-│   ├── use-live-data.ts    (14 hooks, duplicate fetch logic)
+│   ├── use-app-data.ts     (shared useFetch endpoint wrappers)
+│   ├── use-realtime-incidents.ts
+│   └── use-followed-incidents.ts
 │   ├── use-language.ts
 │   ├── ingest.ts, persistence.ts, sample-data.ts (658), types.ts
 │   ├── i18n.ts (311 LOC, 60+ keys)
@@ -1044,3 +1053,60 @@ After iterating from "same content as desktop" → "horizontal scroll" → "tab 
 ---
 
 **End of plan.**
+
+---
+
+## 10. Optional capability — 3D Incident Focus (post-refactor)
+
+Lumes may add a controlled **3D Incident Focus** mode after the reliability,
+selection, filtering, responsive, accessibility, and map-wrapper priorities
+are complete. This is an optional inspection lens for one selected incident,
+not a replacement for the national operational map.
+
+### Roadmap placement
+
+1. **Phase 1 — controlled incident camera focus:** feature-flagged camera
+   transition, pitch/zoom bounds, camera snapshot/restore, 2D fallback,
+   reduced-motion and device checks. No buildings, terrain, style swap, new
+   provider, rotation, or touch pitching.
+2. **Phase 2 — local 3D buildings:** only a dedicated, licensed building
+   vector source and `fill-extrusion` layer in the current style, behind all
+   operational overlays, with local coverage and tile-error fallback.
+3. **Phase 3 — terrain and slope context:** only after a licensed DEM source,
+   attribution, performance budget, and explicit review that the layer adds
+   terrain context rather than fire-spread prediction.
+
+### Non-negotiable guardrails
+
+- `NEXT_PUBLIC_LUMES_3D_INCIDENT_FOCUS` is off by default.
+- The existing MapLibre instance and CARTO/EOX basemap remain the owner.
+- `dragRotate`, `pitchWithRotate`, and `touchPitch` remain disabled globally.
+- Incidents, evacuation zones, risk, stations, satellite, aerial, biomass,
+  composite-risk, news, community, attribution, and current style restoration
+  must remain intact.
+- Provider licence, coverage, height/elevation fields, attribution, rate
+  limits, service-worker behaviour, and rollback must be documented before any
+  Phase 2/3 source is enabled.
+
+See [the detailed 3D Incident Focus plan](superpowers/plans/2026-07-11-3d-incident-focus.md)
+for the exact user flow, UI states, controller interfaces, layer ordering,
+acceptance criteria, tests, and rollback path.
+
+### Current continuation status (2026-07-13)
+
+Phase 1 camera-only Incident Focus is implemented behind the default-off
+`NEXT_PUBLIC_LUMES_3D_INCIDENT_FOCUS` flag and has passed the feature-enabled
+desktop, tablet, phone, reduced-motion, style-restoration, edge-viewport, and
+default-off rollback gates. The existing top-down operational map remains the
+authoritative default. No provider-independent Phase 2 work is safe to start:
+the CARTO/alternative building source still needs written entitlement,
+attribution, Portugal coverage/height, tile-error fallback, style-restoration,
+and mobile/GPU evidence. Terrain/slope remains behind a later DEM gate.
+
+The current continuation order therefore remains:
+
+1. Keep reliability, source freshness, filtering, incident clarity, responsive
+   ownership, accessibility, and release checks green.
+2. Keep Phase 2/3 3D context disabled until the provider gates are approved.
+3. Resolve community-attachment storage, moderation, privacy, retention, and
+   deletion decisions before adding upload UI or public media URLs.

@@ -1,9 +1,13 @@
 # Tile caching strategy
 
 The map component (`src/components/ember-map.tsx`) currently uses
-**CARTO basemaps** (free CDN) for vector tiles and **EOX Maps** for
-Sentinel-2 satellite imagery. Both providers serve billions of tile
-requests daily; their CDNs scale. The question for lumes.pt is:
+**CARTO basemaps** through an upstream CDN for vector tiles and **EOX Maps**
+for Sentinel-2 satellite imagery. The technical CDN path is live, but CARTO
+basemap entitlement is not inferred from a successful HTTP response: current
+official guidance requires an Enterprise licence for commercial use or a
+written grant for non-commercial use. Attribution and quota must therefore be
+confirmed against the actual Lumes entitlement before treating this as a
+production dependency.
 
 > When 30,000 concurrent users all pan the map of Portugal at the
 > same time, what happens?
@@ -11,14 +15,17 @@ requests daily; their CDNs scale. The question for lumes.pt is:
 This document covers the three viable strategies, from least
 operational work to most.
 
-## Strategy 1 — Trust the upstream CDNs (default, sufficient for ≤ 5 k concurrent)
+## Strategy 1 — Trust the upstream CDNs (default only after entitlement review)
 
-**How it works.** The frontend hits CARTO / EOX directly. Both have
-generous free tiers and geographically distributed CDNs. Browser
-caching carries most of the load.
+**How it works.** The frontend hits CARTO / EOX directly. Their CDN-backed
+delivery can be operationally simple, and browser caching carries most of the
+load, but the allowed usage, quota, and attribution come from the applicable
+provider terms rather than this document.
 
-**Limits.** CARTO's free tier enforces per-IP rate limits. At
-~5,000 concurrent users all panning the map, you'll trigger them.
+**Limits.** The current CARTO Basemap Terms record a default 1,000,000 tile
+requests per calendar month unless an order form changes the quota. The
+application must instrument tile errors/request volume and confirm the current
+entitlement; do not rely on an unsourced per-IP or concurrency assumption.
 
 **When to choose.** Launch and beta phase. Don't over-engineer a
 launch-day site.
@@ -30,8 +37,9 @@ curl -I "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 # Expect: cf-cache-status: HIT, age: 1234
 ```
 
-If the upstream's cache hit ratio starts dropping (visible in their
-public status pages), move to Strategy 2.
+If measured provider errors, quota headroom, or cache-miss cost become
+unacceptable, evaluate Strategy 2 with a controlled budget and attribution
+review.
 
 ## Strategy 2 — Front the upstream with a Cloudflare Worker cache
 
@@ -41,8 +49,12 @@ proxying tile requests, caching successful responses to **R2** for
 instead of the upstream URL. Cloudflare serves 100 % of repeated
 tile requests from R2 + edge cache.
 
-**Cost.** Workers Free covers ≤ 100 k req/day — covers our window.
-R2 free egress, $0.015/GB-mo storage. Total: **€0** at typical load.
+**Cost.** R2 has free egress, but the free operation allowances are not an
+unlimited viral tier. Workers Free includes 100k requests/day; a viral event
+can exceed that immediately. R2 currently includes 10 GB storage, 1 M Class A
+operations (writes), and 10 M Class B operations (reads) per month. The actual
+cost therefore depends on cache misses and origin reads, not browser tile
+fetches alone.
 
 **When to choose.** The launch has settled, ~5-10 k concurrent is
 normal, you need a guaranteed fast experience for Portugal.
@@ -53,15 +65,18 @@ Worker → paste → Deploy**. Then add a DNS record for `tiles.lumes.pt`
 pointing at the Worker (or proxy through Pages).
 
 **Limits.**
-- R2: 10 GB free, 1 M free reads/mo, 10 M free writes/mo. We
-  estimate ~5-10 GB of unique tiles to fully cover Portugal at
-  zooms 5-15. Free tier holds comfortably for the first months;
-  upgrade to paid R2 ($0.015/GB-mo) only when traffic grows.
+- R2: 10 GB free storage, 1 M free Class A operations (writes), and
+  10 M free Class B operations (reads) per month. We estimate ~5-10 GB of
+  unique tiles to cover Portugal at zooms 5-15. A cache-miss budget must be
+  measured before assuming the free tier is sufficient; paid storage is
+  currently $0.015/GB-month, with operation charges applying above the free
+  allowances.
 - Worker CPU time: 10 ms/invocation on Free. Tile proxying fits in
   ~5 ms; no concern.
-- CARTO's terms of service require attribution when proxying.
-  Use the EOX tile for satellite (which is BSD-licensed) and keep
-  CARTO with attribution displayed in the map's bottom-right.
+- CARTO's terms require prominent attribution when using its basemap. Use the
+  entitlement-specific CARTO/OpenStreetMap wording and keep it displayed in
+  the map's bottom-right. Do not proxy or mirror tiles until the applicable
+  terms, request budget, and cache behavior are reviewed.
 
 ## Strategy 3 — Self-host tiles via tileserver-gl + OpenMapTiles
 
@@ -162,17 +177,20 @@ hours, producing 30 M tile fetches total.
 
 | Strategy | Cost |
 | --- | ---: |
-| 1. Trust CDNs | €0 (or up to €30 if CARTO rate-limits force a paid plan) |
-| 2. Worker + R2 | **~€5** (R2 storage + reads overage) |
+| 1. Trust CDNs | entitlement- and usage-dependent |
+| 2. Worker + R2 | **usage-dependent** (Worker requests, R2 origin reads/writes, and storage) |
 | 3. Self-hosted | €0 (already-paid disk) |
 
-Strategy 2 is the right answer for lumes.pt at viral scale.
+Strategy 2 is a candidate for lumes.pt at viral scale, but only after a
+controlled cache-miss, Worker-request, and cost-budget test. It is not
+automatically a zero-cost viral path.
 Strategy 3 once you're a national-public-service tier and can't
 afford a single upstream failure.
 
 ## TL;DR
 
-For beta and launch: Strategy 1.
-For the first viral event: Strategy 2 (one Cloudflare Worker, no
-recurring cost).
+For beta and launch: Strategy 1 only after provider entitlement,
+attribution, and quota review.
+For a first viral event: evaluate Strategy 2 with measured Worker/R2
+cache-miss and cost budgets; it is not automatically free or unlimited.
 For long-term self-sufficiency: Strategy 3.

@@ -36,14 +36,14 @@ export function SectionError({
       <div className="text-[11px] font-medium text-[var(--ember-text)]">
         {title ?? t(lang, "error.sectionTitle")}
       </div>
-      <div className="text-[10px] text-[var(--ember-text-faint)] max-w-xs">
+      <div className="text-[length:var(--type-secondary)] text-[var(--ember-text-faint)] max-w-xs">
         {message ?? t(lang, "error.sectionMessage")}
       </div>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-1 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--ember-surface-2)] border border-[var(--ember-border)] hover:border-[var(--ember-accent)] text-[10px] text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] transition-colors"
+          className="mt-1 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--ember-surface-2)] border border-[var(--ember-border)] hover:border-[var(--ember-accent)] text-[length:var(--type-secondary)] text-[var(--ember-text-muted)] hover:text-[var(--ember-text)] transition-colors"
         >
           <RefreshCw className="w-2.5 h-2.5" aria-hidden="true" />
           <span>{t(lang, "error.retry")}</span>

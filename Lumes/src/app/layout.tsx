@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from "next";
-// Anti-AI typography (2026 hand-picked, less common than Geist/Inter):
-// - Fraunces (variable serif, optical sizing) for display — editorial character
-// - Bricolage Grotesque for body sans — distinctive variable grotesque with
-//   character, not the Vercel-default Geist/Inter
-// - JetBrains Mono for data/code — personality over Geist Mono
-import { Fraunces, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
+// Typography contract: IBM Plex Sans for UI and IBM Plex Mono for data.
+// Fraunces remains available only for the public brand mark.
+import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -15,19 +12,22 @@ const fraunces = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
   display: "swap",
+  // Fraunces is reserved for the brand mark; do not block the map shell on it.
+  preload: false,
   axes: ["opsz", "SOFT", "WONK"],
 });
 
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-sans",
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ui",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
-  axes: ["opsz", "wdth"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-data",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -80,7 +80,7 @@ export default function RootLayout({
   return (
     <html lang="pt-PT" suppressHydrationWarning>
       <body
-        className={`${fraunces.variable} ${bricolage.variable} ${jetbrainsMono.variable} font-sans antialiased bg-background text-foreground`}
+        className={`${fraunces.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} font-sans antialiased bg-background text-foreground`}
       >
         <ThemeProvider
           attribute="class"
@@ -92,15 +92,21 @@ export default function RootLayout({
             {children}
             <SWRegister />
             <SonnerToaster
-            position="top-center"
+            position="top-left"
             richColors
             closeButton
-            mobileOffset={{ top: 64 }}
+            // Keep transient feedback below the map's top status corridor on
+            // desktop and below the mobile summary/header safe area. This is
+            // shared by refresh, recovery, report, and follow feedback.
+            offset={{ top: 128, left: 384, right: 16 }}
+            mobileOffset={{ top: "calc(112px + env(safe-area-inset-top))", left: 12, right: 12 }}
             toastOptions={{
               style: {
                 background: "var(--ember-surface)",
                 border: "1px solid var(--ember-border)",
                 color: "var(--ember-text)",
+                width: "min(360px, calc(100vw - 32px))",
+                maxWidth: "calc(100vw - 32px)",
               },
             }}
             />

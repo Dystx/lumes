@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { trapFocus } from "@/lib/focus-trap";
+import { useBlockingOverlay } from "@/lib/blocking-overlay";
 
 interface OverlayDialogProps {
   ariaLabel: string;
@@ -22,19 +22,21 @@ export function OverlayDialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
+  useBlockingOverlay(true, panelRef, onClose);
+
   useEffect(() => {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const priorOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    panelRef.current?.focus();
     requestAnimationFrame(() => panelRef.current?.focus());
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (panelRef.current) trapFocus(panelRef.current, event);
-    };
-    window.addEventListener("keydown", onKeyDown, true);
     return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
       document.body.style.overflow = priorOverflow;
-      openerRef.current?.focus();
+      const restoreFocus = () => {
+        if (openerRef.current?.isConnected) openerRef.current.focus();
+      };
+      restoreFocus();
+      requestAnimationFrame(restoreFocus);
     };
   }, []);
 

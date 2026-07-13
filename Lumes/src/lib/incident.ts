@@ -175,12 +175,91 @@ export const SOURCE_LABEL: Record<SourceType, { pt: string; en: string }> = {
 };
 
 // ---------------- Portuguese date parsing ----------------
-// ANEPC dates come as "DD/MM/YYYY HH:MM" (Lisbon local). Convert to ISO.
-export function ptDateToISO(pt: string | undefined | null): string {
-  if (!pt) return new Date().toISOString();
-  const m = pt.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/);
-  if (!m) return new Date().toISOString();
-  return `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00Z`;
+// ANEPC dates come as "DD/MM/YYYY HH:MM" (Lisbon local). Convert to UTC ISO.
+const LISBON_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Lisbon",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+interface LisbonDateParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}
+
+function lisbonDatePartsAt(utcMs: number): LisbonDateParts {
+  const parts = Object.fromEntries(
+    LISBON_DATE_FORMATTER.formatToParts(new Date(utcMs))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  ) as Record<string, number>;
+  return {
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+    hour: parts.hour,
+    minute: parts.minute,
+    second: parts.second,
+  };
+}
+
+function lisbonLocalToUtcMs(parts: LisbonDateParts): number | null {
+  const wallClockMs = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  let candidateMs = wallClockMs;
+
+  // Solve the wall-clock → UTC offset iteratively because the offset changes
+  // across Lisbon daylight-saving transitions.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const observed = lisbonDatePartsAt(candidateMs);
+    const observedWallClockMs = Date.UTC(observed.year, observed.month - 1, observed.day, observed.hour, observed.minute, observed.second);
+    const nextCandidateMs = wallClockMs - (observedWallClockMs - candidateMs);
+    if (nextCandidateMs === candidateMs) break;
+    candidateMs = nextCandidateMs;
+  }
+
+  const resolved = lisbonDatePartsAt(candidateMs);
+  return resolved.year === parts.year &&
+    resolved.month === parts.month &&
+    resolved.day === parts.day &&
+    resolved.hour === parts.hour &&
+    resolved.minute === parts.minute &&
+    resolved.second === parts.second
+    ? candidateMs
+    : null;
+}
+
+export function ptDateToISO(pt: string | undefined | null): string | null {
+  if (!pt) return null;
+  const ptMatch = pt.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/);
+  const isoMatch = pt.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  const year = Number(ptMatch?.[3] ?? isoMatch?.[1]);
+  const month = Number(ptMatch?.[2] ?? isoMatch?.[2]);
+  const day = Number(ptMatch?.[1] ?? isoMatch?.[3]);
+  const hour = Number(ptMatch?.[4] ?? isoMatch?.[4]);
+  const minute = Number(ptMatch?.[5] ?? isoMatch?.[5]);
+  const second = Number(isoMatch?.[6] ?? 0);
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    !Number.isInteger(second) ||
+    month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59
+  ) return null;
+  const candidateMs = lisbonLocalToUtcMs({ year, month, day, hour, minute, second });
+  if (candidateMs === null) return null;
+  const candidate = new Date(candidateMs);
+  return candidate.toISOString().replace(".000Z", "Z");
 }
 
 // ---------------- Sorting ----------------
@@ -207,6 +286,41 @@ export function rankIncidents<T extends { status?: string; severity?: string; es
     if (areaA !== areaB) return areaB - areaA;
     return new Date(b.firstDetected || 0).getTime() - new Date(a.firstDetected || 0).getTime();
   });
+}
+
+/**
+ * Reconcile server-ranked priority IDs with the current live/query-visible
+ * collection before rendering clickable rows. Dashboard aggregates may be a
+ * few seconds older than the live feed; stale IDs must never render as rows
+ * that the shared selection guard cannot open.
+ */
+export function reconcilePriorityIncidents<T extends {
+  id: string;
+  status?: string;
+  severity?: string;
+  estimatedAreaHa?: number;
+  firstDetected?: string;
+}>(priorityIds: readonly string[], visible: readonly T[], limit = 20): T[] {
+  const byId = new Map(visible.map((incident) => [incident.id, incident]));
+  const selected: T[] = [];
+  const selectedIds = new Set<string>();
+
+  for (const id of priorityIds) {
+    const incident = byId.get(id);
+    if (!incident || selectedIds.has(id)) continue;
+    selected.push(incident);
+    selectedIds.add(id);
+    if (selected.length >= limit) return selected;
+  }
+
+  for (const incident of rankIncidents([...visible])) {
+    if (selectedIds.has(incident.id)) continue;
+    selected.push(incident);
+    selectedIds.add(incident.id);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
 }
 
 // ---------------- Geo dedup ----------------
@@ -295,5 +409,5 @@ export function mapSeverity(
 
 export function freshnessScore(observedAt: string): number {
   const ageHr = (Date.now() - new Date(observedAt).getTime()) / 3_600_000;
-  return Math.max(0, 1 - ageHr / 24);
+  return Math.min(1, Math.max(0, 1 - ageHr / 24));
 }

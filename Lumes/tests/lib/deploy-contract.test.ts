@@ -1,10 +1,11 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("deployment packaging contract", () => {
+  const rootWorkflowDir = join(process.cwd(), "..", ".github", "workflows");
   const preflight = "deploy/preflight-assets.sh";
   const requiredAssets = [
     "public/manifest.json",
@@ -75,6 +76,8 @@ describe("deployment packaging contract", () => {
     const script = readFileSync("deploy/deploy.sh", "utf8");
     const preflightSource = readFileSync(preflight, "utf8");
     expect(script).toContain('SERVER_ENTRY=".next/standalone/server.js"');
+    expect(script).toContain('if [[ ! -f "${SERVER_ENTRY}" ]]; then');
+    expect(script).toContain('Refusing to copy assets or restart the service.');
     expect(script).toContain('readlink -f "${SERVER_ENTRY}"');
     expect(script).toContain('bash "${ASSET_PREFLIGHT}" "${PWD}" filesystem');
     expect(script).toContain('bash "${ASSET_PREFLIGHT}" "${PWD}" git');
@@ -83,6 +86,59 @@ describe("deployment packaging contract", () => {
     expect(spawnSync("bash", ["-n", preflight]).status).toBe(0);
     expect(script).toContain('cp -R .next/static/. "${RUNTIME_DIR}/.next/static/"');
     expect(script).toContain('cp -R public/. "${RUNTIME_DIR}/public/"');
+  });
+
+  it("materializes standalone assets and remains idempotent", () => {
+    const root = mkdtempSync(join(tmpdir(), "lumes-standalone-"));
+    const appRoot = join(root, ".next", "standalone", "Lumes");
+    const nestedStatic = join(root, ".next", "static", "chunks", "app.js");
+    const nestedPublic = join(root, "public", "manifest.json");
+    const flattenScript = join(process.cwd(), "deploy", "flatten-standalone.js");
+
+    try {
+      mkdirSync(join(appRoot, ".next"), { recursive: true });
+      mkdirSync(join(root, ".next", "static", "chunks"), { recursive: true });
+      mkdirSync(join(root, "public"), { recursive: true });
+      writeFileSync(join(appRoot, "server.js"), "module.exports = {};\n");
+      writeFileSync(nestedStatic, "client chunk\n");
+      writeFileSync(nestedPublic, "{\"name\":\"Lumes\"}\n");
+
+      const first = spawnSync(process.execPath, [flattenScript], { cwd: root, encoding: "utf8" });
+      expect(first.status).toBe(0);
+      expect(lstatSync(join(root, ".next", "standalone", "server.js")).isSymbolicLink()).toBe(true);
+      expect(readlinkSync(join(root, ".next", "standalone", "server.js"))).toBe("Lumes/server.js");
+      expect(readFileSync(join(appRoot, ".next", "static", "chunks", "app.js"), "utf8")).toBe("client chunk\n");
+      expect(readFileSync(join(appRoot, "public", "manifest.json"), "utf8")).toBe("{\"name\":\"Lumes\"}\n");
+
+      const second = spawnSync(process.execPath, [flattenScript], { cwd: root, encoding: "utf8" });
+      expect(second.status).toBe(0);
+      expect(second.stdout).toContain("server.js already present at top level");
+      expect(existsSync(join(appRoot, ".next", "static", "chunks", "app.js"))).toBe(true);
+      expect(existsSync(join(appRoot, "public", "manifest.json"))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("copies assets when Next emits a top-level standalone server", () => {
+    const root = mkdtempSync(join(tmpdir(), "lumes-standalone-top-level-"));
+    const flattenScript = join(process.cwd(), "deploy", "flatten-standalone.js");
+
+    try {
+      mkdirSync(join(root, ".next", "standalone"), { recursive: true });
+      mkdirSync(join(root, ".next", "static", "chunks"), { recursive: true });
+      mkdirSync(join(root, "public"), { recursive: true });
+      writeFileSync(join(root, ".next", "standalone", "server.js"), "module.exports = {};\n");
+      writeFileSync(join(root, ".next", "static", "chunks", "app.js"), "client chunk\n");
+      writeFileSync(join(root, "public", "manifest.json"), "{\"name\":\"Lumes\"}\n");
+
+      const result = spawnSync(process.execPath, [flattenScript], { cwd: root, encoding: "utf8" });
+      expect(result.status).toBe(0);
+      expect(readFileSync(join(root, ".next", "standalone", ".next", "static", "chunks", "app.js"), "utf8")).toBe("client chunk\n");
+      expect(readFileSync(join(root, ".next", "standalone", "public", "manifest.json"), "utf8")).toBe("{\"name\":\"Lumes\"}\n");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("keeps local secrets, databases, tests, and build output out of rsync payloads", () => {
@@ -146,14 +202,82 @@ describe("deployment packaging contract", () => {
     expect(installer).not.toContain('bun install --frozen-lockfile --production && bun run build');
   });
 
+  it("pins standalone tracing to the Lumes checkout", () => {
+    const config = readFileSync("next.config.ts", "utf8");
+    expect(config).toContain('import path from "node:path"');
+    expect(config).toContain('outputFileTracingRoot: path.join(__dirname)');
+  });
+
   it("pins the Bun toolchain and prepares CI's isolated database", () => {
     const packageJson = readFileSync("package.json", "utf8");
     expect(packageJson).toContain('"packageManager": "bun@1.3.4"');
     expect(packageJson).toContain('"bun": "1.3.4"');
-    const ci = readFileSync(".github/workflows/ci.yml", "utf8");
+    const ci = readFileSync(join(rootWorkflowDir, "lumes-ci.yml"), "utf8");
     expect(ci).toContain("bun-version: 1.3.4");
     expect(ci).toContain("Prepare isolated empty database");
     expect(ci).toContain("bunx prisma db push --skip-generate");
+    expect(ci).toContain("working-directory: Lumes");
+  });
+
+  it("runs the root Lighthouse workflow against an isolated database", () => {
+    const lighthouse = readFileSync(join(rootWorkflowDir, "lumes-lighthouse.yml"), "utf8");
+    expect(lighthouse).toContain('DATABASE_URL: "file:./build-test.db"');
+    expect(lighthouse).toContain("Prepare isolated empty database");
+    expect(lighthouse).toContain("bun run test:perf");
+    expect(lighthouse).toContain("working-directory: Lumes");
+  });
+
+  it("keeps deployment verification at the repository root", () => {
+    const deploy = readFileSync(join(rootWorkflowDir, "lumes-deploy.yml"), "utf8");
+    expect(deploy).toContain('uses: ./.github/workflows/lumes-ci.yml');
+    expect(deploy).toContain('"Lumes/**"');
+    expect(deploy).toContain('".github/workflows/lumes-deploy.yml"');
+  });
+
+  it("runs the default-off Incident Focus smoke in CI and preserves browser logs", () => {
+    const packageJson = readFileSync("package.json", "utf8");
+    expect(packageJson).toContain('"test:e2e:incident-focus": "LUMES_URL=${LUMES_URL:-http://localhost:3000} LUMES_3D_E2E=0 bun tests/e2e/incident-focus.test.ts"');
+    expect(packageJson).toContain('"test:e2e:incident-focus:enabled": "LUMES_URL=${LUMES_URL:-http://localhost:3000} LUMES_3D_E2E=1 bun tests/e2e/incident-focus.test.ts"');
+    const ci = readFileSync(join(rootWorkflowDir, "lumes-ci.yml"), "utf8");
+    expect(ci).toContain("bun run test:e2e:incident-focus");
+    expect(ci).toContain("Build feature-enabled Incident Focus artifact");
+    expect(ci).toContain('NEXT_PUBLIC_LUMES_3D_INCIDENT_FOCUS: "1"');
+    expect(ci).toContain("bun run test:e2e:incident-focus:enabled");
+    expect(ci).toContain("LUMES_3D_REDUCED_MOTION=1 bun run test:e2e:incident-focus:enabled");
+    expect(ci).toContain("timeout-minutes: 20");
+    expect(ci).toContain("/tmp/lumes-3d-start.log");
+    expect(ci).toContain("Upload browser server log on failure");
+    expect(ci).toContain("/tmp/lumes-start.log");
+    expect(ci).toContain("actions/upload-artifact@v4");
+  });
+
+  it("runs the reliability browser matrix against the standalone server", () => {
+    const packageJson = readFileSync("package.json", "utf8");
+    const ci = readFileSync(join(rootWorkflowDir, "lumes-ci.yml"), "utf8");
+    const lighthouse = readFileSync("lighthouserc.json", "utf8");
+    for (const script of [
+      '"test:e2e:map-style":',
+      '"test:e2e:data-trust":',
+      '"test:e2e:following":',
+      '"test:e2e:history":',
+      '"test:e2e:ownership":',
+      '"test:e2e:mobile-refresh":',
+    ]) {
+      expect(packageJson).toContain(script);
+    }
+    for (const suite of [
+      "bun run test:e2e:map-style",
+      "bun run test:e2e:data-trust",
+      "bun run test:e2e:following",
+      "bun run test:e2e:history",
+      "bun run test:e2e:ownership",
+      "bun run test:e2e:mobile-refresh",
+    ]) {
+      expect(ci).toContain(suite);
+    }
+    expect(ci).toContain("LUMES_E2E_SEED=1 bun scripts/seed-e2e-db.ts");
+    expect(ci).toContain("bun .next/standalone/server.js");
+    expect(lighthouse).toContain('"startServerCommand": "PORT=3001 bun .next/standalone/server.js"');
   });
 
   it("keeps the browser security contract explicit for map providers", () => {

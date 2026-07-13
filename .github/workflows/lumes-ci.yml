@@ -1,0 +1,159 @@
+name: Lumes CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Lumes/**"
+      - ".github/workflows/lumes-ci.yml"
+      - ".github/workflows/lumes-deploy.yml"
+      - ".github/workflows/lumes-lighthouse.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Lumes/**"
+      - ".github/workflows/lumes-ci.yml"
+      - ".github/workflows/lumes-deploy.yml"
+      - ".github/workflows/lumes-lighthouse.yml"
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: Lumes
+
+jobs:
+  verify:
+    name: Lint, tests, build, browser accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.4
+
+      - name: Cache Prisma client
+        uses: actions/cache@v4
+        with:
+          path: |
+            Lumes/node_modules/.prisma
+            Lumes/node_modules/@prisma/client
+          key: prisma-${{ runner.os }}-${{ hashFiles('Lumes/prisma/schema.prisma') }}
+          restore-keys: |
+            prisma-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bunx prisma generate
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+        env:
+          DATABASE_URL: "file:./build-test.db"
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Prepare isolated empty database
+        run: bunx prisma db push --skip-generate
+        env:
+          DATABASE_URL: "file:./build-test.db"
+
+      - name: Lighthouse budgets
+        run: bun run test:perf
+        env:
+          DATABASE_URL: "file:./build-test.db"
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Browser accessibility matrix
+        env:
+          DATABASE_URL: "file:./build-test.db"
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          set -euo pipefail
+          bunx prisma db push --skip-generate
+          LUMES_E2E_SEED=1 bun scripts/seed-e2e-db.ts
+          bun .next/standalone/server.js > /tmp/lumes-start.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID"' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null
+          bun run test:e2e:a11y
+          bun run test:e2e:aerial
+          bun run test:e2e:biomass
+          bun run test:e2e:risk
+          bun run test:e2e:follow
+          bun run test:e2e:incident-focus
+          bun run test:e2e:map-style
+          bun run test:e2e:data-trust
+          bun run test:e2e:following
+          bun run test:e2e:history
+          bun run test:e2e:ownership
+          bun run test:e2e:mobile-refresh
+          bun run test:e2e:responsive
+          bun run test:e2e:shortcuts
+          bun run test:e2e:public
+          bun run test:e2e:headers
+
+      - name: Build feature-enabled Incident Focus artifact
+        run: bun run build
+        env:
+          DATABASE_URL: "file:./build-test.db"
+          NEXT_PUBLIC_LUMES_3D_INCIDENT_FOCUS: "1"
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Feature-enabled Incident Focus browser gate
+        env:
+          DATABASE_URL: "file:./build-test.db"
+          NEXT_PUBLIC_LUMES_3D_INCIDENT_FOCUS: "1"
+          LUMES_3D_FIXTURE: "1"
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          set -euo pipefail
+          bunx prisma db push --skip-generate
+          LUMES_E2E_SEED=1 bun scripts/seed-e2e-db.ts
+          bun .next/standalone/server.js > /tmp/lumes-3d-start.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID"' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null
+          bun run test:e2e:incident-focus:enabled
+          LUMES_3D_REDUCED_MOTION=1 bun run test:e2e:incident-focus:enabled
+
+      - name: Upload browser server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumes-browser-server-log
+          path: |
+            /tmp/lumes-start.log
+            /tmp/lumes-3d-start.log
+          if-no-files-found: ignore

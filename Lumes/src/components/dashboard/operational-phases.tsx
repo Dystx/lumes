@@ -34,14 +34,14 @@ export function OperationalPhases({
   return (
     <div className="px-4 py-3 border-b border-[var(--ember-border)]">
       <div className="flex items-center justify-between mb-2.5">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
+        <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium">
           {lang === "pt" ? "Fases Operacionais" : "Operational Phases"}
         </div>
         {phaseFilter && (
           <button
             type="button"
             onClick={() => setPhaseFilter(null)}
-            className="text-[10px] text-[var(--ember-accent)] hover:underline flex items-center gap-1"
+            className="text-meta text-[var(--ember-accent)] hover:underline flex items-center gap-1"
             aria-label={lang === "pt" ? "Limpar filtro de fase" : "Clear phase filter"}
           >
             <X className="w-2.5 h-2.5" />

@@ -2,6 +2,7 @@
 
 import { Play, Pause, SkipBack, SkipForward, Clock } from "@/components/icons/phosphor-icons";
 import { t, type Language } from "@/lib/i18n";
+import type { MapChromeInsets } from "@/lib/map-chrome";
 
 interface PlaybackBarProps {
   hour: number;
@@ -11,6 +12,7 @@ interface PlaybackBarProps {
   onSkipBack: () => void;
   onSkipForward: () => void;
   lang: Language;
+  chromeInsets?: Pick<MapChromeInsets, "bottom" | "right">;
 }
 
 export function PlaybackBar({
@@ -21,6 +23,7 @@ export function PlaybackBar({
   onSkipBack,
   onSkipForward,
   lang,
+  chromeInsets,
 }: PlaybackBarProps) {
   // Map hour (-24..0) to percentage (0..100)
   const pct = ((hour + 24) / 24) * 100;
@@ -28,7 +31,7 @@ export function PlaybackBar({
   // Compact "Discover playback" pill when at hour=0
   if (hour === 0 && !isPlaying) {
     return (
-      <div className="absolute bottom-4 right-3 lg:right-6 z-20">
+      <div className="absolute z-20" style={{ bottom: 16 + (chromeInsets?.bottom ?? 0), right: chromeInsets?.right ?? 12 }} data-testid="playback-bar" data-map-chrome-region="playback">
         <button
           onClick={onTogglePlay}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--ember-surface)]/90 backdrop-blur-md border border-[var(--ember-border)] hover:border-[var(--ember-accent)] transition-colors shadow-[var(--ember-shadow-sm)] text-[11px] text-[var(--ember-text-muted)] hover:text-[var(--ember-text)]"
@@ -43,7 +46,7 @@ export function PlaybackBar({
   }
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center px-3 lg:px-6 h-14 lg:h-20 bg-[var(--ember-bg)]/90 backdrop-blur-md border-t border-[var(--ember-border)]">
+    <div className="absolute left-0 z-20 flex items-center px-3 lg:px-6 h-14 lg:h-20 bg-[var(--ember-bg)]/90 backdrop-blur-md border-t border-[var(--ember-border)]" style={{ bottom: chromeInsets?.bottom ?? 0, right: chromeInsets?.right ?? 0 }} data-testid="playback-bar" data-map-chrome-region="playback">
       <div className="flex items-center gap-2 lg:gap-3 pr-3 lg:pr-5 border-r border-[var(--ember-border)]">
         <button
           onClick={onSkipBack}
@@ -73,7 +76,7 @@ export function PlaybackBar({
       </div>
 
       <div className="flex-1 flex flex-col gap-0.5 md:gap-1 ml-3 md:ml-5 min-w-0">
-        <div className="flex justify-between text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)]">
+        <div className="flex justify-between text-meta uppercase tracking-wider text-[var(--ember-text-faint)]">
           <span className="hidden lg:flex items-center gap-1 font-medium">
             <Clock className="w-3 h-3" />
             {lang === "pt" ? "Reprodução Histórica" : "Historical Playback"}
@@ -102,7 +105,7 @@ export function PlaybackBar({
             style={{ left: `calc(${pct}% - 6px)` }}
           />
         </div>
-        <div className="flex justify-between text-[9px] text-[var(--ember-text-faint)] font-mono">
+        <div className="flex justify-between text-meta text-[var(--ember-text-faint)] font-mono">
           <span>T-24h</span>
           <span>{t(lang, "playback.now")}</span>
         </div>

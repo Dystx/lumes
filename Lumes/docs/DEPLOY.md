@@ -1,6 +1,11 @@
 # Lumes.pt — Server Deployment Documentation
 
-> Last updated: 2026-07-09 (full no-remote deploy complete; service active with /usr/local/bin/bun; Caddy headers; site working, no more error/unformatted. Gates: lint 0, tests 10/10, build success. Confirmed current code.)
+> Last updated: 2026-07-13 (current worktree deployed and verified over HTTPS; see the latest handoff entry for evidence)
+
+> **Production note (2026-07-13):** the server baseline below records the
+> current service configuration. The current worktree was deployed through the
+> server-only build path, and the HTTPS verifier plus fresh-browser smoke passed.
+> The 3D provider/building/terrain capability remains separately gated.
 
 ## Architecture overview
 
@@ -138,6 +143,13 @@ the runnable standalone `server.js` (including a nested
 required: without them CSS, client chunks, or `/sw.js` return 404 from the
 standalone runtime.
 
+`next.config.ts` also pins `outputFileTracingRoot` to this checkout. The
+repository lives beside a shared parent workspace with a different lockfile
+and Prisma tree; leaving tracing root implicit can package the wrong Prisma
+client into the standalone bundle. The current flatten helper accepts both
+Next's top-level `server.js` output and the older nested layout, so the
+stable entrypoint remains `.next/standalone/server.js` in either case.
+
 ## Deploy flow
 
 ### Local → Server
@@ -149,13 +161,16 @@ standalone runtime.
    ```bash
    rsync -az --delete \
      --exclude='.git' --exclude='node_modules' --exclude='.next' \
-     --exclude='db/*.db' --exclude='prisma/*.db' --exclude='*.log' \
+     --exclude='db/*.db' --exclude='prisma/*.db' --exclude='backups/' \
+     --exclude='*.log' \
      --exclude='.env*' --exclude='tests' \
      Lumes/ lumes@152.53.145.9:/opt/apps/lumes/
    ```
 
-   Note: `--exclude='.next'` so we don't overwrite the server's build
-   until we explicitly rebuild there.
+   Note: `--exclude='.next'` so we don't overwrite the server's build until we
+   explicitly rebuild there. `--exclude='backups/'` preserves the server's
+   retained database backups while stale source files are removed by
+   `--delete`.
 4. **SSH to server** and rebuild:
 
    ```bash
@@ -184,7 +199,10 @@ bash deploy/deploy.sh lumes@lumes.pt    # push from local (or use --server on bo
 bash deploy/deploy.sh                   # rebuild only (auto-detects)
 ```
 
-Current state (2026-07-10): service active with `/usr/local/bin/bun`; standalone static and public assets are bundled at deploy time; FIRMS key is required for full satellite coverage.
+Historical server state (2026-07-10): service was active with
+`/usr/local/bin/bun`; standalone static and public assets were bundled at
+deploy time; FIRMS key was required for full satellite coverage. Re-run the
+HTTPS verifier before treating any of these claims as current.
 ```
 
 ## The "chunks not loading" incident (2026-07-09)
@@ -253,9 +271,10 @@ no longer exists**.
 
 ### How to avoid this in future
 
-- **Bump `CACHE_NAME` in `public/sw.js` on every deploy** with breaking
-  build changes. Add a CI check that fails if `BUILD_ID` changed
-  but `CACHE_NAME` didn't.
+- **Do not bump `CACHE_NAME` for ordinary Next builds**: hashed
+  `/_next/static/` chunks bypass the service-worker cache. Bump it only when
+  the worker's own precache/static-cache contract changes, so activation can
+  retire the previous runtime cache deliberately.
 - **Add a `Cache-Control: no-cache, must-revalidate`** header to
   `/_next/static/chunks/*` in Caddy so the browser always asks the
   server if the file is still there. (Currently relying on

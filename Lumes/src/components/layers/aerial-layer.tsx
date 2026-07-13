@@ -5,13 +5,22 @@
 // color-coded by altitude, with optional call sign labels. Polls the
 // /api/aerial endpoint every 30 seconds and updates the map.
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { Map as MaplibreMap } from "maplibre-gl";
+import { fetchJsonWithTimeout } from "@/lib/use-fetch";
+import { setGeoJSONSourceData } from "@/lib/map/map-source";
+import { normalizeAerialOverlayResponse } from "@/lib/aerial/overlay";
+import {
+  createAerialLoadingStatus,
+  deriveAerialLayerStatus,
+  type AerialLayerStatus,
+} from "@/lib/aerial/status";
 
 interface Props {
   map: MaplibreMap | null;
   enabled: boolean;
   showLabels?: boolean;
+  onStatusChange?: (status: AerialLayerStatus | null) => void;
 }
 
 const SOURCE_ID = "aerial-overlay";
@@ -19,6 +28,7 @@ const AIRCRAFT_LAYER = "aerial-aircraft";
 const HELI_LAYER = "aerial-helicopters";
 const LABEL_LAYER = "aerial-labels";
 const HELI_MAX_ALT_FT = 3000;
+const REQUEST_TIMEOUT_MS = 10_000;
 
 // Color by altitude (similar to FlightRadar24's altitude gradient)
 function colorForAltitudeFt(alt: number | null): string {
@@ -37,43 +47,70 @@ function isRotary(aircraftType: string | null, registration: string | null): boo
     /^(EC|HB)/i.test(registration ?? "");
 }
 
-interface AircraftSummary {
-  count: number;
-  helicopterCount: number;
-  sourceError: boolean;
-  source: string | null;
-}
-
-export default function AerialLayer({ map, enabled, showLabels = true }: Props) {
-  const [summary, setSummary] = useState<AircraftSummary | null>(null);
+export default function AerialLayer({ map, enabled, showLabels = true, onStatusChange }: Props) {
 
   useEffect(() => {
     if (!map || !enabled) return;
     let cancelled = false;
+    let inFlight = false;
+    let activeController: AbortController | null = null;
     let interval: ReturnType<typeof setInterval> | null = null;
+    onStatusChange?.(createAerialLoadingStatus());
 
-    const fetchAndApply = async () => {
+    const clearOverlay = (): void => {
+      try {
+        if (map.getLayer(AIRCRAFT_LAYER)) map.removeLayer(AIRCRAFT_LAYER);
+        if (map.getLayer(HELI_LAYER)) map.removeLayer(HELI_LAYER);
+        if (map.getLayer(LABEL_LAYER)) map.removeLayer(LABEL_LAYER);
+        if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+      } catch {
+        // The style may be transitioning; the restoration boundary owns it.
+      }
+    };
+
+    const fetchAndApply = async (): Promise<void> => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      const controller = new AbortController();
+      activeController = controller;
       const b = map.getBounds();
       const bbox = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
       try {
-        const r = await fetch(`/api/aerial?bbox=${bbox}`);
-        if (!r.ok) {
-          if (!cancelled) setSummary({ count: 0, helicopterCount: 0, sourceError: true, source: null });
-          return;
-        }
-        const data = await r.json();
+        const raw = await fetchJsonWithTimeout(
+          `/api/aerial?bbox=${bbox}`,
+          { controller, timeoutMs: REQUEST_TIMEOUT_MS },
+        );
         if (cancelled) return;
 
+        const normalized = normalizeAerialOverlayResponse(raw);
+        if (normalized.state === "invalid") {
+          clearOverlay();
+          onStatusChange?.(deriveAerialLayerStatus({ httpOk: false, count: 0, sourcesLive: 0, reason: normalized.reason }));
+          return;
+        }
+
+        if (normalized.state === "empty") {
+          clearOverlay();
+          onStatusChange?.(deriveAerialLayerStatus({
+            httpOk: true,
+            count: 0,
+            sourcesLive: normalized.data.sourcesLive,
+            reason: normalized.data.reason,
+          }));
+          return;
+        }
+
         // Mark helicopters via registration / type heuristics
-        const features = (data.features ?? []).map((f: {
-          type: string;
-          geometry: { type: string; coordinates: [number, number, number | null] };
-          properties: Record<string, unknown>;
-        }) => {
-          const acType = (f.properties.aircraftType as string | null) ?? null;
-          const reg = (f.properties.registration as string | null) ?? null;
+        const features = normalized.data.features.map((f) => {
+          const acType = f.properties.aircraftType;
+          const reg = f.properties.registration;
+          const [longitude, latitude, altitude] = f.geometry.coordinates;
+          const coordinates: GeoJSON.Position = altitude == null
+            ? [longitude, latitude]
+            : [longitude, latitude, altitude];
           return {
             ...f,
+            geometry: { type: "Point" as const, coordinates },
             properties: {
               ...f.properties,
               _isHeli: isRotary(acType, reg),
@@ -88,17 +125,21 @@ export default function AerialLayer({ map, enabled, showLabels = true }: Props) 
         ).length;
 
         const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features };
-        const src = map.getSource(SOURCE_ID) as { setData: (d: unknown) => void } | undefined;
-        if (src) {
-          src.setData(fc);
+        if (map.getSource(SOURCE_ID)) {
+          if (!setGeoJSONSourceData(map, SOURCE_ID, fc)) {
+            clearOverlay();
+            onStatusChange?.(deriveAerialLayerStatus({ httpOk: false, count: 0, sourcesLive: 0 }));
+            return;
+          }
         } else {
           map.addSource(SOURCE_ID, { type: "geojson", data: fc });
 
           // Fixed-wing aircraft: rotating plane symbol via SVG icon
           map.loadImage("/icons/plane.svg").then((img) => {
-            if (cancelled || !map.hasImage("plane-icon")) return;
             if (cancelled) return;
-            map.addImage("plane-icon", img.data as ImageBitmap);
+            if (!map.hasImage("plane-icon")) {
+              map.addImage("plane-icon", img.data as ImageBitmap);
+            }
             // (Image added; we use the symbol layer below for rotation)
           }).catch(() => {
             // Fallback: add a small inline SVG as image
@@ -176,17 +217,22 @@ export default function AerialLayer({ map, enabled, showLabels = true }: Props) 
         }
 
         if (!cancelled) {
-          setSummary({
+          onStatusChange?.(deriveAerialLayerStatus({
+            httpOk: true,
             count: features.length,
             helicopterCount: heliCount,
-            sourceError: false,
-            source: data.meta?.sources_live > 0
-              ? `${data.meta.sources_live} of 3 sources`
-              : "fallback",
-          });
+            sourcesLive: normalized.data.sourcesLive,
+            reason: normalized.data.reason,
+          }));
         }
-      } catch {
-        if (!cancelled) setSummary({ count: 0, helicopterCount: 0, sourceError: true, source: null });
+      } catch (error: unknown) {
+        if (!cancelled && !(error instanceof DOMException && error.name === "AbortError")) {
+          clearOverlay();
+          onStatusChange?.(deriveAerialLayerStatus({ httpOk: false, count: 0, sourcesLive: 0 }));
+        }
+      } finally {
+        if (activeController === controller) activeController = null;
+        inFlight = false;
       }
     };
 
@@ -195,9 +241,12 @@ export default function AerialLayer({ map, enabled, showLabels = true }: Props) 
 
     return () => {
       cancelled = true;
+      activeController?.abort();
       if (interval) clearInterval(interval);
+      onStatusChange?.(null);
+      clearOverlay();
     };
-  }, [map, enabled, showLabels]);
+  }, [map, enabled, onStatusChange, showLabels]);
 
   // Cleanup layers on disable
   useEffect(() => {

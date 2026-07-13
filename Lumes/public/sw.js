@@ -40,7 +40,9 @@ self.addEventListener("activate", (event) => {
 		(async () => {
 			const keys = await caches.keys();
 			await Promise.all(
-				keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)),
+				keys
+					.filter((k) => k.startsWith("lumes-") && k !== CACHE_NAME)
+					.map((k) => caches.delete(k)),
 			);
 			await self.clients.claim();
 		})(),
@@ -64,9 +66,12 @@ self.addEventListener("fetch", (event) => {
 			(async () => {
 				try {
 					const fresh = await fetch(req);
-					// Update precache in background for next time.
-					const cache = await caches.open(CACHE_NAME);
-					cache.put(req, fresh.clone()).catch(() => {});
+					// Never turn an origin error page into the offline cache.
+					if (fresh.ok) {
+						// Update precache in background for next time.
+						const cache = await caches.open(CACHE_NAME);
+						event.waitUntil(cache.put(req, fresh.clone()).catch(() => {}));
+					}
 					return fresh;
 				} catch {
 					// Offline: try cache, then offline page.
@@ -96,27 +101,31 @@ self.addEventListener("fetch", (event) => {
 				if (cached) {
 					// Check age — if older than max age, refetch in background.
 					const dateHeader = cached.headers.get("date");
-					const ageOk =
-						!dateHeader ||
-						Date.now() - new Date(dateHeader).getTime() <
-							STATIC_CACHE_MAX_AGE_MS;
+					const cachedAt = dateHeader ? new Date(dateHeader).getTime() : Number.NaN;
+					// Missing or malformed Date headers are treated as stale. This
+					// avoids keeping an otherwise valid asset forever without a
+					// freshness signal, while still serving the last-known-good bytes.
+					const ageOk = Number.isFinite(cachedAt) &&
+						Date.now() - cachedAt >= 0 &&
+						Date.now() - cachedAt < STATIC_CACHE_MAX_AGE_MS;
 					if (ageOk) return cached;
 
 					// Stale: serve cached, refetch in background.
-					event.waitUntil(
-						fetch(req)
-							.then((res) => {
-								if (res.ok) cache.put(req, res);
-							})
-							.catch(() => {}),
+						event.waitUntil(
+							fetch(req)
+								.then((res) => {
+									if (res.ok) return cache.put(req, res).catch(() => {});
+									return undefined;
+								})
+								.catch(() => {}),
 					);
 					return cached;
 				}
 				// No cache: fetch + cache.
 				try {
 					const res = await fetch(req);
-					if (res.ok) cache.put(req, res.clone());
-					return res;
+					if (res.ok) void cache.put(req, res.clone()).catch(() => {});
+					return res.ok ? res : new Response("offline", { status: 503 });
 				} catch {
 					return new Response("offline", { status: 503 });
 				}

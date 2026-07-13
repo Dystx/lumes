@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import type { FireStationsResponse, FireStation } from "@/lib/types";
 import { cached } from "@/lib/api/cache";
 import { createDataStateMeta } from "@/lib/data-state";
+import { logServerFailure } from "@/lib/observability";
 
 const OVERPASS_QUERY = `[out:json][timeout:60];
 (
@@ -19,6 +20,60 @@ const OVERPASS_URLS = [
   "https://overpass-api.de/api/interpreter",
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
+
+interface OverpassElement {
+  type?: unknown;
+  id?: unknown;
+  lat?: unknown;
+  lon?: unknown;
+  tags?: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function isWithinOverpassQueryBounds(lat: number, lon: number): boolean {
+  return lat >= 36.5 && lat <= 42.2 && lon >= -9.5 && lon <= -6.2;
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function parseOverpassElements(value: unknown): FireStation[] {
+  if (!isRecord(value) || !Array.isArray(value.elements)) return [];
+  return value.elements.flatMap((raw): FireStation[] => {
+    if (!isRecord(raw)) return [];
+    const element: OverpassElement = raw;
+    const id = finiteNumber(element.id);
+    const lat = finiteNumber(element.lat);
+    const lon = finiteNumber(element.lon);
+    if (
+      element.type !== "node" ||
+      id === undefined ||
+      lat === undefined ||
+      lon === undefined ||
+      !isWithinOverpassQueryBounds(lat, lon)
+    ) return [];
+    const tags = isRecord(element.tags) ? element.tags : {};
+    return [{
+      id,
+      lat,
+      lon,
+      name: stringValue(tags.name),
+      operator: stringValue(tags.operator),
+      phone: stringValue(tags.phone) ?? stringValue(tags["contact:phone"]),
+      website: stringValue(tags.website) ?? stringValue(tags["contact:website"]),
+      wikidata: stringValue(tags.wikidata),
+      city: stringValue(tags["addr:city"]),
+    }];
+  });
+}
 
 // Hand-curated fallback for the major Portuguese fire stations. Used
 // only if every Overpass mirror fails. Coordinates from public sources
@@ -47,7 +102,8 @@ const FALLBACK_STATIONS: FireStation[] = [
 ];
 
 export async function GET() {
-  const data = await cached("fire-stations", 24 * 60 * 60 * 1000, async () => {
+  try {
+    const data = await cached("fire-stations", 24 * 60 * 60 * 1000, async () => {
     // Try Overpass mirrors with a short timeout. If all fail (the public
     // Overpass instances are often slow or rate-limited), fall through
     // to the curated Portuguese fallback list so the map layer is never
@@ -67,23 +123,8 @@ export async function GET() {
 
         if (!res.ok) continue;
 
-        const raw: any = await res.json();
-        const elements: any[] = (raw as any).elements || [];
-        if (elements.length === 0) continue;
-
-        const stations: FireStation[] = (elements
-          .filter((el) => el.type === "node" && el.lat && el.lon)
-          .map((el) => ({
-            id: el.id,
-            lat: el.lat,
-            lon: el.lon,
-            name: el.tags?.name,
-            operator: el.tags?.operator,
-            phone: el.tags?.phone || el.tags?.["contact:phone"],
-            website: el.tags?.website || el.tags?.["contact:website"],
-            wikidata: el.tags?.wikidata,
-            city: el.tags?.["addr:city"],
-          })) as FireStation[]);
+        const stations = parseOverpassElements(await res.json());
+        if (stations.length === 0) continue;
 
         return {
           source: "osm-overpass",
@@ -107,11 +148,26 @@ export async function GET() {
       dataState: "fallback",
       sourceNote: "Overpass mirrors unavailable — serving curated list",
     } as FireStationsResponse;
-  });
+    });
 
-  return NextResponse.json({ ...data, dataState: data.dataState === "fallback"
-    ? createDataStateMeta("fallback", data.sourceNote, data.fetchedAt, data.source)
-    : createDataStateMeta("healthy", undefined, data.fetchedAt, data.source) }, {
-    headers: { "Cache-Control": "public, s-maxage=86400" },
-  });
+    return NextResponse.json({ ...data, dataState: data.dataState === "fallback"
+      ? createDataStateMeta("fallback", data.sourceNote, data.fetchedAt, data.source)
+      : createDataStateMeta("healthy", undefined, data.fetchedAt, data.source) }, {
+      headers: { "Cache-Control": "public, s-maxage=86400" },
+    });
+  } catch (err: unknown) {
+    logServerFailure("fire-stations.fetch", err, { route: "/api/fire-stations", retryable: true });
+    const fetchedAt = new Date().toISOString();
+    return NextResponse.json(
+      {
+        source: "osm-fire-stations",
+        fetchedAt,
+        count: 0,
+        stations: [],
+        error: "Fire station data is temporarily unavailable.",
+        dataState: createDataStateMeta("retryable-error", "Fire station source unavailable", fetchedAt, "osm-fire-stations"),
+      },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

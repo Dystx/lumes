@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { cached } from "@/lib/api/cache";
 import { createDataStateMeta } from "@/lib/data-state";
+import { logServerFailure } from "@/lib/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,31 +22,36 @@ const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 export async function GET() {
   const start = Date.now();
 
-  const data = await cached("health-check", 30_000, async () => {
+  let data: { checks: Record<string, "ok" | "fail" | "skip">; healthy: boolean; lastUpdated: Date | null };
+  try {
+    data = await cached("health-check", 30_000, async () => {
     const checks: Record<string, "ok" | "fail" | "skip"> = {};
     let healthy = true;
     let lastUpdated: Date | null = null;
 
     // Database check
     try {
-      const topRow = await db.incident.findFirst({
-        // `lastUpdated` is the upstream incident event time and can stay old
-        // for hours when an active fire has no state change. `lastSeen` is
-        // refreshed by each successful ingest pass, which is the signal this
-        // liveness endpoint actually needs.
-        orderBy: { lastSeen: "desc" },
-        select: { lastSeen: true },
-      });
+      const [topRow, incidentCount] = await Promise.all([
+        db.incident.findFirst({
+          // `lastUpdated` is the upstream incident event time and can stay old
+          // for hours when an active fire has no state change. `lastSeen` is
+          // refreshed by each successful ingest pass, which is the signal this
+          // liveness endpoint actually needs.
+          orderBy: { lastSeen: "desc" },
+          select: { lastSeen: true },
+        }),
+        db.incident.count(),
+      ]);
       lastUpdated = topRow?.lastSeen ?? null;
       checks.database = "ok";
 
-      // Staleness: if no incident has been seen in 5 minutes, the
-      // cron isn't running. We treat this as degraded but not full
-      // outage (the read path still works for cached responses).
-      if (
-        !lastUpdated ||
-        Date.now() - new Date(lastUpdated).getTime() > STALE_THRESHOLD_MS
-      ) {
+      // An empty database is a valid clean-runner state: the database is
+      // reachable, but there is no ingestion history to mark stale yet.
+      // Staleness only applies after at least one incident has been stored.
+      const stale = incidentCount > 0 && (
+        !lastUpdated || Date.now() - lastUpdated.getTime() > STALE_THRESHOLD_MS
+      );
+      if (stale) {
         checks.database = "fail";
         healthy = false;
       }
@@ -54,8 +60,24 @@ export async function GET() {
       healthy = false;
     }
 
-    return { checks, healthy, lastUpdated };
-  });
+      return { checks, healthy, lastUpdated };
+    });
+  } catch (err: unknown) {
+    logServerFailure("health.fetch", err, { route: "/api/health", retryable: true });
+    return NextResponse.json(
+      {
+        status: "degraded",
+        timestamp: new Date().toISOString(),
+        uptime_s: Math.round(process.uptime()),
+        latencyMs: Date.now() - start,
+        checks: { cache: "fail" },
+        lastIncidentUpdate: null,
+        version: process.env.npm_package_version ?? "1.0.0",
+        dataState: createDataStateMeta("stale", "Health cache unavailable"),
+      },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   const { checks, healthy, lastUpdated } = data;
 

@@ -4,7 +4,7 @@ import { createNewsletterActionToken, readNewsletterActionToken } from "@/lib/ne
 describe("newsletter action tokens", () => {
   it("round-trips and expires signed tokens", () => {
     const token = createNewsletterActionToken("hash", 1_000);
-    expect(readNewsletterActionToken(token, 1_001)).toBe("hash");
+    expect(readNewsletterActionToken(token, 1_001)).toEqual({ emailHash: "hash", issuedAt: 1_000, expiresAt: 86_401_000 });
     expect(readNewsletterActionToken(token, 86_401_001)).toBeNull();
   });
 

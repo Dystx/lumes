@@ -10,10 +10,31 @@ import { NextResponse } from "next/server";
 import type { SatelliteResponse, SatelliteDetection } from "@/lib/types";
 import { cached } from "@/lib/api/cache";
 import { rateLimit, clientKey } from "@/lib/api/rate-limit";
+import { createDataStateMeta } from "@/lib/data-state";
 
 const FIRMS_BASE = "https://firms.modaps.eosdis.nasa.gov/api/area/csv";
 const MAP_KEY = process.env.FIRMS_MAP_KEY ?? "";
-const PORTUGAL_BBOX = "-9,36,42.2,-6";
+const PORTUGAL_BBOX = "-9.5,36,42.2,-6";
+const FIRMS_BOUNDS = { west: -9.5, south: 36, east: -6, north: 42.2 } as const;
+
+function isWithinFirmsBbox(latitude: number, longitude: number): boolean {
+  return latitude >= FIRMS_BOUNDS.south
+    && latitude <= FIRMS_BOUNDS.north
+    && longitude >= FIRMS_BOUNDS.west
+    && longitude <= FIRMS_BOUNDS.east;
+}
+
+function parseFiniteCsvNumber(value: string | undefined): number | null {
+  const normalized = value?.trim() ?? "";
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseNonNegativeCsvNumber(value: string | undefined): number | null {
+  const parsed = parseFiniteCsvNumber(value);
+  return parsed !== null && parsed >= 0 ? parsed : null;
+}
 
 function parseFIRMS(csv: string): SatelliteDetection[] {
   const lines = csv.trim().split("\n");
@@ -24,10 +45,12 @@ function parseFIRMS(csv: string): SatelliteDetection[] {
     const values = lines[i].split(",");
     const row: Record<string, string> = {};
     headers.forEach((h, idx) => { row[h] = (values[idx] ?? "").trim(); });
-    const lat = parseFloat(row.latitude);
-    const lon = parseFloat(row.longitude);
-    if (Number.isNaN(lat) || Number.isNaN(lon)) continue;
-    const frp = parseFloat(row.frp) || 0;
+    const lat = parseFiniteCsvNumber(row.latitude);
+    const lon = parseFiniteCsvNumber(row.longitude);
+    if (lat === null || lon === null || !isWithinFirmsBbox(lat, lon)) continue;
+    const frp = parseNonNegativeCsvNumber(row.frp);
+    const brightness = parseNonNegativeCsvNumber(row.bright_ti4);
+    if (frp === null || brightness === null) continue;
     const confidence = row.confidence === "high" ? 0.9 : row.confidence === "nominal" ? 0.65 : 0.35;
     out.push({
       id: `firms-${row.acq_date}-${row.acq_time}-${lat.toFixed(3)}-${lon.toFixed(3)}`,
@@ -38,7 +61,7 @@ function parseFIRMS(csv: string): SatelliteDetection[] {
         satellite: row.satellite,
         instrument: row.instrument,
         frp,
-        brightness: parseFloat(row.bright_ti4) || 0,
+        brightness,
         confidence,
       },
       severity: frp > 10 ? "high" : frp > 3 ? "medium" : "low",
@@ -64,10 +87,16 @@ function parseFIRMS(csv: string): SatelliteDetection[] {
 export async function GET(req: Request) {
   const rl = rateLimit(clientKey(req), { limit: 60 });
   if (!rl.ok) {
-    return NextResponse.json({ error: "rate limit exceeded" }, { status: 429 });
+    return NextResponse.json(
+      { error: "rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" } },
+    );
   }
   if (!MAP_KEY) {
-    return NextResponse.json({ error: "FIRMS_MAP_KEY not configured", count: 0, detections: [] }, { status: 503 });
+    return NextResponse.json(
+      { error: "FIRMS_MAP_KEY not configured", count: 0, detections: [], dataState: createDataStateMeta("retryable-error", "Satellite source is not configured", undefined, "nasa-firms-viirs") },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
   try {
     const data = await cached("satellite-firms-viirs", 15 * 60 * 1000, async () => {
@@ -87,6 +116,12 @@ export async function GET(req: Request) {
         detections,
         bbox: PORTUGAL_BBOX,
         dayRange: 2,
+        dataState: createDataStateMeta(
+          detections.length === 0 ? "empty" : "healthy",
+          undefined,
+          undefined,
+          "nasa-firms-viirs",
+        ),
       };
       return result;
     });
@@ -95,10 +130,16 @@ export async function GET(req: Request) {
       { ...data, cached: false },
       { headers: { "Cache-Control": "public, s-maxage=900" } }
     );
-  } catch (err) {
+  } catch {
     return NextResponse.json(
-      { source: "nasa-firms-viirs", error: err instanceof Error ? err.message : "fetch failed", count: 0, detections: [] },
-      { status: 502 }
+      {
+        source: "nasa-firms-viirs",
+        error: "Satellite detections are temporarily unavailable.",
+        count: 0,
+        detections: [],
+        dataState: createDataStateMeta("retryable-error", "Satellite source unavailable", undefined, "nasa-firms-viirs"),
+      },
+      { status: 502, headers: { "Cache-Control": "no-store" } }
     );
   }
 }

@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { logServerFailure } from "@/lib/observability";
 
 const PRUNE_AFTER_DAYS = 30; // delete incidents last seen 30+ days ago
 const COMPACT_AFTER_DAYS = 7; // mark as 'resolved' after 7 days inactive
@@ -39,7 +40,7 @@ function isAuthorized(req: NextRequest): boolean {
 
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   }
 
   const now = Date.now();
@@ -68,25 +69,29 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({
-      ok: true,
-      prunedAt: new Date().toISOString(),
-      compact: {
-        cutoff: compactCutoff.toISOString(),
-        marked: compactResult.count,
+        ok: true,
+        prunedAt: new Date().toISOString(),
+        compact: {
+          cutoff: compactCutoff.toISOString(),
+          marked: compactResult.count,
+        },
+        snapshots: {
+          cutoff: snapshotCutoff.toISOString(),
+          deleted: snapshotResult.count,
+        },
+        incidents: {
+          cutoff: deleteCutoff.toISOString(),
+          deleted: incidentResult.count,
+        },
+      }, {
+        headers: { "Cache-Control": "no-store" },
       },
-      snapshots: {
-        cutoff: snapshotCutoff.toISOString(),
-        deleted: snapshotResult.count,
-      },
-      incidents: {
-        cutoff: deleteCutoff.toISOString(),
-        deleted: incidentResult.count,
-      },
-    });
+    );
   } catch (err: unknown) {
+    logServerFailure("cron.prune", err, { route: "/api/cron/prune", retryable: true });
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
+      { error: "Prune is temporarily unavailable." },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

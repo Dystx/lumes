@@ -13,6 +13,13 @@ export function nextFocusIndex(length: number, currentIndex: number, reverse: bo
   return currentIndex >= length - 1 ? 0 : currentIndex + 1;
 }
 
+/** Returns the next focusable index, including when the dialog itself owns focus. */
+export function focusTrapDestination(length: number, currentIndex: number, reverse: boolean): number {
+  if (length <= 0) return -1;
+  if (currentIndex < 0) return reverse ? length - 1 : 0;
+  return nextFocusIndex(length, currentIndex, reverse);
+}
+
 export function trapFocus(container: HTMLElement, event: KeyboardEvent): void {
   if (event.key !== "Tab") return;
   const elements = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
@@ -22,6 +29,11 @@ export function trapFocus(container: HTMLElement, event: KeyboardEvent): void {
     return;
   }
   const currentIndex = elements.indexOf(document.activeElement as HTMLElement);
+  if (currentIndex < 0) {
+    event.preventDefault();
+    elements[focusTrapDestination(elements.length, currentIndex, event.shiftKey)]?.focus();
+    return;
+  }
   const boundaryIndex = event.shiftKey ? 0 : elements.length - 1;
   if (currentIndex !== boundaryIndex) return;
   event.preventDefault();

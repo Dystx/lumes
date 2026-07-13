@@ -18,6 +18,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { runIngest } from "@/lib/ingest";
+import { logServerFailure } from "@/lib/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,15 +46,15 @@ function authorize(req: NextRequest): boolean {
 
 async function handle(req: NextRequest) {
   if (!authorize(req)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   }
 
   try {
     const result = await runIngest();
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    logServerFailure("cron.ingest", err, { route: "/api/cron/ingest", retryable: true });
+    return NextResponse.json({ error: "Ingest is temporarily unavailable." }, { status: 500, headers: { "Cache-Control": "no-store" } });
   }
 }
 

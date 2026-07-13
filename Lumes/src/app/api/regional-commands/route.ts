@@ -11,6 +11,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { cached } from "@/lib/api/cache";
+import { classifyDataState, createDataStateMeta } from "@/lib/data-state";
+import { logServerFailure } from "@/lib/observability";
+import type { RegionalCommandCoordinate, RegionalCommandGeometry, RegionalCommandsResponse } from "@/lib/types";
 
 const ANEPC_REGIONAL_SERVER =
   "https://services-eu1.arcgis.com/VlrHb7fn5ewYhX6y/arcgis/rest/services/Comandos%20Regionais%20ANEPC/FeatureServer/0";
@@ -18,28 +21,62 @@ const ANEPC_REGIONAL_SERVER =
 const CACHE_KEY = "regional-commands";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-// Round coordinates to 4 decimal places (≈11 m precision)
-// Simple dependency-free alternative to @turf/simplify for the
-// relatively coarse regional command polygons.
-function roundCoords(coords: any, precision = 4): any {
-  if (Array.isArray(coords[0])) {
-    return coords.map((c) => roundCoords(c, precision));
-  }
-  return [
-    Number(coords[0].toFixed(precision)),
-    Number(coords[1].toFixed(precision)),
-  ];
+interface ArcGisFeature {
+  properties?: Record<string, unknown>;
+  geometry?: { type?: unknown; coordinates?: unknown };
 }
 
-function simplifyGeometry(geom: any, include: boolean, precision = 4) {
-  if (!geom || !include) return null;
+interface ArcGisFeatureCollection {
+  features: ArcGisFeature[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function asFeatureCollection(value: unknown): ArcGisFeatureCollection {
+  if (!isRecord(value) || !Array.isArray(value.features)) return { features: [] };
   return {
-    ...geom,
-    coordinates: roundCoords(geom.coordinates, precision),
+    features: value.features.filter(isRecord).map((feature) => ({
+      properties: isRecord(feature.properties) ? feature.properties : undefined,
+      geometry: isRecord(feature.geometry)
+        ? { type: feature.geometry.type, coordinates: feature.geometry.coordinates }
+        : undefined,
+    })),
   };
 }
 
-async function fetchCommands() {
+// Round coordinates to 4 decimal places (≈11 m precision)
+// Simple dependency-free alternative to @turf/simplify for the
+// relatively coarse regional command polygons.
+function roundCoords(coords: unknown, precision = 4): RegionalCommandCoordinate[] | null {
+  if (!Array.isArray(coords) || coords.length === 0) return null;
+
+  if (coords.every((coordinate) => typeof coordinate === "number")) {
+    if (coords.length !== 2 || coords.some((coordinate) => !Number.isFinite(coordinate))) return null;
+    return coords.map((coordinate) => Number(coordinate.toFixed(precision))) as number[];
+  }
+
+  const nested = coords.map((coordinate) => roundCoords(coordinate, precision));
+  if (nested.some((coordinate) => coordinate === null)) return null;
+  return nested as RegionalCommandCoordinate[];
+}
+
+function simplifyGeometry(
+  geom: ArcGisFeature["geometry"],
+  include: boolean,
+  precision = 4,
+): RegionalCommandGeometry | null {
+  if (!geom || !include) return null;
+  const coordinates = roundCoords(geom.coordinates, precision);
+  if (!coordinates) return null;
+  return {
+    type: typeof geom.type === "string" ? geom.type : "GeometryCollection",
+    coordinates,
+  };
+}
+
+async function fetchCommands(): Promise<ArcGisFeatureCollection> {
   const params = new URLSearchParams({
     f: "geojson",
     where: "1=1",
@@ -52,40 +89,69 @@ async function fetchCommands() {
       "User-Agent": "lumes.pt-Platform/0.1 (wildfire-intel; +contact@lumes.pt)",
       Accept: "application/json, application/geo+json",
     },
+    signal: AbortSignal.timeout(8_000),
   });
   if (!res.ok) throw new Error(`ANEPC HTTP ${res.status}`);
-  return res.json();
+  return asFeatureCollection(await res.json());
 }
 
 export async function GET(req: NextRequest) {
   const includeGeometry = req.nextUrl.searchParams.get("geometry") === "1";
   const cacheKey = `${CACHE_KEY}:geo=${includeGeometry ? "1" : "0"}`;
 
-  const data = await cached(
-    cacheKey,
-    CACHE_TTL_MS,
-    async () => {
-      const raw = await fetchCommands();
-      const commands = (raw.features || []).map((f: any) => ({
-        id: `anepc-cmd-${f.properties.ID || f.properties.FID}`,
-        name: f.properties.ComReg,
-        region: f.properties.ComReg,
-        area: f.properties.Shape__Area,
-        geometry: simplifyGeometry(f.geometry, includeGeometry),
-      }));
-      return {
-        source: "anepc-regional-commands",
-        fetchedAt: new Date().toISOString(),
-        count: commands.length,
-        commands,
-      };
-    },
-  );
+  try {
+    const data = await cached(
+      cacheKey,
+      CACHE_TTL_MS,
+      async () => {
+        const raw = await fetchCommands();
+        const commands = raw.features.map((feature, index) => {
+          const properties = feature.properties ?? {};
+          const commandName = typeof properties.ComReg === "string" ? properties.ComReg : "Regional command";
+          const rawId = properties.ID ?? properties.FID ?? index;
+          const area = typeof properties.Shape__Area === "number" ? properties.Shape__Area : undefined;
+          return {
+            id: `anepc-cmd-${String(rawId)}`,
+            name: commandName,
+            region: commandName,
+            ...(area !== undefined ? { area } : {}),
+            geometry: simplifyGeometry(feature.geometry, includeGeometry),
+          };
+        });
+        const fetchedAt = new Date().toISOString();
+        const body: RegionalCommandsResponse = {
+          source: "anepc-regional-commands",
+          fetchedAt,
+          count: commands.length,
+          commands,
+          dataState: createDataStateMeta(
+            classifyDataState({ count: commands.length }),
+            undefined,
+            fetchedAt,
+            "anepc-regional-commands",
+          ),
+        };
+        return body;
+      },
+    );
 
-  return NextResponse.json(data, {
-    headers: {
-      // 24h CDN cache + 7d stale-while-revalidate
-      "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
-    },
-  });
+    return NextResponse.json(data, {
+      headers: {
+        // 24h CDN cache + 7d stale-while-revalidate
+        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
+      },
+    });
+  } catch (err: unknown) {
+    logServerFailure("regional-commands.fetch", err, { route: "/api/regional-commands", retryable: true });
+    return NextResponse.json(
+      {
+        source: "anepc-regional-commands",
+        count: 0,
+        commands: [],
+        error: "Regional command data is temporarily unavailable.",
+        dataState: createDataStateMeta("retryable-error", "Regional command source unavailable", undefined, "anepc-regional-commands"),
+      },
+      { status: 502, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

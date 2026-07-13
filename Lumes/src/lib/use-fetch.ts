@@ -1,7 +1,7 @@
 // useFetch — shared data fetching with bounded polling and explicit trust state.
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { createDataStateMeta, type DataStateMeta } from "@/lib/data-state";
+import { createDataStateMeta, resolveDataStateMeta, type DataStateMeta } from "@/lib/data-state";
 import { deriveDataTrust, type DataTrustState } from "@/lib/data-trust";
 
 export interface UseFetchOptions<T> {
@@ -19,10 +19,45 @@ export interface UseFetchResult<T> {
   error: string | null;
   refetchedAt: Date | null;
   refetch: () => void;
+  /** Resolves after the refresh attempt has settled, including retryable errors. */
+  refetchAsync: () => Promise<void>;
   setData: (data: T | null) => void;
   usingFallback: boolean;
   dataState: DataStateMeta | null;
   trust: DataTrustState;
+}
+
+export interface FetchJsonOptions {
+  controller?: AbortController;
+  timeoutMs: number;
+  headers?: Record<string, string>;
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * One bounded request attempt. The caller owns the controller so unmounting a
+ * hook can still abort the active attempt; every retry passes a fresh one.
+ */
+export async function fetchJsonWithTimeout(
+  endpoint: string,
+  { controller = new AbortController(), timeoutMs, headers, fetchImpl = globalThis.fetch }: FetchJsonOptions,
+): Promise<unknown> {
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(endpoint, {
+      cache: "default",
+      signal: controller.signal,
+      headers,
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${response.status}`);
+    }
+    const body: unknown = await response.json();
+    return body;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /** Retained data remains useful, but a failed refresh must still be visible. */
@@ -38,10 +73,8 @@ export function shouldMarkUsingFallback({
   return error !== null || (data === null && loading);
 }
 
-function isDataStateMeta(value: unknown): value is DataStateMeta {
-  if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Partial<DataStateMeta>;
-  return typeof candidate.state === "string" && typeof candidate.updatedAt === "string";
+export function resolveResponseDataState(value: unknown): ReturnType<typeof resolveDataStateMeta> {
+  return resolveDataStateMeta(value);
 }
 
 export function useFetch<T = unknown>(
@@ -66,9 +99,29 @@ export function useFetch<T = unknown>(
   const [refetchedAt, setRefetchedAt] = useState<Date | null>(null);
   const [dataState, setDataState] = useState<DataStateMeta | null>(null);
   const [tick, setTick] = useState(0);
-  const cancelledRef = useRef(false);
+  const requestGenerationRef = useRef(0);
+  const pendingRefetchesRef = useRef<Set<() => void>>(new Set());
 
-  const refetch = useCallback(() => setTick((n) => n + 1), []);
+  const refetch = useCallback(() => {
+    if (!enabled || !url) return;
+    // Clear the previous generation synchronously so consumers cannot settle
+    // a new refresh from stale error state before its effect starts loading.
+    setError(null);
+    setLoading(true);
+    setTick((n) => n + 1);
+  }, [enabled, url]);
+  const refetchAsync = useCallback(() => {
+    if (!enabled || !url) return Promise.resolve();
+
+    // Keep awaitable and event-driven retries aligned with the same lifecycle
+    // boundary as `refetch`; polling still clears this state inside `load`.
+    setError(null);
+    setLoading(true);
+    return new Promise<void>((resolve) => {
+      pendingRefetchesRef.current.add(resolve);
+      setTick((n) => n + 1);
+    });
+  }, [enabled, url]);
   const setData = useCallback((next: T | null) => {
     dataRef.current = next;
     setStoredData(next);
@@ -81,7 +134,8 @@ export function useFetch<T = unknown>(
     }
 
     const endpoint = url;
-    cancelledRef.current = false;
+    const requestGeneration = ++requestGenerationRef.current;
+    let cancelled = false;
     let timer: ReturnType<typeof setInterval> | null = null;
     let inFlight = false;
     let activeController: AbortController | null = null;
@@ -94,28 +148,37 @@ export function useFetch<T = unknown>(
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
+        // A new request generation must not inherit the previous generation's
+        // error. Consumers use `error` to settle refresh attempts, so leaving
+        // stale text here can terminate a retry before its network request has
+        // settled.
+        setError(null);
         setLoading(true);
-        const res = await fetch(endpoint, {
-          cache: "default",
-          signal: controller.signal,
+        const json = await fetchJsonWithTimeout(endpoint, {
+          controller,
+          timeoutMs,
           headers,
         });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `HTTP ${res.status}`);
-        }
-        const json: unknown = await res.json();
-        if (cancelledRef.current) return;
+        if (cancelled) return;
         const next = transform ? transform(json) : (json as T);
+        const responseMetaValue = typeof json === "object" && json !== null && !Array.isArray(json)
+          && Object.prototype.hasOwnProperty.call(json, "dataState")
+          ? (json as { dataState?: unknown }).dataState
+          : undefined;
+        const responseMeta = resolveResponseDataState(responseMetaValue);
+        if (!responseMeta.valid) {
+          setDataState(responseMeta.meta);
+          setError(responseMeta.meta.reason ?? "Invalid data state metadata");
+          if (dataRef.current === null) setData(fallbackRef.current);
+          return;
+        }
+
         setData(next);
-        const responseMeta = isDataStateMeta((json as { dataState?: unknown }).dataState)
-          ? (json as { dataState: DataStateMeta }).dataState
-          : createDataStateMeta("healthy");
-        setDataState(responseMeta);
+        setDataState(responseMeta.meta);
         setError(null);
         setRefetchedAt(new Date());
       } catch (err: unknown) {
-        if (cancelledRef.current) return;
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : String(err));
         setDataState((previous) => previous?.state === "fallback"
           ? previous
@@ -125,7 +188,12 @@ export function useFetch<T = unknown>(
         clearTimeout(timeoutId);
         if (activeController === controller) activeController = null;
         inFlight = false;
-        if (!cancelledRef.current) setLoading(false);
+        if (!cancelled) setLoading(false);
+        if (requestGeneration === requestGenerationRef.current) {
+          const pending = Array.from(pendingRefetchesRef.current);
+          pendingRefetchesRef.current.clear();
+          pending.forEach((resolve) => resolve());
+        }
       }
     }
 
@@ -133,7 +201,7 @@ export function useFetch<T = unknown>(
     if (refreshMs) timer = setInterval(() => void load(), refreshMs);
 
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
       activeController?.abort();
       if (timer) clearInterval(timer);
     };
@@ -148,5 +216,5 @@ export function useFetch<T = unknown>(
     error,
   });
 
-  return { data, loading, error, refetchedAt, refetch, setData, usingFallback, dataState, trust };
+  return { data, loading, error, refetchedAt, refetch, refetchAsync, setData, usingFallback, dataState, trust };
 }

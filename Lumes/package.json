@@ -2,6 +2,10 @@
   "name": "nextjs_tailwind_shadcn_ts",
   "version": "0.2.0",
   "private": true,
+  "packageManager": "bun@1.3.4",
+  "engines": {
+    "bun": "1.3.4"
+  },
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "prisma generate && next build && node deploy/flatten-standalone.js",
@@ -15,7 +19,24 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "test:e2e:a11y": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/a11y.test.ts",
+    "test:e2e:aerial": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/aerial-layer-state.test.ts",
+    "test:e2e:biomass": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/biomass-layer-state.test.ts",
+    "test:e2e:risk": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/risk-layer-state.test.ts",
     "test:e2e:responsive": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/responsive-interactions.test.ts",
+    "test:e2e:shortcuts": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/keyboard-shortcuts.test.ts",
+    "test:e2e:follow": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/follow-state.test.ts",
+    "test:e2e:incident-focus": "LUMES_URL=${LUMES_URL:-http://localhost:3000} LUMES_3D_E2E=0 bun tests/e2e/incident-focus.test.ts",
+    "test:e2e:incident-focus:enabled": "LUMES_URL=${LUMES_URL:-http://localhost:3000} LUMES_3D_E2E=1 bun tests/e2e/incident-focus.test.ts",
+    "test:e2e:map-style": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/map-style-lifecycle.test.ts",
+    "test:e2e:data-trust": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/data-trust-matrix.test.ts",
+    "test:e2e:following": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/following-filter.test.ts",
+    "test:e2e:history": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/history-lifecycle.test.ts",
+    "test:e2e:ownership": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/incident-ownership.test.ts",
+    "test:e2e:mobile-refresh": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/mobile-refresh-and-timeline.test.ts",
+    "test:e2e:public": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/public-pages.test.ts",
+    "test:e2e:status-fixtures": "bun tests/e2e/status-fixtures.test.ts",
+    "test:e2e:status-fixtures:start": "LUMES_STATUS_FIXTURE_MODE=start bun tests/e2e/status-fixtures.test.ts",
+    "test:e2e:headers": "LUMES_URL=${LUMES_URL:-http://localhost:3000} bun tests/e2e/security-headers.test.ts",
     "test:perf": "lhci autorun --config=lighthouserc.json"
   },
   "dependencies": {

@@ -65,10 +65,10 @@ export default function NewsSection({ lang }: { lang: Language }) {
     <div className="flex flex-col h-full px-4 py-4 border-b border-[var(--ember-border)]">
       {/* Header — centered title with item count */}
       <div className="text-center mb-2.5 flex-shrink-0">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center justify-center gap-1.5">
+        <div className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium flex items-center justify-center gap-1.5">
           <Newspaper className="w-3 h-3" />
           <span className="text-[15px] font-semibold text-[var(--ember-text)]">{lang === "pt" ? "Notícias" : "News"}</span>
-          <span className="text-[9px] tabular-nums opacity-70">
+          <span className="text-meta tabular-nums opacity-70">
             ({news.loading ? "…" : data
               ? data.counts.matched + data.counts.incidents + data.counts.press
               : 0})
@@ -89,7 +89,7 @@ export default function NewsSection({ lang }: { lang: Language }) {
             key={t2.v}
             type="button"
             onClick={() => setTab(t2.v)}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded text-[9px] font-medium uppercase tracking-wider transition-colors ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded text-meta font-medium uppercase tracking-wider transition-colors ${
               activeTab === t2.v
                 ? "bg-[var(--ember-accent-subtle)] text-[var(--ember-accent)]"
                 : "text-[var(--ember-text-faint)] hover:text-[var(--ember-text-muted)]"
@@ -142,11 +142,11 @@ export default function NewsSection({ lang }: { lang: Language }) {
                       {it.title}
                     </div>
                     {it.summary && activeTab !== "sources" && (
-                      <div className="text-[10px] text-[var(--ember-text-faint)] mt-0.5 line-clamp-1">
+                      <div className="text-[length:var(--type-secondary)] text-[var(--ember-text-faint)] mt-0.5 line-clamp-1">
                         {it.summary}
                       </div>
                     )}
-                    <div className="flex items-center gap-1.5 mt-1 text-[9px] text-[var(--ember-text-faint)]">
+                    <div className="flex items-center gap-1.5 mt-1 text-meta text-[var(--ember-text-faint)]">
                       <span className="font-semibold uppercase tracking-wider">
                         {it.source}
                       </span>

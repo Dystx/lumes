@@ -6,6 +6,7 @@
 
 import { Minus, Plus, Locate, Layers as LayersIcon } from "@/components/icons/phosphor-icons";
 import { motion } from "framer-motion";
+import type { MapChromeInsets } from "@/lib/map-chrome";
 
 interface MobileMapControlsProps {
   onZoomIn: () => void;
@@ -13,6 +14,7 @@ interface MobileMapControlsProps {
   onLocate: () => void;
   onLayers?: () => void;
   lang?: "pt" | "en";
+  chromeInsets?: MapChromeInsets;
 }
 
 export function MobileMapControls({
@@ -21,6 +23,7 @@ export function MobileMapControls({
   onLocate,
   onLayers,
   lang = "pt",
+  chromeInsets,
 }: MobileMapControlsProps) {
   const labels = lang === "pt"
     ? { zoomIn: "Aumentar zoom", zoomOut: "Diminuir zoom", locate: "Centrar mapa", layers: "Explorar mapa" }
@@ -30,8 +33,10 @@ export function MobileMapControls({
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.2, duration: 0.3 }}
-      className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 pointer-events-auto"
+      className={`absolute z-20 flex flex-col gap-2 pointer-events-auto ${chromeInsets ? "" : "right-3 top-1/2 -translate-y-1/2"}`}
+      style={chromeInsets ? { bottom: chromeInsets.bottom + 16, right: chromeInsets.right } : undefined}
       aria-label="Map controls"
+      data-testid="mobile-map-controls"
     >
       <FabButton onClick={onZoomIn} ariaLabel={labels.zoomIn}>
         <Plus className="w-5 h-5" />

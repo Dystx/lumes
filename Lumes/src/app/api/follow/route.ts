@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" } }
     );
   }
 
@@ -41,6 +41,14 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const csrfBlock = assertSafeOrigin(request);
   if (csrfBlock) return csrfBlock;
+
+  const rl = rateLimit(clientKey(request), { limit: 30 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" } },
+    );
+  }
 
   return NextResponse.json(
     { error: FOLLOW_UNAVAILABLE, dataState: createDataStateMeta("retryable-error", "Browser-local follow state is in use") },

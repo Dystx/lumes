@@ -2,7 +2,7 @@
 // creates snapshots on state changes, tracks firstSeen/lastSeen
 
 import { db } from "@/lib/db";
-import type { LiveIncident } from "@/lib/types";
+import type { LiveIncident, PersistenceStatsCounts } from "@/lib/types";
 
 export interface PersistenceResult {
   upserted: number;
@@ -12,8 +12,14 @@ export interface PersistenceResult {
   errors: string[];
 }
 
+export interface PersistIncidentsOptions {
+  /** Disable stale-row cleanup when the upstream collection is incomplete. */
+  allowStaleResolution?: boolean;
+}
+
 export async function persistIncidents(
-  incidents: LiveIncident[]
+  incidents: LiveIncident[],
+  options: PersistIncidentsOptions = {},
 ): Promise<PersistenceResult> {
   const result: PersistenceResult = {
     upserted: 0,
@@ -146,6 +152,8 @@ export async function persistIncidents(
     }
   }
 
+  if (options.allowStaleResolution === false) return result;
+
   // Mark incidents not seen in this fetch as potentially resolved
   // (only if they were active/contained and haven't been seen in 2+ hours)
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
@@ -210,7 +218,7 @@ export async function getPersistedIncidents(opts?: {
 }
 
 // Get persistence stats
-export async function getPersistenceStats() {
+export async function getPersistenceStats(): Promise<PersistenceStatsCounts> {
   const [total, active, resolved, snapshots] = await Promise.all([
     db.incident.count(),
     db.incident.count({ where: { status: { in: ["detected", "active", "contained"] } } }),

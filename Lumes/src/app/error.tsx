@@ -46,7 +46,7 @@ export default function ErrorPage({
             <summary className="text-[11px] text-[var(--ember-text-faint)] cursor-pointer hover:text-[var(--ember-text-muted)]">
               {t(language, "error.technicalDetails")}
             </summary>
-            <pre className="mt-2 p-2 bg-[var(--ember-surface)] border border-[var(--ember-border)] rounded text-[10px] font-mono text-[var(--ember-text-faint)] overflow-x-auto max-h-32">
+            <pre className="mt-2 p-2 bg-[var(--ember-surface)] border border-[var(--ember-border)] rounded text-meta font-mono text-[var(--ember-text-faint)] overflow-x-auto max-h-32">
               {error.message}
               {error.digest ? `\n\ndigest: ${error.digest}` : ""}
             </pre>

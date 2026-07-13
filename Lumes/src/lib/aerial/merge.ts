@@ -62,6 +62,16 @@ const MAX_SUBQUERIES = 64;
 const fetcherTimeoutMs = 8_000;
 const metaFreshAt = () => new Date().toISOString();
 
+function isWithinBbox(aircraft: AircraftState, bbox: [number, number, number, number]): boolean {
+  const [west, south, east, north] = bbox;
+  return Number.isFinite(aircraft.latitude)
+    && Number.isFinite(aircraft.longitude)
+    && aircraft.longitude >= west
+    && aircraft.longitude <= east
+    && aircraft.latitude >= south
+    && aircraft.latitude <= north;
+}
+
 function normalizeAirplanes(rawList: unknown[], source: "airplanes.live" | "adsb.fi"): AircraftState[] {
   const out: AircraftState[] = [];
   const now = metaFreshAt();
@@ -234,8 +244,9 @@ export async function mergeAircraft(
     errors.push(`opensky: ${String(e)}`);
     return [];
   });
-  const airplanes = airplanesLists.flat();
-  const adsbfi = adsbfiLists.flat();
+  const airplanes = airplanesLists.flat().filter((aircraft) => isWithinBbox(aircraft, bbox));
+  const adsbfi = adsbfiLists.flat().filter((aircraft) => isWithinBbox(aircraft, bbox));
+  const boundedOpenSky = opensky.filter((aircraft) => isWithinBbox(aircraft, bbox));
 
   const merged = new Map<string, AircraftState>();
   const addAircraft = (aircraft: AircraftState) => {
@@ -255,7 +266,7 @@ export async function mergeAircraft(
     }
   };
   // Priority order: airplanes.live > adsb.fi > opensky
-  for (const list of [airplanes, adsbfi, opensky]) {
+  for (const list of [airplanes, adsbfi, boundedOpenSky]) {
     for (const a of list) addAircraft(a);
   }
 
@@ -291,7 +302,7 @@ export async function mergeAircraft(
     meta: {
       airplanes_live: airplanes.length,
       adsb_fi: adsbfi.length,
-      opensky: opensky.length,
+      opensky: boundedOpenSky.length,
       merged: merged.size,
       sources_live: [
         ...(airplanes.length ? (["airplanes.live"] as const) : []),

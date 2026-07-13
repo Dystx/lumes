@@ -41,7 +41,10 @@ import {
 } from "@/components/icons/phosphor-icons";
 import { t, type Language } from "@/lib/i18n";
 import type { Severity, SourceType } from "@/lib/types";
+import { aerialLayerStatusLabel, type AerialLayerStatus } from "@/lib/aerial/status";
 import { FilterStatus, type FilterStatusItem } from "./filter-status";
+import { MapStatusSummary } from "./map-status-summary";
+import type { SeverityCounts } from "@/lib/map-status-summary";
 
 export interface FiltersPanelProps {
   lang: Language;
@@ -53,6 +56,10 @@ export interface FiltersPanelProps {
   // Quick filters
   quickFilter: "all" | "critical" | "high" | "active";
   setQuickFilter: (q: "all" | "critical" | "high" | "active") => void;
+  phaseFilter: string | null;
+  setPhaseFilter: (phase: string | null) => void;
+  resourceFilter: "personnel" | "engines" | "aircraft" | null;
+  setResourceFilter: (resource: "personnel" | "engines" | "aircraft" | null) => void;
   // Severity
   severityFilter: Set<Severity>;
   toggleSeverity: (s: Severity) => void;
@@ -85,9 +92,17 @@ export interface FiltersPanelProps {
   fireStationsCount: number;
   satelliteReady: boolean;
   satelliteCount: number;
-  sourceHealth: { sourceName: string; status: string }[];
+  sourceHealth: {
+    sourceId?: string;
+    sourceName: string;
+    status: string;
+    tier?: "core" | "optional";
+    state?: "healthy" | "stale" | "fallback" | "error" | "disabled";
+  }[];
+  aerialStatus?: AerialLayerStatus | null;
   // Counts
   liveCount: number;
+  severityCounts: Partial<SeverityCounts>;
   // Active filter chips
   activeFilters?: { id: string; label: string; onClear: () => void }[];
 }
@@ -102,6 +117,10 @@ export function FiltersPanel({
   searchInputRef,
   quickFilter,
   setQuickFilter,
+  phaseFilter,
+  setPhaseFilter,
+  resourceFilter,
+  setResourceFilter,
   severityFilter,
   toggleSeverity,
   resetSeverityFilter,
@@ -130,7 +149,9 @@ export function FiltersPanel({
   satelliteReady,
   satelliteCount,
   sourceHealth,
+  aerialStatus = null,
   liveCount,
+  severityCounts,
   activeFilters = [],
 }: FiltersPanelProps) {
   const [tab, setTab] = useState<Tab>("essentials");
@@ -139,6 +160,16 @@ export function FiltersPanel({
   const isMobile = variant === "mobile";
   const sourceOk = sourceHealth.filter((s) => s.status === "ok").length;
   const sourceTotal = sourceHealth.length || 1;
+  const optionalWarnings = sourceHealth.filter((source) =>
+    source.tier === "optional" && (source.state === "error" || source.state === "stale" || source.state === "fallback"),
+  );
+  const firmsSource = sourceHealth.find((source) => source.sourceId === "nasa-firms-viirs");
+  const satelliteUnavailable = firmsSource?.state === "error" || firmsSource?.state === "disabled";
+  const aerialStatusLabel = aerialStatus?.state === "error"
+    ? (lang === "pt" ? "Aéreo indisponível" : "Aerial unavailable")
+    : aerialStatus?.state === "partial"
+      ? (lang === "pt" ? "Fontes aéreas parciais" : "Partial aerial sources")
+      : null;
 
   // Reset all filters
   const resetAll = () => {
@@ -150,6 +181,8 @@ export function FiltersPanel({
     if (severityFilter.size !== 4) {
       resetSeverityFilter();
     }
+    setPhaseFilter(null);
+    setResourceFilter(null);
     // Display settings are intentionally not incident-query filters.
   };
 
@@ -157,7 +190,9 @@ export function FiltersPanel({
     searchQuery.length > 0 ||
     quickFilter !== "all" ||
     severityFilter.size !== 4 ||
-    !hideResolved;
+    !hideResolved ||
+    phaseFilter !== null ||
+    resourceFilter !== null;
 
   return (
     <div className="flex flex-col h-full bg-[var(--ember-bg)]">
@@ -168,11 +203,11 @@ export function FiltersPanel({
             <div className="w-7 h-7 rounded-md bg-[var(--ember-accent-subtle)] flex items-center justify-center">
               <Sliders className="w-3.5 h-3.5 text-[var(--ember-accent)]" />
             </div>
-            <div>
+            <div data-query-owner="quick-filter">
               <h2 className="text-[15px] font-semibold text-[var(--ember-text)] leading-none">
                 {lang === "pt" ? "Filtros" : "Filters"}
               </h2>
-              <p className="text-[10px] text-[var(--ember-text-faint)] leading-none mt-1 tabular-nums">
+              <p className="text-meta text-[var(--ember-text-faint)] leading-none mt-1 tabular-nums">
                 {liveCount} {lang === "pt" ? "incêndios" : "incidents"}
                 {hasActiveFilters && (
                   <> · <span className="text-[var(--ember-accent)]">
@@ -185,7 +220,7 @@ export function FiltersPanel({
           {hasActiveFilters && (
             <button
               onClick={resetAll}
-              className="text-[10px] font-medium uppercase tracking-wider text-[var(--ember-text)] bg-[var(--ember-accent-subtle)] hover:bg-[var(--ember-accent)] hover:text-white border border-[var(--ember-accent)]/30 hover:border-[var(--ember-accent)] px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5"
+              className="text-meta font-medium uppercase tracking-wider text-[var(--ember-text)] bg-[var(--ember-accent-subtle)] hover:bg-[var(--ember-accent)] hover:text-white border border-[var(--ember-accent)]/30 hover:border-[var(--ember-accent)] px-2.5 py-1 rounded-md transition-all flex items-center gap-1.5"
               aria-label={lang === "pt" ? "Limpar todos os filtros" : "Reset all filters"}
             >
               <RotateCcw className="w-2.5 h-2.5" />
@@ -204,7 +239,7 @@ export function FiltersPanel({
             <button
               key={t2.key}
               onClick={() => setTab(t2.key)}
-              className={`flex-1 px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider rounded transition-colors ${
+              className={`flex-1 px-2 py-1.5 text-meta font-medium uppercase tracking-wider rounded transition-colors ${
                 tab === t2.key
                   ? "bg-[var(--ember-surface)] text-[var(--ember-text)] shadow-sm"
                   : "text-[var(--ember-text-faint)] hover:text-[var(--ember-text-muted)]"
@@ -215,6 +250,16 @@ export function FiltersPanel({
           ))}
         </div>
       </div>
+
+      {/* Desktop Explore status; mobile already has map attribution/legend. */}
+      {variant === "desktop" && (
+        <MapStatusSummary
+          lang={lang}
+          visibleCount={liveCount}
+          severityCounts={severityCounts}
+          activeFilterCount={activeFilters.length}
+        />
+      )}
 
       {/* Active filter chips */}
       {activeFilters.length > 0 && (
@@ -237,7 +282,7 @@ export function FiltersPanel({
           <div className="p-4 space-y-5">
             {/* Search */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
+              <label className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
                 {lang === "pt" ? "Pesquisar" : "Search"}
               </label>
               <div className="relative">
@@ -266,7 +311,7 @@ export function FiltersPanel({
 
             {/* Quick filter chips */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
+              <label className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
                 {lang === "pt" ? "Filtro rápido" : "Quick filter"}
               </label>
               <div className="flex gap-1.5 flex-wrap">
@@ -279,7 +324,7 @@ export function FiltersPanel({
                   <button
                     key={opt.v}
                     onClick={() => setQuickFilter(opt.v)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-semibold whitespace-nowrap transition-colors border ${
+                    className={`px-2.5 py-1 rounded-full text-meta uppercase tracking-wider font-semibold whitespace-nowrap transition-colors border ${
                       quickFilter === opt.v
                         ? "bg-[var(--ember-accent-subtle)] border-[var(--ember-accent)] text-[var(--ember-accent)]"
                         : "bg-transparent border-[var(--ember-border)] text-[var(--ember-text-faint)] hover:text-[var(--ember-text-muted)]"
@@ -293,7 +338,7 @@ export function FiltersPanel({
 
             {/* Severity checkboxes */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1.5 block">
+              <label className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1.5 block">
                 {lang === "pt" ? "Severidade" : "Severity"}
               </label>
               <div className="space-y-1">
@@ -351,7 +396,7 @@ export function FiltersPanel({
             <div className="pt-2">
               <button
                 onClick={() => setShowSources(!showSources)}
-                className="w-full flex items-center justify-between text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1.5 hover:text-[var(--ember-text-muted)]"
+                className="w-full flex items-center justify-between text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-1.5 hover:text-[var(--ember-text-muted)]"
               >
                 <span className="flex items-center gap-1.5">
                   <Radio className="w-3 h-3" />
@@ -380,7 +425,7 @@ export function FiltersPanel({
                           className="w-3.5 h-3.5 accent-[var(--ember-accent)]"
                         />
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: srcs[st].color }} />
-                        <span className="text-[10px] text-[var(--ember-text)] uppercase tracking-wider">
+                        <span className="text-meta text-[var(--ember-text)] uppercase tracking-wider">
                           {srcs[st][lang]}
                         </span>
                       </label>
@@ -396,7 +441,7 @@ export function FiltersPanel({
           <div className="p-4 space-y-5">
             {/* Basemap */}
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
+              <label className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-medium mb-2 block">
                 {lang === "pt" ? "Mapa base" : "Basemap"} <span className="text-[var(--ember-accent)]">({basemap})</span>
               </label>
               <div className="grid grid-cols-3 gap-1.5">
@@ -410,7 +455,7 @@ export function FiltersPanel({
                     <button
                       key={opt.v}
                       onClick={() => setBasemap(opt.v)}
-                      className={`flex flex-col items-center gap-1.5 py-3 rounded-md border text-[10px] font-medium transition-colors ${
+                      className={`flex flex-col items-center gap-1.5 py-3 rounded-md border text-meta font-medium transition-colors ${
                         basemap === opt.v
                           ? "bg-[var(--ember-accent-subtle)] border-[var(--ember-accent)] text-[var(--ember-accent)]"
                           : "bg-transparent border-[var(--ember-border)] text-[var(--ember-text-muted)] hover:text-[var(--ember-text)]"
@@ -445,14 +490,46 @@ export function FiltersPanel({
               onToggle={() => setShowFireStations(!showFireStations)}
               lang={lang}
             />
+            <div className="rounded-md bg-[var(--ember-surface-2)] px-3 py-2 text-meta text-[var(--ember-text-muted)]" data-testid="map-layer-guide">
+              <div className="font-semibold uppercase tracking-wider text-[var(--ember-text-faint)]">
+                {lang === "pt" ? "O que o mapa mostra" : "What the map shows"}
+              </div>
+              <p className="mt-1">{lang === "pt" ? "As cores das chamas indicam a severidade do incidente." : "Flame colors indicate incident severity."}</p>
+              <p>{lang === "pt" ? "Satélite, comunidade, evacuação e risco IPMA são camadas de contexto." : "Satellite, community, evacuation, and IPMA risk are context layers."}</p>
+            </div>
           </div>
         )}
 
         {tab === "advanced" && (
           <div className="p-4 space-y-3">
-            <p className="text-[10px] text-[var(--ember-text-faint)] italic mb-2">
+            <p className="text-[length:var(--type-secondary)] text-[var(--ember-text-faint)] italic mb-2">
               {lang === "pt" ? "Camadas avançadas — combinam dados meteorológicos, satélite e operacionais" : "Advanced layers — combine weather, satellite, and operational data"}
             </p>
+            {(optionalWarnings.length > 0 || aerialStatusLabel) && (
+              <div
+                className="rounded-md border border-[var(--ember-warning)]/30 bg-[var(--ember-warning)]/10 px-3 py-2 text-[length:var(--type-secondary)] text-[var(--ember-warning)]"
+                role="status"
+                data-testid="optional-source-warning"
+              >
+                <div className="font-medium">
+                  {lang === "pt" ? "Camadas opcionais" : "Optional layers"}
+                </div>
+                <ul className="mt-1 space-y-0.5 text-meta">
+                  {optionalWarnings.map((source) => (
+                    <li key={source.sourceId ?? source.sourceName}>
+                      {source.sourceId === "nasa-firms-viirs"
+                        ? (lang === "pt" ? "Satélite indisponível" : "Satellite unavailable")
+                        : source.sourceId === "osm-fire-stations"
+                          ? (lang === "pt" ? "Quartéis a usar dados alternativos" : "Stations using fallback")
+                      : source.sourceName}
+                    </li>
+                  ))}
+                  {aerialStatusLabel && (
+                    <li data-testid="aerial-source-warning">{aerialStatusLabel}</li>
+                  )}
+                </ul>
+              </div>
+            )}
             <LayerToggle
               icon={Satellite}
               label={t(lang, "dataSources.nasa-firms-viirs")}
@@ -460,15 +537,18 @@ export function FiltersPanel({
                 ? satelliteCount > 0
                   ? `${satelliteCount} ${lang === "pt" ? "focos (48h)" : "detections (48h)"}`
                   : lang === "pt" ? "Ativar para carregar" : "Enable to load"
-                : t(lang, "common.loading")}
+                : satelliteUnavailable
+                  ? (lang === "pt" ? "Satélite indisponível" : "Satellite unavailable")
+                  : t(lang, "common.loading")}
               enabled={showSatellite}
               onToggle={() => setShowSatellite(!showSatellite)}
+              available={!satelliteUnavailable}
               lang={lang}
             />
             <LayerToggle
               icon={Plane}
               label={t(lang, "aerial.response")}
-              sublabel={lang === "pt" ? "ADS-B" : "ADS-B"}
+              sublabel={aerialStatus ? aerialLayerStatusLabel(aerialStatus, lang) : "ADS-B"}
               enabled={showAerial}
               onToggle={() => setShowAerial(!showAerial)}
               lang={lang}
@@ -502,6 +582,7 @@ function LayerToggle({
   sublabel,
   enabled,
   onToggle,
+  available = true,
   lang,
 }: {
   icon: typeof Zap;
@@ -509,13 +590,15 @@ function LayerToggle({
   sublabel: string;
   enabled: boolean;
   onToggle: () => void;
+  available?: boolean;
   lang: Language;
 }) {
   return (
     <button
       onClick={onToggle}
+      disabled={!available}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md border text-left transition-colors ${
-        enabled
+        enabled && available
           ? "bg-[var(--ember-accent-subtle)] border-[var(--ember-accent)]/30"
           : "bg-[var(--ember-surface-2)] border-[var(--ember-border)] hover:border-[var(--ember-border-strong)]"
       }`}
@@ -523,7 +606,7 @@ function LayerToggle({
     >
       <span
         className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${
-          enabled ? "bg-[var(--ember-accent)] text-white" : "bg-[var(--ember-surface)] text-[var(--ember-text-muted)]"
+          enabled && available ? "bg-[var(--ember-accent)] text-white" : "bg-[var(--ember-surface)] text-[var(--ember-text-muted)]"
         }`}
       >
         <Icon className="w-3.5 h-3.5" />
@@ -532,18 +615,18 @@ function LayerToggle({
         <div className="text-xs font-medium text-[var(--ember-text)] truncate">
           {label}
         </div>
-        <div className="text-[10px] text-[var(--ember-text-faint)] truncate">
+        <div className="text-meta text-[var(--ember-text-faint)] truncate">
           {sublabel}
         </div>
       </div>
       <div
         className={`w-7 h-4 rounded-full flex-shrink-0 relative transition-colors ${
-          enabled ? "bg-[var(--ember-accent)]" : "bg-[var(--ember-border)]"
+          enabled && available ? "bg-[var(--ember-accent)]" : "bg-[var(--ember-border)]"
         }`}
       >
         <div
           className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
-            enabled ? "translate-x-3.5" : "translate-x-0.5"
+            enabled && available ? "translate-x-3.5" : "translate-x-0.5"
           }`}
         />
       </div>

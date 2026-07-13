@@ -29,6 +29,8 @@ export interface Incident {
   estimatedAreaHa: number;
   firstDetected: string;   // ISO 8601
   lastUpdated: string;     // ISO 8601
+  observedAt?: string;     // upstream observation time, when available
+  receivedAt?: string;     // time the platform received the observation
   confidence: number;      // 0-1, aggregate
   verification: VerificationStatus;
   sourceCount: number;
@@ -46,8 +48,17 @@ export interface Incident {
   ipmaRisk: "reduced" | "moderate" | "high" | "very_high" | "maximum";
   timeline: TimelineEvent[];
   description: string;
+  /** Optional upstream fields retained by the live-to-UI adapter for summaries. */
+  properties?: {
+    naturezaText?: string;
+    rasi?: string;
+    statusGroup?: string;
+    statusText?: string;
+    riskAvailable?: boolean;
+  };
   evacuationOrder?: boolean;
   roadClosures?: string[];
+  isLive?: boolean;
 }
 
 // T-24h playback positions (relative hours from now=0)
@@ -618,7 +629,17 @@ export const FOLLOWED_AREAS_MOCK = [
   { id: "area-lisboa", name: "Lisboa", type: "municipality" as const },
 ];
 
-export const NOTIFICATIONS_MOCK = [
+export interface IncidentNotification {
+  id: string;
+  incidentId: string;
+  title: string;
+  body: string;
+  timestamp: string;
+  priority: "critical" | "standard" | "informational";
+  read: boolean;
+}
+
+export const NOTIFICATIONS_MOCK: IncidentNotification[] = [
   {
     id: "notif-1",
     incidentId: "inc-monchique-2026",

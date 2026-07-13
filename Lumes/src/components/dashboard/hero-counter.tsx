@@ -52,7 +52,7 @@ export function HeroCounter({
       }`}
     >
       <div className="flex items-center justify-between w-full">
-        <span className="text-[9px] uppercase tracking-wider text-[var(--ember-text-faint)] font-semibold">
+        <span className="text-meta uppercase tracking-wider text-[var(--ember-text-faint)] font-semibold">
           {label}
         </span>
         <Icon
@@ -70,13 +70,13 @@ export function HeroCounter({
           {value}
         </span>
         {hint && (
-          <span className="text-[10px] text-[var(--ember-text-faint)] truncate max-w-[80px]">
+          <span className="text-meta text-[var(--ember-text-faint)] truncate max-w-[80px]">
             {hint}
           </span>
         )}
       </div>
       {caption && (
-        <span className="text-[9px] text-[var(--ember-text-faint)] truncate w-full">
+        <span className="text-meta text-[var(--ember-text-faint)] truncate w-full">
           {caption}
         </span>
       )}

@@ -1,0 +1,45 @@
+name: Lumes Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Lumes/**"
+      - ".github/workflows/lumes-ci.yml"
+      - ".github/workflows/lumes-deploy.yml"
+      - ".github/workflows/lumes-lighthouse.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Require CI verification
+    uses: ./.github/workflows/lumes-ci.yml
+
+  deploy:
+    name: SSH → VPS → deploy.sh --server (no-git server-only)
+    runs-on: ubuntu-latest
+    needs: verify
+    timeout-minutes: 10
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Trigger remote deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          command: |
+            set -euo pipefail
+            cd /opt/apps/lumes
+            bash deploy/deploy.sh --server
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deploy failed for ${{ github.ref }}"

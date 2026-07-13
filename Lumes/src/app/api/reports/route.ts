@@ -10,6 +10,9 @@ import { rateLimit, clientKey } from "@/lib/api/rate-limit";
 import { assertSafeOrigin } from "@/lib/api/csrf";
 import { logServerFailure } from "@/lib/observability";
 import { createDataStateMeta } from "@/lib/data-state";
+import { readRequestBodyWithinLimit } from "@/lib/api/request-body";
+
+const MAX_REPORT_REQUEST_BYTES = 16 * 1024;
 
 // GET — list reports (optionally filtered by status)
 export async function GET(request: NextRequest) {
@@ -37,18 +40,31 @@ export async function GET(request: NextRequest) {
         status: true,
       },
     });
+    // Keep the route boundary safe even if a persistence adapter returns
+    // additional columns despite the select contract. Public callers only
+    // receive the reviewed report DTO below.
+    const publicReports = reports.map((report) => ({
+      id: report.id,
+      reportType: report.reportType,
+      latitude: report.latitude,
+      longitude: report.longitude,
+      description: report.description,
+      confidence: report.confidence,
+      submittedAt: report.submittedAt,
+      status: report.status,
+    }));
 
     return NextResponse.json({
       source: "community-reports",
-      count: reports.length,
-      reports,
-      dataState: createDataStateMeta(reports.length === 0 ? "empty" : "healthy"),
-    });
+      count: publicReports.length,
+      reports: publicReports,
+      dataState: createDataStateMeta(publicReports.length === 0 ? "empty" : "healthy"),
+    }, { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120" } });
   } catch (err: unknown) {
     logServerFailure("reports.list", err, { route: "/api/reports", retryable: true });
     return NextResponse.json(
       { error: "Reports are temporarily unavailable.", count: 0, reports: [], dataState: createDataStateMeta("retryable-error", "Reports storage unavailable") },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
@@ -64,26 +80,40 @@ export async function POST(request: NextRequest) {
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Rate limit exceeded", dataState: createDataStateMeta("retryable-error", "Rate limit exceeded") },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter), "Cache-Control": "no-store" } }
     );
   }
 
   try {
     // F-24 — zod validation
-    const body = await request.json().catch(() => ({} as Record<string, unknown>));
+    const bodyResult = await readRequestBodyWithinLimit(request, MAX_REPORT_REQUEST_BYTES);
+    if (!bodyResult.ok) {
+      const tooLarge = bodyResult.reason === "too_large";
+      return NextResponse.json(
+        {
+          error: tooLarge ? "Report payload too large" : "Invalid report payload",
+          dataState: createDataStateMeta("empty", tooLarge ? "Report payload too large" : "Invalid report payload"),
+        },
+        { status: tooLarge ? 413 : 400, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    let body: unknown = {};
+    try {
+      body = bodyResult.text ? JSON.parse(bodyResult.text) : {};
+    } catch {
+      body = {};
+    }
     const v = validateBody(reportSchema, body);
     if (!v.ok) {
       return NextResponse.json({ error: v.error, dataState: createDataStateMeta("empty", "Invalid report") }, { status: 400, headers: { "Cache-Control": "no-store" } });
     }
     const data = v.data;
 
-    const reporterTier = (data as any).reporterTier || "anonymous";
-    const confidence =
-      reporterTier === "official" ? 1.0
-      : reporterTier === "professional" ? 0.9
-      : reporterTier === "verified_local" ? 0.7
-      : reporterTier === "registered" ? 0.5
-      : 0.3;
+    // Public callers cannot self-assign trust. Staff identity can promote a
+    // reviewed report later; submissions always enter as anonymous/pending.
+    const reporterTier = "anonymous";
+    const confidence = 0.3;
 
     const report = await db.communityReport.create({
       data: {
@@ -93,14 +123,20 @@ export async function POST(request: NextRequest) {
         description: data.description || null,
         reporterName: data.name || "anonymous",
         reporterTier,
-        photoUrl: null, // photos uploaded separately (TODO)
+        // Attachments are intentionally disabled until the provider, moderation,
+        // retention, and privacy gates in docs/providers/community-attachments.md
+        // are approved. Keep the legacy nullable field null in this JSON-only flow.
+        photoUrl: null,
         confidence,
       },
     });
 
     return NextResponse.json({
       ok: true,
-      report,
+      // Keep the public acknowledgement deliberately narrow.  The stored
+      // record contains reporter identity, coordinates, and free text that
+      // must never be reflected to an unauthenticated caller.
+      report: { id: report.id, status: "pending_review" },
       message: "Report submitted successfully. It will be reviewed by moderators.",
       dataState: createDataStateMeta("healthy"),
     }, { status: 201, headers: { "Cache-Control": "no-store" } });
@@ -108,7 +144,7 @@ export async function POST(request: NextRequest) {
     logServerFailure("reports.submit", err, { route: "/api/reports", retryable: true });
     return NextResponse.json(
       { error: "Unable to submit the report right now.", dataState: createDataStateMeta("retryable-error", "Report storage unavailable") },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
@@ -116,7 +152,7 @@ export async function POST(request: NextRequest) {
 // PATCH — intentionally unavailable until staff moderation has attributable auth.
 export async function PATCH(_request: NextRequest): Promise<NextResponse> {
   return NextResponse.json(
-    { error: "Method not allowed" },
+    { error: "Method not allowed", dataState: createDataStateMeta("empty", "Method not allowed") },
     { status: 405, headers: { Allow: "GET, POST", "Cache-Control": "no-store" } },
   );
 }
