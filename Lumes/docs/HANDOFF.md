@@ -1610,6 +1610,24 @@ coalescing, client lifecycle reliability, and response-envelope trust.
     threshold without a product decision; keep the operational map authoritative
     and treat further startup profiling as the next reliability task.
 
+101. **Post-load overlay scheduling follow-up** — ⚠️ commit `d4cdb539e`
+    moves the existing EmberMap overlay/source setup out of MapLibre's
+    synchronous `load` handler and schedules it through `requestIdleCallback`
+    (with a zero-delay fallback), while keeping map ownership, readiness,
+    style-restoration, layer ordering, and the provider unchanged. The focused
+    map contracts, full serialized suite (**149 files / 728 tests**), typecheck,
+    lint, production build, and local Lighthouse all pass. Local home
+    Lighthouse remains `0.95` with main-thread time reduced from about `536 ms`
+    to `498 ms`; `/status` and `/privacy` remain `1.00`. Hosted Lighthouse
+    remains below the unchanged `0.70` budget: run `29282065269` measured
+    `0.61`, and its controlled rerun measured `0.63`; paired CI run
+    `29282065288` passed all earlier stages and failed only at Lighthouse
+    budgets. This is measurement-variance evidence, not a reason for another
+    arbitrary delay, provider switch, or budget reduction. Stop runtime tuning
+    here unless a product-aware profile identifies a concrete next action;
+    reliability, incident clarity, and the existing provider/3D gates remain
+    higher priority.
+
 ---
 
 ## 7. Contact

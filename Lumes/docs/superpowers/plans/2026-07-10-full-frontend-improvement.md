@@ -2565,3 +2565,29 @@ route data, or build failure. The `0.70` budget remains unchanged. Further
 work should use a targeted startup profile and a product-aware UX decision,
 not additional arbitrary blank-map delay or a provider change. Optional 3D
 and storage/legal gates remain lower priority and closed.
+
+## Post-load overlay scheduling follow-up (2026-07-13)
+
+Commit `d4cdb539e` applies one final provider-independent startup optimization:
+the existing `EmberMap` source/layer setup no longer runs synchronously inside
+MapLibre's `load` handler. It is scheduled with `requestIdleCallback` and a
+zero-delay fallback, with explicit cancellation on unmount. The map provider,
+style selection, map ownership, readiness events, style-restoration path,
+overlay ordering, service-worker behavior, and optional 3D/provider gates are
+unchanged. `mapLoadedRef` still marks the initial style load immediately, while
+the public `mapLoaded` state remains false until the overlays are installed so
+style-transition effects cannot race an empty style reference.
+
+The full serialized suite passed **149 files / 728 tests**; typecheck, lint,
+production build, focused map contracts, and diff checks also passed. Local
+Lighthouse stayed at home `0.95`, `/status` `0.99`, and `/privacy` `1.00`; home
+main-thread time fell from roughly `536 ms` on the prior local run to `498 ms`
+and bootup from roughly `214 ms` to `195 ms`. Hosted Lighthouse did not cross
+the unchanged `0.70` budget: run `29282065269` measured `0.61`, and a
+controlled rerun measured `0.63`; paired CI `29282065288` passed all setup,
+Prisma, lint, typecheck, unit-test, and build stages before failing only at the
+Lighthouse budget. Treat the difference as hosted-run variance and residual
+MapLibre startup cost, not as justification for another arbitrary timeout,
+provider change, or threshold reduction. The next step is a product-aware
+profiling decision; reliability, incident clarity, and the explicitly gated
+3D/provider/attachment work remain ahead of further visual/performance novelty.
