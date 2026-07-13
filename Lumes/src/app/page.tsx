@@ -71,7 +71,6 @@ import {
   ExternalLink,
 } from "@/components/icons/phosphor-icons";
 import { type FireRiskFeature, type FireStationFeature, type EmberMapHandle } from "@/components/ember-map";
-import { MapScene } from "@/components/map/map-scene";
 import { toFireRiskFeatures, toFireStationFeatures, toSatelliteFeatures } from "@/components/map/map-data-adapter";
 import { normalizeMapTheme } from "@/lib/map/map-style";
 import { MapChrome } from "@/components/map/map-chrome";
@@ -86,6 +85,16 @@ import dynamic from "next/dynamic";
 // Lazy-loaded UI: layer panel + advanced overlays.
 const AdvancedMapLayers = dynamic(() => import("@/components/advanced-layers-host"), { ssr: false });
 const NewsSection = dynamic(() => import("@/components/news-section"), { ssr: false });
+// MapLibre is the heaviest client dependency. Keep the operational map as
+// the default experience, but defer its bundle until after the shell mounts so
+// the initial page can paint without blocking on WebGL setup.
+const MapScene = dynamic(
+  () => import("@/components/map/map-scene").then((mod) => mod.MapScene),
+  {
+    ssr: false,
+    loading: () => <div className="absolute inset-0 bg-[var(--ember-map-bg)]" aria-hidden="true" />,
+  },
+);
 import {
   AnimatedButton,
   SlideIn,
