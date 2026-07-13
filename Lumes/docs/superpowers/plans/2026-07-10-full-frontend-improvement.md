@@ -2544,3 +2544,24 @@ the worktree remains dirty, that action would publish only the six committed
 Lumes changes and would exclude all uncommitted files. No push, staging, merge,
 or deployment was performed; explicit publication authorization is still
 required.
+
+## Hosted performance follow-up (2026-07-13)
+
+The repository-root workflows are now executing the published branch. Two
+small, provider-independent home-route changes were tested and published:
+`84ee5801e` moves the existing MapLibre scene behind a client-only dynamic
+boundary, and `dfc37060f` starts that scene after a short delay and browser-idle
+opportunity. The default operational map, MapLibre provider, overlay sources,
+camera controls, service-worker behavior, and optional 3D/provider gates are
+unchanged.
+
+Local evidence improved to home Lighthouse `0.90` and then `0.95`, with
+`/status` and `/privacy` at `1.00`; the serialized full suite remains **149
+files / 728 tests**, and typecheck, lint, build, and diff checks pass. Hosted
+run `29280770116` measured `0.68` and its rerun measured `0.63`; the paired CI
+run `29280769818` also measured `0.63`. The hosted report isolates the
+remaining work to MapLibre startup/main-thread cost, not server response,
+route data, or build failure. The `0.70` budget remains unchanged. Further
+work should use a targeted startup profile and a product-aware UX decision,
+not additional arbitrary blank-map delay or a provider change. Optional 3D
+and storage/legal gates remain lower priority and closed.

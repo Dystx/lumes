@@ -1594,6 +1594,22 @@ coalescing, client lifecycle reliability, and response-envelope trust.
     performance test deterministic or improve the home route, while the
     provider and attachment gates remain separate.
 
+100. **MapLibre startup performance tranche** — ⚠️ two narrow, provider-
+    independent changes were published after the hosted performance evidence:
+    `84ee5801e` defers the existing `MapScene` bundle behind a client-only
+    boundary, and `dfc37060f` starts that same scene after a short shell delay
+    and browser-idle opportunity. Neither changes the map provider, styles,
+    camera contract, overlays, service-worker rules, or optional 3D gates.
+    Local Lighthouse improved to home `0.90` and then `0.95` (status/privacy
+    remained `1.00`); the serialized suite remains **149 files / 728 tests**,
+    with typecheck, lint, build, and staged diff checks passing. Hosted runs
+    `29280770116` and `29280769818` still fail only at the home Lighthouse
+    budget (`0.68` on the first attempt and `0.63` on the rerun/CI attempt),
+    with the report attributing the residual main-thread cost to the MapLibre
+    startup chunk. Do not add more arbitrary delay or weaken the `0.70`
+    threshold without a product decision; keep the operational map authoritative
+    and treat further startup profiling as the next reliability task.
+
 ---
 
 ## 7. Contact
